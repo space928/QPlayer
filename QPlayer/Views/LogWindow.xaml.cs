@@ -2,7 +2,7 @@
 using System.Windows;
 using System.Windows.Controls;
 
-namespace QPlayer
+namespace QPlayer.Views
 {
     /// <summary>
     /// Interaction logic for LogWindow.xaml

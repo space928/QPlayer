@@ -20,10 +20,10 @@
             <!---Icon-->
             <Menu IsMainMenu="True">
                 <MenuItem Header="File">
-                    <MenuItem Header="New"/>
-                    <MenuItem Header="Open" Command="{Binding OpenProfileCommand}"/>
-                    <MenuItem Header="Save" Command="{Binding SaveProfileCommand}"/>
-                    <MenuItem Header="Pack"/>
+                    <MenuItem Header="New" Command="{Binding NewProjectCommand}"/>
+                    <MenuItem Header="Open" Command="{Binding OpenProjectCommand}"/>
+                    <MenuItem Header="Save" Command="{Binding SaveProjectCommand}"/>
+                    <MenuItem Header="Pack" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" IsEnabled="False"/>
                 </MenuItem>
                 <MenuItem Header="Edit">
@@ -32,10 +32,10 @@
                 </MenuItem>
                 <MenuItem Header="Window">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
-                    <MenuItem Header="Settings" Command="{Binding OpenLogCommand}"/>
+                    <MenuItem Header="Settings" Command="{Binding OpenSetttingsCommand}"/>
                 </MenuItem>
                 <MenuItem Header="Help">
-                    <MenuItem Header="About"/>
+                    <MenuItem Header="About" Command="{Binding OpenAboutCommand}"/>
                 </MenuItem>
             </Menu>
         </Grid>

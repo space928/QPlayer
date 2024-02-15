@@ -2,6 +2,8 @@
 using CommunityToolkit.Mvvm.Input;
 using DynamicData.Kernel;
 using Microsoft.Win32;
+using QPlayer.Models;
+using QPlayer.Views;
 using ReactiveUI.Fody.Helpers;
 using Splat;
 using System;
@@ -10,10 +12,12 @@ using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Windows;
 using System.Windows.Data;
 
 namespace QPlayer
@@ -21,9 +25,13 @@ namespace QPlayer
     public class ViewModel : ObservableObject
     {
         #region Bindable Properties
-        [Reactive] public RelayCommand OpenProfileCommand { get; private set; }
-        [Reactive] public RelayCommand SaveProfileCommand { get; private set; }
+        [Reactive] public RelayCommand NewProjectCommand { get; private set; }
+        [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
+        [Reactive] public RelayCommand SaveProjectCommand { get; private set; }
+        [Reactive] public RelayCommand PackProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenLogCommand { get; private set; }
+        [Reactive] public RelayCommand OpenSetttingsCommand { get; private set; }
+        [Reactive] public RelayCommand OpenAboutCommand { get; private set; }
         [Reactive]
         public static ObservableCollection<string> LogList
         {
@@ -34,14 +42,45 @@ namespace QPlayer
                 BindingOperations.EnableCollectionSynchronization(logList, logListLock);
             }
         }
+        [Reactive] public string VersionString { get
+            {
+                var assembly = Assembly.GetAssembly(typeof(ViewModel));
+                if (assembly == null)
+                    return string.Empty;
+                var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
+                return $"Version {versionInfo.ProductVersion}";
+            } 
+        }
+        [Reactive]
+        public string CopyrightString
+        {
+            get
+            {
+                var assembly = Assembly.GetAssembly(typeof(ViewModel));
+                if (assembly == null)
+                    return string.Empty;
+                var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
+                return $"Copyright {versionInfo.LegalCopyright}";
+            }
+        }
         #endregion
 
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
 
+        private ShowFile showFile;
+        private string openShowFilePath;
         private static ObservableCollection<string> logList;
         private static LogWindow? logWindow;
+        private static SettingsWindow? settingsWindow;
+        private static AboutWindow? aboutWindow;
         private static bool started = false;
         private static readonly object logListLock = new();
+        private JsonSerializerOptions jsonSerializerOptions = new()
+        {
+            IncludeFields = true,
+            AllowTrailingCommas = true,
+            WriteIndented = true,
+        };
 
         public ViewModel() 
         {
@@ -57,46 +96,83 @@ namespace QPlayer
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute, () => logWindow == null);
-            OpenProfileCommand = new(OpenProfileExecute);
-            SaveProfileCommand = new(SaveProfileExecute);
+            NewProjectCommand = new(NewProjectExecute);
+            OpenProjectCommand = new(OpenProjectExecute);
+            SaveProjectCommand = new(SaveProjectExecute);
+            OpenAboutCommand = new(OpenAboutExecute);
+            OpenSetttingsCommand = new(OpenSettingsExecute);
+
+            openShowFilePath = string.Empty;
+            showFile = new();
         }
 
         public void OnExit()
         {
             Log("Shutting down...");
-            SaveProfile(AUTOBACK_PATH);
+            SaveProject(AUTOBACK_PATH);
             Log("Goodbye!");
         }
 
         #region Commands
-        public void SaveProfileExecute()
+        public void NewProjectExecute()
+        {
+            Log("Creating new project...");
+            SaveProject(AUTOBACK_PATH);
+            if(!string.IsNullOrEmpty(openShowFilePath))
+            {
+                var curr = File.ReadAllText(AUTOBACK_PATH);
+                var prev = File.ReadAllText(openShowFilePath);
+                if(curr != prev)
+                {
+                    // There are unsaved changes!
+                    var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?", 
+                        "Unsaved Changes", 
+                        MessageBoxButton.YesNoCancel);
+                    switch (mbRes)
+                    {
+                        case MessageBoxResult.Yes:
+                            SaveProject(openShowFilePath);
+                            break;
+                        case MessageBoxResult.No:
+                            break;
+                        case MessageBoxResult.Cancel:
+                            Log("   aborted!");
+                            return;
+                    }
+                }
+            }
+
+            showFile = new();
+        }
+
+        public void SaveProjectExecute()
         {
             SaveFileDialog saveFileDialog = new()
             {
                 AddExtension = true,
                 DereferenceLinks = true,
-                Filter = "MagicQCTRL Profiles (*.json)|*.json|All files (*.*)|*.*",
+                Filter = "QPlayer Projects (*.qproj)|*.qproj|All files (*.*)|*.*",
                 OverwritePrompt = true,
-                Title = "Save MagicQCTRL Profile"
+                Title = "Save QPlayer Project"
             };
             if (saveFileDialog.ShowDialog() ?? false)
             {
-                SaveProfile(saveFileDialog.FileName);
+                SaveProject(saveFileDialog.FileName);
             }
         }
 
-        public void OpenProfileExecute()
+        public void OpenProjectExecute()
         {
             OpenFileDialog openFileDialog = new()
             {
                 Multiselect = false,
-                Title = "Open MagicQCTRL Profile",
+                Title = "Open QPlayer Project",
                 CheckFileExists = true,
-                Filter = "MagicQCTRL Profiles (*.json)|*.json|All files (*.*)|*.*"
+                Filter = "QPlayer Projects (*.qproj)|*.qproj|All files (*.*)|*.*"
             };
             if (openFileDialog.ShowDialog() ?? false)
             {
-                OpenProfile(openFileDialog.FileName);
+                OpenProject(openFileDialog.FileName);
             }
         }
 
@@ -107,6 +183,20 @@ namespace QPlayer
             Log("Opening log...");
             logWindow.Closed += (e, x) => { logWindow = null; };
             logWindow.Show();
+        }
+
+        public void OpenSettingsExecute()
+        {
+            settingsWindow = new(this);
+            settingsWindow.Closed += (e, x) => { settingsWindow = null; };
+            settingsWindow.Show();
+        }
+
+        public void OpenAboutExecute()
+        {
+            aboutWindow = new(this);
+            aboutWindow.Closed += (e, x) => { aboutWindow = null; };
+            aboutWindow.Show();
         }
 
         public void CloseLogExecute()
@@ -136,14 +226,14 @@ namespace QPlayer
             Error
         }
 
-        public void OpenProfile(string path)
+        public void OpenProject(string path)
         {
             try
             {
-                // magicQCTRLProfile = JsonSerializer.Deserialize<MagicQCTRLProfile>(File.ReadAllText(path), jsonSerializerOptions);
-                // ButtonEditors.FromMagicQProfile(magicQCTRLProfile);
-                // BaseBrightness = magicQCTRLProfile.baseBrightness;
-                // PressedBrightness = magicQCTRLProfile.pressedBrightness;
+                var s = JsonSerializer.Deserialize<ShowFile>(File.ReadAllText(path), jsonSerializerOptions);
+                if (s == null)
+                    throw new FileFormatException("Show file deserialized as null!");
+                showFile = s;
 
                 Log($"Loaded profile from disk! {path}");
             }
@@ -155,11 +245,11 @@ namespace QPlayer
             }
         }
 
-        public void SaveProfile(string path)
+        public void SaveProject(string path)
         {
             try
             {
-                //File.WriteAllText(path, JsonSerializer.Serialize(magicQCTRLProfile, jsonSerializerOptions));
+                File.WriteAllText(path, JsonSerializer.Serialize(showFile, jsonSerializerOptions));
                 Log($"Saved profile to {path}!");
             }
             catch (Exception e)
