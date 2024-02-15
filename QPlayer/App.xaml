@@ -10,6 +10,7 @@
                 <ResourceDictionary Source="ThemesV2/ControlColours.xaml"/>
                 <ResourceDictionary Source="ThemesV2/Controls.xaml"/>
                 <ResourceDictionary Source="ThemesV2/CustomControls.xaml"/>
+                <ResourceDictionary Source="Views/CueDataTemplates.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
             </ResourceDictionary.MergedDictionaries>
             <!--<ImageSource x:Key="IconImage">/Resources/IconFull.ico</ImageSource>-->

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Windows;
 using System.Windows.Controls;
+using QPlayer.ViewModels;
 
 namespace QPlayer.Views
 {

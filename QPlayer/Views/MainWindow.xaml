@@ -3,12 +3,13 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:QPlayer"
+        xmlns:local="clr-namespace:QPlayer.Views"
+        xmlns:vm="clr-namespace:QPlayer.ViewModels"
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         Title="QPlayer" Height="500" Width="700" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Closed="Window_Closed" Loaded="Window_Loaded">
     <Window.DataContext>
-        <local:ViewModel></local:ViewModel>
+        <vm:ViewModel></vm:ViewModel>
     </Window.DataContext>
     <Grid>
         <Grid.RowDefinitions>
@@ -16,7 +17,7 @@
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
         <!--#region Title Bar-->
-        <Grid Grid.Row="0">
+        <Grid Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
             <!---Icon-->
             <Menu IsMainMenu="True">
                 <MenuItem Header="File">
@@ -40,5 +41,29 @@
             </Menu>
         </Grid>
         <!--#endregion-->
+        <Grid Grid.Row="1">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="100" MinWidth="20"/>
+                <ColumnDefinition Width="*" MinWidth="20"/>
+                <ColumnDefinition Width="200" MinWidth="20"/>
+            </Grid.ColumnDefinitions>
+            <StackPanel Grid.Column="0">
+                <Button Content="GO" Height="50" FontSize="20" FontWeight="Bold"/>
+            </StackPanel>
+            <GridSplitter Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
+            <GridSplitter Grid.Column="2" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
+            <DataGrid Grid.Column="1" Margin="5,5,0,0" ItemsSource="{Binding Cues}" ScrollViewer.CanContentScroll="True" HeadersVisibility="Column" AllowDrop="True" CanUserReorderColumns="False" CanUserSortColumns="False" SelectionMode="Single" CanUserResizeRows="False">
+                <DataGrid.Columns>
+                    <DataGridTemplateColumn Header="Group" CellTemplate="{DynamicResource GroupIconTemplate}"/>
+                    <DataGridTemplateColumn Header="Type" CellTemplate="{DynamicResource GroupTemplateIcon}"/>
+                    <DataGridTemplateColumn Header="Playback" CellTemplate="{DynamicResource PlaybackIndicatorTemplate}"/>
+                    <DataGridTextColumn Header="Q ID" Binding="{Binding QID}"/>
+                    <DataGridTextColumn Header="Name" Binding="{Binding Name}"/>
+                    <DataGridCheckBoxColumn Header="Enabled" Binding="{Binding Enabled}"/>
+                    <DataGridCheckBoxColumn Header="Halt" Binding="{Binding Halt}"/>
+                    <DataGridTextColumn Header="Wait" Binding="{Binding Delay}"/>
+                </DataGrid.Columns>
+            </DataGrid>
+        </Grid>
     </Grid>
 </Window>

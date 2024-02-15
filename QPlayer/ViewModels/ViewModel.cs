@@ -20,11 +20,13 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Data;
 
-namespace QPlayer
+namespace QPlayer.ViewModels
 {
     public class ViewModel : ObservableObject
     {
         #region Bindable Properties
+        [Reactive] public ObservableCollection<CueViewModel> Cues { get; set; }
+
         [Reactive] public RelayCommand NewProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
         [Reactive] public RelayCommand SaveProjectCommand { get; private set; }
@@ -42,14 +44,17 @@ namespace QPlayer
                 BindingOperations.EnableCollectionSynchronization(logList, logListLock);
             }
         }
-        [Reactive] public string VersionString { get
+        [Reactive]
+        public string VersionString
+        {
+            get
             {
                 var assembly = Assembly.GetAssembly(typeof(ViewModel));
                 if (assembly == null)
                     return string.Empty;
                 var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
                 return $"Version {versionInfo.ProductVersion}";
-            } 
+            }
         }
         [Reactive]
         public string CopyrightString
@@ -82,7 +87,7 @@ namespace QPlayer
             WriteIndented = true,
         };
 
-        public ViewModel() 
+        public ViewModel()
         {
             // Only run initialisation code once.
             // Otherwise the log window resets everything when it's opened
@@ -99,17 +104,23 @@ namespace QPlayer
             NewProjectCommand = new(NewProjectExecute);
             OpenProjectCommand = new(OpenProjectExecute);
             SaveProjectCommand = new(SaveProjectExecute);
+            PackProjectCommand = new(SaveProjectExecute);
             OpenAboutCommand = new(OpenAboutExecute);
             OpenSetttingsCommand = new(OpenSettingsExecute);
 
             openShowFilePath = string.Empty;
+            Cues = new();
             showFile = new();
+            LoadShowfileModel(showFile);
         }
 
         public void OnExit()
         {
             Log("Shutting down...");
             SaveProject(AUTOBACK_PATH);
+            CloseAboutExecute();
+            CloseSettingsExecute();
+            CloseLogExecute();
             Log("Goodbye!");
         }
 
@@ -118,15 +129,15 @@ namespace QPlayer
         {
             Log("Creating new project...");
             SaveProject(AUTOBACK_PATH);
-            if(!string.IsNullOrEmpty(openShowFilePath))
+            if (!string.IsNullOrEmpty(openShowFilePath))
             {
                 var curr = File.ReadAllText(AUTOBACK_PATH);
                 var prev = File.ReadAllText(openShowFilePath);
-                if(curr != prev)
+                if (curr != prev)
                 {
                     // There are unsaved changes!
-                    var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?", 
-                        "Unsaved Changes", 
+                    var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
+                        "Unsaved Changes",
                         MessageBoxButton.YesNoCancel);
                     switch (mbRes)
                     {
@@ -142,7 +153,7 @@ namespace QPlayer
                 }
             }
 
-            showFile = new();
+            LoadShowfileModel(new());
         }
 
         public void SaveProjectExecute()
@@ -185,11 +196,23 @@ namespace QPlayer
             logWindow.Show();
         }
 
+        public void CloseLogExecute()
+        {
+            logWindow?.Close();
+            logWindow = null;
+        }
+
         public void OpenSettingsExecute()
         {
             settingsWindow = new(this);
             settingsWindow.Closed += (e, x) => { settingsWindow = null; };
             settingsWindow.Show();
+        }
+
+        public void CloseSettingsExecute()
+        {
+            settingsWindow?.Close();
+            settingsWindow = null;
         }
 
         public void OpenAboutExecute()
@@ -199,12 +222,11 @@ namespace QPlayer
             aboutWindow.Show();
         }
 
-        public void CloseLogExecute()
+        public void CloseAboutExecute()
         {
-            logWindow?.Close();
-            logWindow = null;
+            aboutWindow?.Close();
+            aboutWindow = null;
         }
-
         #endregion
 
         public static void Log(object message, LogLevel level = LogLevel.Info, [CallerMemberName] string caller = "")
@@ -226,6 +248,33 @@ namespace QPlayer
             Error
         }
 
+        private void LoadShowfileModel(ShowFile show)
+        {
+            showFile = show;
+            Cues.Clear();
+            Dictionary<decimal, Cue> cueModels = new(showFile.cues.Select((x)=> new KeyValuePair<decimal, Cue>(x.qid, x)));
+            Dictionary<decimal, CueViewModel> cueVMs = new();
+            foreach(Cue c in showFile.cues)
+            {
+                var vm = CueViewModel.FromModel(c.qid, cueModels, cueVMs);
+                vm.Bind(c);
+                Cues.Add(vm);
+            }
+        }
+
+        /// <summary>
+        /// This effectively makes sure that the data in the view model is copied to the model, just in case a change was missed.
+        /// </summary>
+        private void EnsureShowfileModelSync()
+        {
+            Dictionary<decimal, Cue> cueModels = new(showFile.cues.Select((x) => new KeyValuePair<decimal, Cue>(x.qid, x)));
+            foreach (CueViewModel vm in Cues)
+            {
+                var q = cueModels[vm.QID];
+                vm.ToModel(q);
+            }
+        }
+
         public void OpenProject(string path)
         {
             try
@@ -233,7 +282,9 @@ namespace QPlayer
                 var s = JsonSerializer.Deserialize<ShowFile>(File.ReadAllText(path), jsonSerializerOptions);
                 if (s == null)
                     throw new FileFormatException("Show file deserialized as null!");
-                showFile = s;
+                if (s.fileFormatVersion != ShowFile.FILE_FORMAT_VERSION)
+                    Log($"Project file version '{s.fileFormatVersion}' does not match QPlayer version '{ShowFile.FILE_FORMAT_VERSION}'!", LogLevel.Warning);
+                LoadShowfileModel(s);
 
                 Log($"Loaded profile from disk! {path}");
             }
@@ -249,6 +300,7 @@ namespace QPlayer
         {
             try
             {
+                EnsureShowfileModelSync();
                 File.WriteAllText(path, JsonSerializer.Serialize(showFile, jsonSerializerOptions));
                 Log($"Saved profile to {path}!");
             }

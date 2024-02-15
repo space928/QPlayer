@@ -20,4 +20,11 @@
             </Style>
         </Style.Resources>
     </Style>
+
+    <Style TargetType="{x:Type DataGrid}" BasedOn="{StaticResource {x:Type DataGrid}}">
+        <Setter Property="Background" Value="{DynamicResource ListBox.Static.Background}" />
+        <Setter Property="BorderBrush" Value="{DynamicResource ListBox.Static.Border}" />
+        <Setter Property="Foreground" Value="{DynamicResource ListBox.Static.Foreground}" />
+        <Setter Property="BorderThickness" Value="1" />
+    </Style>
 </ResourceDictionary>
