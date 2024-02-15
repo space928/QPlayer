@@ -1,0 +1,44 @@
+﻿<Window x:Class="QPlayer.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:QPlayer"
+        xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
+        mc:Ignorable="d"
+        Title="QPlayer" Height="500" Width="700" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Closed="Window_Closed" Loaded="Window_Loaded">
+    <Window.DataContext>
+        <local:ViewModel></local:ViewModel>
+    </Window.DataContext>
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="30"/>
+            <RowDefinition Height="*"/>
+        </Grid.RowDefinitions>
+        <!--#region Title Bar-->
+        <Grid Grid.Row="0">
+            <!---Icon-->
+            <Menu IsMainMenu="True">
+                <MenuItem Header="File">
+                    <MenuItem Header="New"/>
+                    <MenuItem Header="Open" Command="{Binding OpenProfileCommand}"/>
+                    <MenuItem Header="Save" Command="{Binding SaveProfileCommand}"/>
+                    <MenuItem Header="Pack"/>
+                    <MenuItem Header="Recent" IsEnabled="False"/>
+                </MenuItem>
+                <MenuItem Header="Edit">
+                    <MenuItem Header="Undo" IsEnabled="False"/>
+                    <MenuItem Header="Redo" IsEnabled="False"/>
+                </MenuItem>
+                <MenuItem Header="Window">
+                    <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
+                    <MenuItem Header="Settings" Command="{Binding OpenLogCommand}"/>
+                </MenuItem>
+                <MenuItem Header="Help">
+                    <MenuItem Header="About"/>
+                </MenuItem>
+            </Menu>
+        </Grid>
+        <!--#endregion-->
+    </Grid>
+</Window>

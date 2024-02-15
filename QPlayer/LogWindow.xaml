@@ -1,0 +1,15 @@
+﻿<Window x:Class="QPlayer.LogWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:QPlayer"
+        mc:Ignorable="d"
+        Title="QPlayer - Log Window" Height="450" Width="800" Style="{DynamicResource CustomWindowStyle}">
+    <!--<Window.DataContext>
+        <local:ViewModel></local:ViewModel>
+    </Window.DataContext>-->
+    <Grid>
+        <ListBox ItemsSource="{Binding LogList}" FontSize="11" FontFamily="Cascadia Mono" x:Name="LogListBox" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"/>
+    </Grid>
+</Window>

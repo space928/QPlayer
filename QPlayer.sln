@@ -1,0 +1,25 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio Version 17
+VisualStudioVersion = 17.5.33516.290
+MinimumVisualStudioVersion = 10.0.40219.1
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QPlayer", "QPlayer\QPlayer.csproj", "{AC3A2BB3-F46C-45D0-986F-D28AC74A8649}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{AC3A2BB3-F46C-45D0-986F-D28AC74A8649}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{AC3A2BB3-F46C-45D0-986F-D28AC74A8649}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{AC3A2BB3-F46C-45D0-986F-D28AC74A8649}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{AC3A2BB3-F46C-45D0-986F-D28AC74A8649}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {25DAED5F-7622-4715-B52F-08735C64ED09}
+	EndGlobalSection
+EndGlobal
