@@ -26,5 +26,32 @@
         <Setter Property="BorderBrush" Value="{DynamicResource ListBox.Static.Border}" />
         <Setter Property="Foreground" Value="{DynamicResource ListBox.Static.Foreground}" />
         <Setter Property="BorderThickness" Value="1" />
+        <Setter Property="ColumnHeaderStyle">
+            <Setter.Value>
+                <Style TargetType="{x:Type DataGridColumnHeader}" BasedOn="{StaticResource {x:Type DataGridColumnHeader}}">
+                    <Setter Property="Background" Value="{DynamicResource AREghZyBrush.Deep.2.Background.Static}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource AREghZyBrush.Deep.2.Border.Static}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
+                    <Setter Property="BorderThickness" Value="0,0,2,0"/>
+                    <Setter Property="Padding" Value="6,4,12,4"/>
+                    <Style.Triggers>
+                        <Trigger Property="IsMouseOver" Value="True">
+                            <Setter Property="Background" Value="{DynamicResource Button.MouseOver.Background}"/>
+                        </Trigger>
+                    </Style.Triggers>
+                </Style>
+            </Setter.Value>
+        </Setter>
+        <Setter Property="RowStyle">
+            <Setter.Value>
+                <Style TargetType="{x:Type DataGridRow}" BasedOn="{StaticResource {x:Type DataGridRow}}">
+                    <Setter Property="Background" Value="{DynamicResource AREghZyBrush.Deep.2.Background.Static}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource AREghZyBrush.Deep.2.Border.Static}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
+                    <Setter Property="BorderThickness" Value="0,0,2,0"/>
+                    <Setter Property="Padding" Value="6,4,12,4"/>
+                </Style>
+            </Setter.Value>
+        </Setter>
     </Style>
 </ResourceDictionary>

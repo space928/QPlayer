@@ -11,5 +11,5 @@
     <DataTemplate x:Key="PlaybackIndicatorTemplate" DataType="float">
         <ProgressBar/>
     </DataTemplate>
-    
+
 </ResourceDictionary>

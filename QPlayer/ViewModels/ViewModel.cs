@@ -17,6 +17,7 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using System.Windows.Data;
 
@@ -25,7 +26,20 @@ namespace QPlayer.ViewModels
     public class ViewModel : ObservableObject
     {
         #region Bindable Properties
+        [Reactive, ReactiveDependency(nameof(SelectedCue))] public int SelectedCueInd { get; set; } = 0;
+        [Reactive] public CueViewModel? SelectedCue {
+            get => SelectedCueInd >= 0 && SelectedCueInd < Cues.Count ? Cues[SelectedCueInd] : null;
+            set { 
+                if (value != null) 
+                { 
+                    SelectedCueInd = Cues.IndexOf(value); 
+                    OnPropertyChanged(nameof(SelectedCueInd)); 
+                } 
+            }
+        }
         [Reactive] public ObservableCollection<CueViewModel> Cues { get; set; }
+        [Reactive] public ObservableCollection<CueViewModel> ActiveCues { get; set; }
+        [Reactive] public ObservableCollection<ObservableStruct<float>> ColumnWidths { get; set; }
 
         [Reactive] public RelayCommand NewProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
@@ -34,6 +48,17 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand OpenLogCommand { get; private set; }
         [Reactive] public RelayCommand OpenSetttingsCommand { get; private set; }
         [Reactive] public RelayCommand OpenAboutCommand { get; private set; }
+
+        [Reactive] public RelayCommand CreateGroupCueCommand { get; private set; }
+        [Reactive] public RelayCommand CreateDummyCueCommand { get; private set; }
+        [Reactive] public RelayCommand CreateSoundCueCommand { get; private set; }
+        [Reactive] public RelayCommand CreateTimeCodeCueCommand { get; private set; }
+        [Reactive] public RelayCommand CreateStopCueCommand { get; private set; }
+
+        [Reactive] public RelayCommand GoCommand { get; private set; }
+        [Reactive] public RelayCommand PauseCommand { get; private set; }
+        [Reactive] public RelayCommand StopCommand { get; private set; }
+
         [Reactive]
         public static ObservableCollection<string> LogList
         {
@@ -65,9 +90,10 @@ namespace QPlayer.ViewModels
                 if (assembly == null)
                     return string.Empty;
                 var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
-                return $"Copyright {versionInfo.LegalCopyright}";
+                return $"Copyright {versionInfo.CompanyName} 2024";
             }
         }
+        [Reactive] public string Clock => $"{DateTime.Now:HH:mm:ss}";
         #endregion
 
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
@@ -86,6 +112,7 @@ namespace QPlayer.ViewModels
             AllowTrailingCommas = true,
             WriteIndented = true,
         };
+        private Timer slowUpdateTimer;
 
         public ViewModel()
         {
@@ -108,10 +135,38 @@ namespace QPlayer.ViewModels
             OpenAboutCommand = new(OpenAboutExecute);
             OpenSetttingsCommand = new(OpenSettingsExecute);
 
+            CreateGroupCueCommand = new(() => CreateCue(CueType.GroupCue));
+            CreateDummyCueCommand = new(() => CreateCue(CueType.DummyCue));
+            CreateSoundCueCommand = new(() => CreateCue(CueType.SoundCue));
+            CreateTimeCodeCueCommand = new(() => CreateCue(CueType.TimeCodeCue));
+            CreateStopCueCommand = new(() => CreateCue(CueType.GroupCue));
+
+            GoCommand = new(GoExecute);
+            PauseCommand = new(PauseExecute);
+            StopCommand = new(StopExecute);
+
+            slowUpdateTimer = new(TimeSpan.FromMilliseconds(250));
+            slowUpdateTimer.AutoReset = true;
+            slowUpdateTimer.Elapsed += SlowUpdate;
+            slowUpdateTimer.Start();
+
             openShowFilePath = string.Empty;
+            ColumnWidths = new(Enumerable.Repeat<float>(60, 32).Select(x =>
+            {
+                var observable = new ObservableStruct<float>(x);
+                // Bubble the change up
+                observable.PropertyChanged += (o, e) => { 
+                    OnPropertyChanged(nameof(ColumnWidths)); 
+                } ;
+                return observable;
+            }));
+            ActiveCues = new();
             Cues = new();
             showFile = new();
             LoadShowfileModel(showFile);
+            CreateCue(CueType.GroupCue, afterLast:true);
+            CreateCue(CueType.SoundCue, afterLast: true);
+            CreateCue(CueType.TimeCodeCue, afterLast: true);
         }
 
         public void OnExit()
@@ -122,6 +177,11 @@ namespace QPlayer.ViewModels
             CloseSettingsExecute();
             CloseLogExecute();
             Log("Goodbye!");
+        }
+
+        private void SlowUpdate(object? sender, ElapsedEventArgs e)
+        {
+            OnPropertyChanged(nameof(Clock));
         }
 
         #region Commands
@@ -227,6 +287,29 @@ namespace QPlayer.ViewModels
             aboutWindow?.Close();
             aboutWindow = null;
         }
+
+        public void GoExecute()
+        {
+            if(SelectedCue != null)
+            {
+                SelectedCue.Go();
+            }
+            SelectedCueInd += 1;
+        }
+
+        public void PauseExecute()
+        {
+            if (SelectedCue != null)
+            {
+                SelectedCue.Pause();
+            }
+        }
+
+        public void StopExecute()
+        {
+            for(int i = ActiveCues.Count-1; i >= 0; i--)
+                ActiveCues[i].Stop();
+        }
         #endregion
 
         public static void Log(object message, LogLevel level = LogLevel.Info, [CallerMemberName] string caller = "")
@@ -252,11 +335,9 @@ namespace QPlayer.ViewModels
         {
             showFile = show;
             Cues.Clear();
-            Dictionary<decimal, Cue> cueModels = new(showFile.cues.Select((x)=> new KeyValuePair<decimal, Cue>(x.qid, x)));
-            Dictionary<decimal, CueViewModel> cueVMs = new();
             foreach(Cue c in showFile.cues)
             {
-                var vm = CueViewModel.FromModel(c.qid, cueModels, cueVMs);
+                var vm = CueViewModel.FromModel(c, this);
                 vm.Bind(c);
                 Cues.Add(vm);
             }
@@ -270,8 +351,16 @@ namespace QPlayer.ViewModels
             Dictionary<decimal, Cue> cueModels = new(showFile.cues.Select((x) => new KeyValuePair<decimal, Cue>(x.qid, x)));
             foreach (CueViewModel vm in Cues)
             {
-                var q = cueModels[vm.QID];
-                vm.ToModel(q);
+                if (!cueModels.ContainsKey(vm.QID))
+                {
+                    Log($"Cue with id {vm.QID} exists in the editor but not in the internal model! Potential corruption detected!", LogLevel.Warning);
+                    // TODO: If we want to be nice we could just create the model here...
+                }
+                else
+                {
+                    var q = cueModels[vm.QID];
+                    vm.ToModel(q);
+                }
             }
         }
 
@@ -309,5 +398,57 @@ namespace QPlayer.ViewModels
                 Log($"Couldn't save profile to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
             }
         }
+
+        public CueViewModel CreateCue(CueType type, bool beforeCurrent = false, bool afterLast = false)
+        {
+            int insertAfterInd = SelectedCueInd;
+            if (beforeCurrent)
+                insertAfterInd--;
+            if (afterLast)
+                insertAfterInd = Cues.Count - 1;
+            Cue model;
+            switch (type)
+            {
+                case CueType.GroupCue: model = new GroupCue(); break;
+                case CueType.DummyCue: model = new DummyCue(); ; break;
+                case CueType.SoundCue: model = new SoundCue(); ; break;
+                case CueType.TimeCodeCue: model = new TimeCodeCue(); ; break;
+                case CueType.StopCue: model = new StopCue(); ; break;
+                default: throw new NotImplementedException();
+            }
+            decimal newId;
+            decimal prevId = 0;
+            if (insertAfterInd >= 0 && insertAfterInd < Cues.Count) 
+                prevId = Cues[insertAfterInd].QID;
+            if (insertAfterInd + 1 >= 0 && insertAfterInd + 1 < Cues.Count) {
+                decimal nextId = Cues[insertAfterInd + 1].QID;
+                if (nextId - prevId <= 1)
+                    newId = (prevId + nextId) / 2;
+                else
+                    newId = prevId + 1;
+            } else
+            {
+                newId = prevId + 1;
+            }
+            model.qid = newId;
+            var ret = CueViewModel.FromModel(model, this);
+            ret.Bind(model);
+            showFile.cues.Insert(insertAfterInd + 1, model);
+            Cues.Insert(insertAfterInd + 1, ret);
+
+            return ret;
+        }
+    }
+
+    public class ObservableStruct<T> : ObservableObject where T: struct
+    {
+        [Reactive] public T Value { get; set; }
+
+        public ObservableStruct() { }
+
+        public ObservableStruct(T value)
+        {
+            Value = value;
+        }   
     }
 }

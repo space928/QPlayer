@@ -7,10 +7,20 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels"
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
-        Title="QPlayer" Height="500" Width="700" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Closed="Window_Closed" Loaded="Window_Loaded">
+        Title="QPlayer" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Closed="Window_Closed" Loaded="Window_Loaded">
     <Window.DataContext>
         <vm:ViewModel></vm:ViewModel>
     </Window.DataContext>
+    <Window.InputBindings>
+        <KeyBinding Key="Space" Command="{Binding GoCommand}"/>
+        <KeyBinding Key="Esc" Command="{Binding StopCommand}"/>
+        <KeyBinding Key="Backspace" Command="{Binding PauseCommand}"/>
+        <KeyBinding Key="OemOpenBrackets" Command="{Binding PauseCommand}"/>
+        <KeyBinding Key="OemCloseBrackets" Command="{Binding GoCommand}"/>
+        <KeyBinding Gesture="CTRL+O" Command="{Binding OpenProjectCommand}"/>
+        <KeyBinding Gesture="CTRL+S" Command="{Binding SaveProjectCommand}"/>
+        <KeyBinding Gesture="CTRL+E" Command="{Binding PackProjectCommand}"/>
+    </Window.InputBindings>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
@@ -43,16 +53,61 @@
         <!--#endregion-->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="100" MinWidth="20"/>
+                <ColumnDefinition Width="150" MinWidth="20"/>
                 <ColumnDefinition Width="*" MinWidth="20"/>
-                <ColumnDefinition Width="200" MinWidth="20"/>
+                <ColumnDefinition Width="250" MinWidth="20"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
-                <Button Content="GO" Height="50" FontSize="20" FontWeight="Bold"/>
+                <Button Content="GO" Command="{Binding GoCommand}" Height="50" FontSize="20" FontWeight="Bold" Background="#FF135F1B" BorderBrush="#FF032707"/>
+                <Button Content="Stop" Command="{Binding StopCommand}" Height="30" FontSize="16" FontWeight="Bold" Background="#FF5F1313" BorderBrush="#FF270303"/>
+                <Label Content="{Binding Clock}" HorizontalAlignment="Center" FontStretch="Expanded" FontFamily="Courier New" FontSize="16" FontWeight="Bold" Background="{DynamicResource ComboBox.Static.Background}"/>
+                <Separator/>
+                <Label Content="Active Cues:" FontWeight="Bold" Margin="5,0,0,0"/>
+                <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate>
+                            <local:ActiveCueControl/>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                </ItemsControl>
             </StackPanel>
             <GridSplitter Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <GridSplitter Grid.Column="2" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
-            <DataGrid Grid.Column="1" Margin="5,5,0,0" ItemsSource="{Binding Cues}" ScrollViewer.CanContentScroll="True" HeadersVisibility="Column" AllowDrop="True" CanUserReorderColumns="False" CanUserSortColumns="False" SelectionMode="Single" CanUserResizeRows="False">
+            <ScrollViewer Grid.Column="1" Margin="5,5,0,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst">
+                <ScrollViewer.ContextMenu>
+                    <ContextMenu>
+                        <MenuItem Header="Add Sound Cue" Command="{Binding CreateSoundCueCommand}"/>
+                        <MenuItem Header="Add Group Cue" Command="{Binding CreateGroupCueCommand}"/>
+                        <MenuItem Header="Add Dummy Cue" Command="{Binding CreateDummyCueCommand}"/>
+                        <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
+                        <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
+                        <Separator/>
+                    </ContextMenu>
+                </ScrollViewer.ContextMenu>
+                <StackPanel>
+                    <local:CueDataHeaderControl/>
+                    <ItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <local:CueDataControl/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </ScrollViewer>
+            <TabControl Grid.Column="2" Margin="5,0,0,0">
+                <TabItem Header="Selected Cue">
+                    <Grid>
+                        
+                    </Grid>
+                </TabItem>
+                <TabItem Header="Project Setup">
+                    <Grid>
+                        
+                    </Grid>
+                </TabItem>
+            </TabControl>
+            <!--<DataGrid Grid.Column="1" Margin="5,5,0,0" ItemsSource="{Binding Cues}" ScrollViewer.CanContentScroll="True" HeadersVisibility="Column" AllowDrop="True" CanUserReorderColumns="False" CanUserSortColumns="False" SelectionMode="Single" CanUserResizeRows="False" AutoGenerateColumns="False">
                 <DataGrid.Columns>
                     <DataGridTemplateColumn Header="Group" CellTemplate="{DynamicResource GroupIconTemplate}"/>
                     <DataGridTemplateColumn Header="Type" CellTemplate="{DynamicResource GroupTemplateIcon}"/>
@@ -63,7 +118,7 @@
                     <DataGridCheckBoxColumn Header="Halt" Binding="{Binding Halt}"/>
                     <DataGridTextColumn Header="Wait" Binding="{Binding Delay}"/>
                 </DataGrid.Columns>
-            </DataGrid>
+            </DataGrid>-->
         </Grid>
     </Grid>
 </Window>

@@ -3,8 +3,9 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:QPlayer" 
-        d:DataContext="{d:DesignInstance Type=local:ViewModel}"
+        xmlns:local="clr-namespace:QPlayer.Views" 
+        xmlns:vm="clr-namespace:QPlayer.ViewModels" 
+        d:DataContext="{d:DesignInstance Type=vm:ViewModel}"
         mc:Ignorable="d"
         Title="QPlayer - Log Window" Height="450" Width="800" Style="{DynamicResource CustomWindowStyle}">
     <Grid>
