@@ -66,9 +66,30 @@ jobs:
     - name: Remove the pfx
       run: Remove-Item -path $env:Project_Directory\GitHubActionsWorkflow.pfx
 
+    # Compress build artifacts
+    - name: Compress build artifacts
+      run: Compress-Archive ${{ env.Project_Directory }}\publish\* -DestinationPath ${{ env.Project_Directory }}\QPlayer-release.zip
+
     # Upload the build artifacts
     - name: Upload build artifacts
       uses: actions/upload-artifact@v3
       with:
-        name: MSIX Package
-        path: ${{ env.Project_Directory }}\publish
+        name: ReleaseBinaries
+        path: ${{ env.Project_Directory }}\QPlayer-release.zip
+
+  create-release:
+    name: "Create Release"
+    runs-on: "ubuntu-latest"
+
+    steps:
+      - name: Download release binaries
+        uses: actions/download-artifact@v4
+        with:
+          name: ReleaseBinaries
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          automatic_release_tag: "latest"
+          prerelease: false
+          title: "Development Build"
+          files: QPlayer-release.zip
