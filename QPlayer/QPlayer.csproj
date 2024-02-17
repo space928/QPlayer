@@ -13,6 +13,7 @@
     <RepositoryUrl>https://github.com/space928/QPlayer</RepositoryUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
     <ApplicationIcon>Resources\Icon.ico</ApplicationIcon>
+    <Platforms>AnyCPU;x86;x64</Platforms>
   </PropertyGroup>
 
   <ItemGroup>

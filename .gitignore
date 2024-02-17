@@ -5,3 +5,4 @@
 *.user
 *.pfx
 SigningCertificate_Encoded.txt
+**/publish
