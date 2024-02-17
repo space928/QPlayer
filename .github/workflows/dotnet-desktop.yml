@@ -68,7 +68,7 @@ jobs:
 
     # Compress build artifacts
     - name: Compress build artifacts
-      run: Compress-Archive ${{ env.Project_Directory }}\publish\* -DestinationPath ${{ env.Project_Directory }}\QPlayer-release.zip
+      run: Compress-Archive .\${{ env.Project_Directory }}\publish\* -DestinationPath .\${{ env.Project_Directory }}\QPlayer-release.zip
 
     # Upload the build artifacts
     - name: Upload build artifacts
