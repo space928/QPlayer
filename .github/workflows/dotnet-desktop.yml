@@ -57,7 +57,7 @@ jobs:
 
     # Create the app package by building and packaging the Windows Application Packaging project
     - name: Create the app package
-      run: msbuild $env:Project_Path /p:Configuration=$env:Configuration /p:PublishProfile=$env:PublishProfileDir /p:PublishDir="../publish/" /target:publish /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
+      run: msbuild $env:Project_Path /p:Configuration=$env:Configuration /p:PublishProfile=$env:PublishProfileDir /p:PublishDir="../publish/" /target:publish  # /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
       env:
         PublishProfileDir: "/QPlayer/Properties/PublishProfiles/ClickOnceProfile.pubxml"
         Configuration: ${{ matrix.configuration }}
