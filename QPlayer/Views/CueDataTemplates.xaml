@@ -4,12 +4,58 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views"
+             xmlns:model="clr-namespace:QPlayer.Models"
              mc:Ignorable="d">
+    
     <DataTemplate x:Key="GroupIconTemplate" DataType="bool">
         <Rectangle/>
     </DataTemplate>
+    
     <DataTemplate x:Key="PlaybackIndicatorTemplate" DataType="float">
         <ProgressBar/>
     </DataTemplate>
+    
+    <DataTemplate x:Key="CueTypeTemplate" DataType="model:CueType">
+        <Image x:Name="IconImg" Source="{StaticResource IconPlay}" MaxHeight="20" VerticalAlignment="Center">
+            <Image.ToolTip>
+                <ToolTip Content="{Binding Mode=OneWay}"/>
+            </Image.ToolTip>
+        </Image>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.GroupCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconGroupCue}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.StopCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconStopCue}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.DummyCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconDummyCue}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.SoundCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconSoundCue}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.TimeCodeCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconTimeCodeCue}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
 
+    <DataTemplate x:Key="LoopModeTemplate" DataType="model:LoopMode">
+        <Image x:Name="IconImg" Source="{StaticResource IconStop}" MaxHeight="20" VerticalAlignment="Center">
+            <Image.ToolTip>
+                <ToolTip Content="{Binding Mode=OneWay}"/>
+            </Image.ToolTip>
+        </Image>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:LoopMode.Looped}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconLoop}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:LoopMode.LoopedInfinite}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconLoop}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:LoopMode.OneShot}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconOneShot}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
 </ResourceDictionary>

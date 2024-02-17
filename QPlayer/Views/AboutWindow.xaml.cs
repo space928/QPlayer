@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -20,10 +21,22 @@ namespace QPlayer.Views
     /// </summary>
     public partial class AboutWindow : Window
     {
-        public AboutWindow(ViewModel viewModel)
+        public AboutWindow(MainViewModel viewModel)
         {
             this.DataContext = viewModel;
             InitializeComponent();
+        }
+
+        private void Hyperlink_RequestNavigate(object sender, System.Windows.Navigation.RequestNavigateEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo(e.Uri.AbsoluteUri) { UseShellExecute=true });
+            e.Handled = true;
+        }
+
+        private void Image_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            Process.Start(new ProcessStartInfo("https://github.com/space928/QPlayer/") { UseShellExecute = true });
+            e.Handled = true;
         }
     }
 }

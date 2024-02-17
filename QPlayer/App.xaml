@@ -12,8 +12,9 @@
                 <ResourceDictionary Source="ThemesV2/CustomControls.xaml"/>
                 <ResourceDictionary Source="Views/CueDataTemplates.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
+                <ResourceDictionary Source="ThemesV2/Icons.xaml"/>
+                <ResourceDictionary Source="Views/CueDataTemplates.xaml"/>
             </ResourceDictionary.MergedDictionaries>
-            <!--<ImageSource x:Key="IconImage">/Resources/IconFull.ico</ImageSource>-->
         </ResourceDictionary>
     </Application.Resources>
 </Application>

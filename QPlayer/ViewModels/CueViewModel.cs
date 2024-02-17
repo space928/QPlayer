@@ -5,6 +5,7 @@ using QPlayer.Models;
 using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Drawing;
 using System.Globalization;
@@ -16,11 +17,30 @@ using System.Windows.Data;
 
 namespace QPlayer.ViewModels
 {
-    public interface IConvertibleCue
+    public interface IConvertibleModel<Model, ViewModel>
     {
-        public abstract static CueViewModel FromModel(Cue cue, ViewModel mainViewModel);
-        public abstract void ToModel(Cue cue);
+        /// <summary>
+        /// Creates a new ViewModel from the given Model, without binding it.
+        /// </summary>
+        /// <param name="model">the model to copy properties from</param>
+        /// <param name="mainViewModel">the main view model</param>
+        /// <returns>a new ViewModel for the given Model.</returns>
+        public abstract static ViewModel FromModel(Model model, MainViewModel mainViewModel);
+        /// <summary>
+        /// Copies the properties in this ViewModel to the given Model object.
+        /// </summary>
+        /// <param name="model">the model to copy to</param>
+        public abstract void ToModel(Model model);
+        /// <summary>
+        /// Copies the value of a given property to the bound Model.
+        /// </summary>
+        /// <param name="propertyName">the property to copy</param>
         public abstract void ToModel(string propertyName);
+        /// <summary>
+        /// Binds this view model to a given model, such that updates from the view model are propagated to the model (but NOT vice versa).
+        /// </summary>
+        /// <param name="model">the model to bind to</param>
+        public abstract void Bind(Model model);
     }
 
     public enum CueState
@@ -31,7 +51,7 @@ namespace QPlayer.ViewModels
         Paused,
     }
 
-    public abstract class CueViewModel : ObservableObject
+    public abstract class CueViewModel : ObservableObject, IConvertibleModel<Cue, CueViewModel>
     {
         #region Bindable Properties
         [Reactive] public decimal QID { get; set; }
@@ -42,29 +62,36 @@ namespace QPlayer.ViewModels
         [Reactive] public string Name { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
         [Reactive] public bool Halt { get; set; }
-        [Reactive] public bool Enabled { get; set; }
+        [Reactive] public bool Enabled { get; set; } = true;
         [Reactive] public TimeSpan Delay { get; set; }
         [Reactive] public TimeSpan Duration { get; }
         [Reactive] public LoopMode LoopMode { get; set; }
         [Reactive] public int LoopCount { get; set; }
 
-        [Reactive] public ViewModel? MainViewModel => mainViewModel;
+        [Reactive] public MainViewModel? MainViewModel => mainViewModel;
         [Reactive] public bool IsSelected => mainViewModel?.SelectedCue == this;
         [Reactive] public CueState State { get; set; }
         [Reactive] public TimeSpan PlaybackTime { get; set; }
+        [Reactive][ReactiveDependency(nameof(LoopMode))] 
+        public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
         [Reactive] public RelayCommand StopCommand { get; private set; }
+        [Reactive] public RelayCommand SelectCommand { get; private set; }
+
+        [Reactive] public static ObservableCollection<CueType>? CueTypeVals { get; private set; }
+        [Reactive] public static ObservableCollection<LoopMode>? LoopModeVals { get; private set; }
+        [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
         #endregion
 
         protected DateTime startTime;
         protected CueViewModel? parent;
         protected Cue? cueModel;
-        protected ViewModel? mainViewModel;
+        protected MainViewModel? mainViewModel;
         protected Task? playbackTask;
 
-        public CueViewModel(ViewModel mainViewModel)
+        public CueViewModel(MainViewModel mainViewModel)
         {
             this.mainViewModel = mainViewModel;
             mainViewModel.PropertyChanged += MainViewModel_PropertyChanged;
@@ -72,6 +99,11 @@ namespace QPlayer.ViewModels
             GoCommand = new(Go);
             PauseCommand = new(Pause);
             StopCommand = new(Stop);
+            SelectCommand = new(SelectExecute);
+
+            CueTypeVals ??= new ObservableCollection<CueType>(Enum.GetValues<CueType>());
+            LoopModeVals ??= new ObservableCollection<LoopMode>(Enum.GetValues<LoopMode>());
+            StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
         }
 
         private void MainViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -105,6 +137,12 @@ namespace QPlayer.ViewModels
             PlaybackTime = TimeSpan.Zero;
             mainViewModel?.ActiveCues.Remove(this);
         }
+
+        public void SelectExecute()
+        {
+            if(mainViewModel != null)
+                mainViewModel.SelectedCue = this;
+        }
         #endregion
 
         public void OnColourUpdate()
@@ -112,11 +150,6 @@ namespace QPlayer.ViewModels
             OnPropertyChanged(nameof(Colour));
         }
 
-        /// <summary>
-        /// Binds this view model to a given model, such that updates from the view model are propagated to the model (but NOT vice versa).
-        /// </summary>
-        /// <param name="cue">the cue to bind to</param>
-        /// <exception cref="NullReferenceException"></exception>
         public void Bind(Cue cue)
         {
             cueModel = cue;
@@ -154,7 +187,7 @@ namespace QPlayer.ViewModels
         }
 
         /// <summary>
-        /// Converts this ViewModel to a model.
+        /// Converts this MainViewModel to a model.
         /// </summary>
         /// <param name="cue">the model to update</param>
         public virtual void ToModel(Cue cue)
@@ -172,7 +205,7 @@ namespace QPlayer.ViewModels
             cue.loopCount = LoopCount;
         }
 
-        public static CueViewModel FromModel(Cue cue, ViewModel mainViewModel)
+        public static CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             if(cue.qid == cue.parent)
                 throw new ArgumentException($"Circular reference detected! Cue {cue.qid} has itself as a parent!");
@@ -184,6 +217,7 @@ namespace QPlayer.ViewModels
                 case CueType.DummyCue: viewModel = DummyCueViewModel.FromModel(cue, mainViewModel); break;
                 case CueType.SoundCue: viewModel = SoundCueViewModel.FromModel(cue, mainViewModel); break;
                 case CueType.TimeCodeCue: viewModel = TimeCodeCueViewModel.FromModel(cue, mainViewModel); break;
+                case CueType.StopCue: viewModel = StopCueViewModel.FromModel(cue, mainViewModel); break;
                 default: throw new ArgumentException(null, nameof(cue.type));
             }
             viewModel.mainViewModel = mainViewModel;
@@ -204,9 +238,9 @@ namespace QPlayer.ViewModels
         }
     }
 
-    public class GroupCueViewModel : CueViewModel, IConvertibleCue
+    public class GroupCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
     {
-        public GroupCueViewModel(ViewModel mainViewModel) : base(mainViewModel)
+        public GroupCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
         }
 
@@ -215,7 +249,7 @@ namespace QPlayer.ViewModels
             base.ToModel(cue);
         }
 
-        public static new CueViewModel FromModel(Cue cue, ViewModel mainViewModel)
+        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             GroupCueViewModel vm = new(mainViewModel);
             if (cue is GroupCue gcue)
@@ -226,9 +260,9 @@ namespace QPlayer.ViewModels
         }
     }
 
-    public class DummyCueViewModel : CueViewModel, IConvertibleCue
+    public class DummyCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
     {
-        public DummyCueViewModel(ViewModel mainViewModel) : base(mainViewModel)
+        public DummyCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
         }
 
@@ -237,7 +271,7 @@ namespace QPlayer.ViewModels
             base.ToModel(cue);
         }
 
-        public static new CueViewModel FromModel(Cue cue, ViewModel mainViewModel)
+        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             DummyCueViewModel vm = new(mainViewModel);
             if (cue is DummyCue dcue)
@@ -248,15 +282,16 @@ namespace QPlayer.ViewModels
         }
     }
 
-    public class SoundCueViewModel : CueViewModel, IConvertibleCue
+    public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
     {
         [Reactive] public string Path { get; set; } = string.Empty;
-        [Reactive] public DateTime StartTime { get; set; }
-        [Reactive] public new TimeSpan Duration { get; set; } = TimeSpan.MaxValue;
+        [Reactive] public TimeSpan StartTime { get; set; }
+        [Reactive] public new TimeSpan Duration { get; set; }
+        [Reactive] public float Volume { get; set; }
         [Reactive] public float FadeIn { get; set; }
         [Reactive] public float FadeOut { get; set; }
 
-        public SoundCueViewModel(ViewModel mainViewModel) : base(mainViewModel)
+        public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
         }
 
@@ -270,6 +305,7 @@ namespace QPlayer.ViewModels
                     case nameof(Path): scue.path = Path; break;
                     case nameof(StartTime): scue.startTime = StartTime; break;
                     case nameof(Duration): scue.duration = Duration; break;
+                    case nameof(Volume): scue.volume = Volume; break;
                     case nameof(FadeIn): scue.fadeIn = FadeIn; break;
                     case nameof(FadeOut): scue.fadeOut = FadeOut; break;
                 }
@@ -284,12 +320,13 @@ namespace QPlayer.ViewModels
                 scue.path = Path;
                 scue.startTime = StartTime;
                 scue.duration = Duration;
+                scue.volume = Volume;
                 scue.fadeIn = FadeIn;
                 scue.fadeOut = FadeOut;
             }
         }
 
-        public static new CueViewModel FromModel(Cue cue, ViewModel mainViewModel)
+        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             SoundCueViewModel vm = new(mainViewModel);
             if(cue is SoundCue scue)
@@ -297,6 +334,7 @@ namespace QPlayer.ViewModels
                 vm.Path = scue.path;
                 vm.StartTime = scue.startTime;
                 vm.Duration = scue.duration;
+                vm.Volume = scue.volume;
                 vm.FadeIn = scue.fadeIn;
                 vm.FadeOut = scue.fadeOut;
             }
@@ -304,12 +342,12 @@ namespace QPlayer.ViewModels
         }
     }
 
-    public class TimeCodeCueViewModel : CueViewModel, IConvertibleCue
+    public class TimeCodeCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
     {
-        [Reactive] public DateTime StartTime { get; set; }
+        [Reactive] public TimeSpan StartTime { get; set; }
         [Reactive] public new TimeSpan Duration { get; set; }
 
-        public TimeCodeCueViewModel(ViewModel mainViewModel) : base(mainViewModel)
+        public TimeCodeCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
         }
 
@@ -336,7 +374,7 @@ namespace QPlayer.ViewModels
             }
         }
 
-        public static new CueViewModel FromModel(Cue cue, ViewModel mainViewModel)
+        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             TimeCodeCueViewModel vm = new(mainViewModel);
             if (cue is TimeCodeCue tccue)
@@ -348,12 +386,12 @@ namespace QPlayer.ViewModels
         }
     }
 
-    public class StopCueViewModel : CueViewModel, IConvertibleCue
+    public class StopCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
     {
         [Reactive] public decimal StopTarget { get; set; }
         [Reactive] public StopMode StopMode { get; set; }
 
-        public StopCueViewModel(ViewModel mainViewModel) : base(mainViewModel)
+        public StopCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
         }
 
@@ -380,7 +418,7 @@ namespace QPlayer.ViewModels
             }
         }
 
-        public static new CueViewModel FromModel(Cue cue, ViewModel mainViewModel)
+        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             StopCueViewModel vm = new(mainViewModel);
             if (cue is StopCue scue)
@@ -420,6 +458,25 @@ namespace QPlayer.ViewModels
         {
             GridLength gridLength = (GridLength)value;
             return (float)gridLength.Value;
+        }
+    }
+
+    [ValueConversion(typeof(TimeSpan), typeof(string))]
+    public class TimeSpanStringConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return ((TimeSpan)value).ToString();
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            string timeSpan = (string)value;
+
+            if (TimeSpan.TryParse(timeSpan, out TimeSpan ret))
+                return ret;
+            else
+                return DependencyProperty.UnsetValue;
         }
     }
 }

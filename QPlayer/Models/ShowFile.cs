@@ -91,8 +91,9 @@ namespace QPlayer.Models
     public record SoundCue : Cue
     {
         public string path = string.Empty;
-        public DateTime startTime;
+        public TimeSpan startTime;
         public TimeSpan duration = TimeSpan.MaxValue;
+        public float volume = 1;
         public float fadeIn;
         public float fadeOut;
 
@@ -106,7 +107,7 @@ namespace QPlayer.Models
     [JsonDerivedType(typeof(Cue), typeDiscriminator: nameof(TimeCodeCue))]
     public record TimeCodeCue : Cue
     {
-        public DateTime startTime;
+        public TimeSpan startTime;
         public TimeSpan duration;
 
         public TimeCodeCue() : base()

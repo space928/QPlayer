@@ -1,0 +1,21 @@
+﻿<ResourceDictionary xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+                    xmlns:svgc="http://sharpvectors.codeplex.com/svgc/">
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../Resources/Icons/ConvertedIcons.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <ImageSource x:Key="IconImage">../Resources/Icon.ico</ImageSource>
+
+    <DrawingImage x:Key="IconPlay" Drawing="{StaticResource Icon_play_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconPause" Drawing="{StaticResource Icon_pause_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconStop" Drawing="{StaticResource Icon_stop_solidDrawingGroup}"/>
+
+    <DrawingImage x:Key="IconGroupCue" Drawing="{StaticResource Icon_folder_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconStopCue" Drawing="{StaticResource Icon_stop_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconDummyCue" Drawing="{StaticResource Icon_circle_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconSoundCue" Drawing="{StaticResource Icon_music_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconTimeCodeCue" Drawing="{StaticResource Icon_clock_solidDrawingGroup}"/>
+
+    <DrawingImage x:Key="IconOneShot" Drawing="{StaticResource Icon_arrow_right_long_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconLoop" Drawing="{StaticResource Icon_rotate_solidDrawingGroup}"/>
+</ResourceDictionary>

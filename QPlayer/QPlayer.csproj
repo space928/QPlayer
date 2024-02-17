@@ -12,7 +12,50 @@
     <PackageProjectUrl>https://github.com/space928/QPlayer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/space928/QPlayer</RepositoryUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+    <ApplicationIcon>Resources\Icon.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Resources\IconM.png" />
+    <None Remove="Resources\Icons\arrow-right-long-solid.svg" />
+    <None Remove="Resources\Icons\circle-solid.svg" />
+    <None Remove="Resources\Icons\clock-solid.svg" />
+    <None Remove="Resources\Icons\folder-open-solid.svg" />
+    <None Remove="Resources\Icons\folder-solid.svg" />
+    <None Remove="Resources\Icons\gear-solid.svg" />
+    <None Remove="Resources\Icons\minus-solid.svg" />
+    <None Remove="Resources\Icons\music-solid.svg" />
+    <None Remove="Resources\Icons\pause-solid.svg" />
+    <None Remove="Resources\Icons\play-solid.svg" />
+    <None Remove="Resources\Icons\plus-solid.svg" />
+    <None Remove="Resources\Icons\rotate-right-solid.svg" />
+    <None Remove="Resources\Icons\rotate-solid.svg" />
+    <None Remove="Resources\Icons\sort-solid.svg" />
+    <None Remove="Resources\Icons\stop-solid.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Resources\Icon.ico" />
+    <Resource Include="Resources\Icons\arrow-right-long-solid.svg" />
+    <Resource Include="Resources\Icons\circle-solid.svg" />
+    <Resource Include="Resources\Icons\clock-solid.svg" />
+    <Resource Include="Resources\Icons\folder-open-solid.svg" />
+    <Resource Include="Resources\Icons\folder-solid.svg" />
+    <Resource Include="Resources\Icons\gear-solid.svg" />
+    <Resource Include="Resources\Icons\minus-solid.svg" />
+    <Resource Include="Resources\Icons\music-solid.svg" />
+    <Resource Include="Resources\Icons\pause-solid.svg" />
+    <Resource Include="Resources\Icons\play-solid.svg" />
+    <Resource Include="Resources\Icons\plus-solid.svg" />
+    <Resource Include="Resources\Icons\rotate-right-solid.svg" />
+    <Resource Include="Resources\Icons\rotate-solid.svg" />
+    <Resource Include="Resources\Icons\sort-solid.svg" />
+    <Resource Include="Resources\Icons\stop-solid.svg" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Resources\IconM.png" />
+  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
@@ -20,10 +63,6 @@
     <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.1" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
     <PackageReference Include="ReactiveUI.Fody" Version="19.5.41" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="Resources\" />
   </ItemGroup>
 
 </Project>

@@ -5,7 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QPlayer.Views" 
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
-        d:DataContext="{d:DesignInstance Type=vm:ViewModel}"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
         Title="QPlayer - About" Height="300" Width="350" Style="{DynamicResource CustomWindowStyle}" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
     <Grid Margin="10,10,10,10">
@@ -13,11 +13,32 @@
             <ColumnDefinition Width="100"/>
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
-        <Image Grid.Column="0" HorizontalAlignment="Left" Height="100" VerticalAlignment="Top" Width="100"/>
-        <StackPanel Grid.Column="1">
-            <Label Content="QPlayer" FontSize="24" FontFamily="Segoe UI Semilight"/>
+        <Image Source="{StaticResource IconImage}" Grid.Column="0" HorizontalAlignment="Left" Height="100" VerticalAlignment="Top" Width="100" MouseDown="Image_MouseDown"/>
+        <StackPanel Grid.Column="1" Margin="5,0,0,0">
+            <Label Content="QPlayer" FontSize="30" FontFamily="Segoe UI Semilight"/>
             <Label Content="{Binding VersionString}"/>
             <Label Content="{Binding CopyrightString}"/>
+            <TextBlock Margin="5" FontSize="10" Text="QPlayer is free software, released under the GPLv3 License" TextWrapping="WrapWithOverflow"/>
+            <ScrollViewer VerticalScrollBarVisibility="Auto">
+                <StackPanel>
+                    <TextBlock TextWrapping="WrapWithOverflow" FontSize="10" Opacity="0.8" Margin="5,0,0,0">
+                        <Run>Icons by Font Awesome CC-BY-4.0 License</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://fontawesome.com/license/free" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://fontawesome.com/license/free
+                        </Hyperlink><LineBreak/>
+                        <LineBreak/>
+                        <Run>Uses LibVLCSharp LGPLv2.1 License</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://code.videolan.org/videolan/LibVLCSharp" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://code.videolan.org/videolan/LibVLCSharp
+                        </Hyperlink><LineBreak/>
+                        <LineBreak/>
+                        <Run>Uses PixiEditor ColorPicker MIT License</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://github.com/PixiEditor/ColorPicker" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://github.com/PixiEditor/ColorPicker
+                        </Hyperlink><LineBreak/>
+                    </TextBlock>
+                </StackPanel>
+            </ScrollViewer>
         </StackPanel>
     </Grid>
 </Window>

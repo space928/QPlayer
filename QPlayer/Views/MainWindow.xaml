@@ -7,9 +7,10 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels"
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
-        Title="QPlayer" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Closed="Window_Closed" Loaded="Window_Loaded">
+        Title="{Binding WindowTitle}" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
+        Closed="Window_Closed" Loaded="Window_Loaded">
     <Window.DataContext>
-        <vm:ViewModel></vm:ViewModel>
+        <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
     <Window.InputBindings>
         <KeyBinding Key="Space" Command="{Binding GoCommand}"/>
@@ -17,10 +18,17 @@
         <KeyBinding Key="Backspace" Command="{Binding PauseCommand}"/>
         <KeyBinding Key="OemOpenBrackets" Command="{Binding PauseCommand}"/>
         <KeyBinding Key="OemCloseBrackets" Command="{Binding GoCommand}"/>
+        <KeyBinding Key="Up" Command="{Binding UpCommand}"/>
+        <KeyBinding Key="Down" Command="{Binding DownCommand}"/>
+        <KeyBinding Key="Delete" Command="{Binding DeleteCueCommand}"/>
+        <KeyBinding Gesture="CTRL+N" Command="{Binding NewProjectCommand}"/>
         <KeyBinding Gesture="CTRL+O" Command="{Binding OpenProjectCommand}"/>
         <KeyBinding Gesture="CTRL+S" Command="{Binding SaveProjectCommand}"/>
         <KeyBinding Gesture="CTRL+E" Command="{Binding PackProjectCommand}"/>
     </Window.InputBindings>
+    <Window.Resources>
+        <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
@@ -28,24 +36,28 @@
         </Grid.RowDefinitions>
         <!--#region Title Bar-->
         <Grid Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
-            <!---Icon-->
-            <Menu IsMainMenu="True">
-                <MenuItem Header="File">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="40"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Image Source="{StaticResource IconImage}" HorizontalAlignment="Left" Grid.Column="0"/>
+            <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center">
+                <MenuItem Header="File" Height="30">
                     <MenuItem Header="New" Command="{Binding NewProjectCommand}"/>
                     <MenuItem Header="Open" Command="{Binding OpenProjectCommand}"/>
                     <MenuItem Header="Save" Command="{Binding SaveProjectCommand}"/>
                     <MenuItem Header="Pack" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" IsEnabled="False"/>
                 </MenuItem>
-                <MenuItem Header="Edit">
+                <MenuItem Header="Edit" Height="30">
                     <MenuItem Header="Undo" IsEnabled="False"/>
                     <MenuItem Header="Redo" IsEnabled="False"/>
                 </MenuItem>
-                <MenuItem Header="Window">
+                <MenuItem Header="Window" Height="30">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
                     <MenuItem Header="Settings" Command="{Binding OpenSetttingsCommand}"/>
                 </MenuItem>
-                <MenuItem Header="Help">
+                <MenuItem Header="Help" Height="30">
                     <MenuItem Header="About" Command="{Binding OpenAboutCommand}"/>
                 </MenuItem>
             </Menu>
@@ -58,11 +70,11 @@
                 <ColumnDefinition Width="250" MinWidth="20"/>
             </Grid.ColumnDefinitions>
             <StackPanel Grid.Column="0">
-                <Button Content="GO" Command="{Binding GoCommand}" Height="50" FontSize="20" FontWeight="Bold" Background="#FF135F1B" BorderBrush="#FF032707"/>
-                <Button Content="Stop" Command="{Binding StopCommand}" Height="30" FontSize="16" FontWeight="Bold" Background="#FF5F1313" BorderBrush="#FF270303"/>
-                <Label Content="{Binding Clock}" HorizontalAlignment="Center" FontStretch="Expanded" FontFamily="Courier New" FontSize="16" FontWeight="Bold" Background="{DynamicResource ComboBox.Static.Background}"/>
+                <Button Content="GO" Command="{Binding GoCommand}" Height="50" FontSize="20" FontWeight="Bold" Background="#FF135F1B" BorderBrush="#FF032707" Style="{DynamicResource SlightlyRoundButton}"/>
+                <Button Content="Stop" Command="{Binding StopCommand}" Height="30" FontSize="16" FontWeight="Bold" Background="#FF5F1313" BorderBrush="#FF270303" Style="{DynamicResource SlightlyRoundButton}"/>
+                <Label Content="{Binding Clock}" HorizontalAlignment="Center" FontStretch="Expanded" FontFamily="Courier New" FontSize="16" FontWeight="Bold" BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"/>
                 <Separator/>
-                <Label Content="Active Cues:" FontWeight="Bold" Margin="5,0,0,0"/>
+                <Label Content="Active Cues:" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" FontWeight="Bold" Margin="5,0,0,0"/>
                 <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
                     <ItemsControl.ItemTemplate>
                         <DataTemplate>
@@ -82,6 +94,10 @@
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
                         <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
                         <Separator/>
+                        <MenuItem Header="Move Up" Command="{Binding MoveCueUpCommand}"/>
+                        <MenuItem Header="Move Down" Command="{Binding MoveCueDownCommand}"/>
+                        <Separator/>
+                        <MenuItem Header="Delete Cue" Command="{Binding DeleteCueCommand}"/>
                     </ContextMenu>
                 </ScrollViewer.ContextMenu>
                 <StackPanel>
@@ -97,14 +113,149 @@
             </ScrollViewer>
             <TabControl Grid.Column="2" Margin="5,0,0,0">
                 <TabItem Header="Selected Cue">
-                    <Grid>
-                        
-                    </Grid>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel.DataContext>
+                                <Binding Path="SelectedCue"/>
+                            </StackPanel.DataContext>
+                            <Label Content="Cue Information" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+                            <DockPanel>
+                                <Label Content="Cue ID"/>
+                                <TextBox Text="{Binding QID, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Cue Name"/>
+                                <TextBox Text="{Binding Name, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Description"/>
+                                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Colour"/>
+                                <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Margin="8,2,2,2" ShowAlpha="False"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Enabled"/>
+                                <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Type"/>
+                                <ComboBox SelectedValue="{Binding Type}" ItemsSource="{Binding CueTypeVals}" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <Label Content="Timing" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+                            <DockPanel>
+                                <Label Content="Halt"/>
+                                <CheckBox IsChecked="{Binding Halt}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Wait"/>
+                                <TextBox Text="{Binding Delay, Converter={StaticResource TimeSpanStringConverter}, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Duration"/>
+                                <TextBox Text="{Binding Duration, Converter={StaticResource TimeSpanStringConverter}, Mode=OneWay}" IsEnabled="False" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Loop"/>
+                                <ComboBox SelectedItem="{Binding LoopMode}" ItemsSource="{Binding LoopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Loop Count"/>
+                                <TextBox Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <Label Content="{Binding Type}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+                            <ContentControl Content="{Binding}">
+                                <ContentControl.Resources>
+                                    <DataTemplate DataType="{x:Type vm:DummyCueViewModel}">
+                                        <Label Content="No additional properties" FontStyle="Italic"/>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="{x:Type vm:GroupCueViewModel}">
+                                        <Label Content="No additional properties" FontStyle="Italic"/>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="{x:Type vm:SoundCueViewModel}">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Label Content="Media File"/>
+                                                <Button Content="..." Width="30" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+                                                <TextBox Text="{Binding Path}" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Start Time"/>
+                                                <TextBox Text="{Binding StartTime, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Duration"/>
+                                                <TextBox Text="{Binding Duration, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Volume"/>
+                                                <TextBox Text="{Binding Volume}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <Slider Value="{Binding Volume}" Minimum="0" Maximum="2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Fade In Time"/>
+                                                <TextBox Text="{Binding FadeIn}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Fade Out Time"/>
+                                                <TextBox Text="{Binding FadeOut}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="{x:Type vm:TimeCodeCueViewModel}">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Label Content="Start Time"/>
+                                                <TextBox Text="{Binding StartTime, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Duration"/>
+                                                <TextBox Text="{Binding Duration, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="{x:Type vm:StopCueViewModel}">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Label Content="Target Q ID"/>
+                                                <TextBox Text="{Binding StopTarget}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel>
+                                                <Label Content="Stop Mode"/>
+                                                <ComboBox SelectedItem="{Binding StopMode}" ItemsSource="{Binding StopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                </ContentControl.Resources>
+                            </ContentControl>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
                 <TabItem Header="Project Setup">
-                    <Grid>
-                        
-                    </Grid>
+                    <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
+                        <StackPanel>
+                            <StackPanel.DataContext>
+                                <Binding Path="ProjectSettings"/>
+                            </StackPanel.DataContext>
+                            <DockPanel>
+                                <Label Content="Project Name"/>
+                                <TextBox Text="{Binding Title}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Description"/>
+                                <TextBox Text="{Binding Description}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Author"/>
+                                <TextBox Text="{Binding Author}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Show Date"/>
+                                <DatePicker Text="{Binding Date}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                            </DockPanel>
+                        </StackPanel>
+                    </ScrollViewer>
                 </TabItem>
             </TabControl>
             <!--<DataGrid Grid.Column="1" Margin="5,5,0,0" ItemsSource="{Binding Cues}" ScrollViewer.CanContentScroll="True" HeadersVisibility="Column" AllowDrop="True" CanUserReorderColumns="False" CanUserSortColumns="False" SelectionMode="Single" CanUserResizeRows="False" AutoGenerateColumns="False">

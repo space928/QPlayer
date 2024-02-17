@@ -33,8 +33,8 @@ namespace QPlayer.Views
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
             var vm = (CueViewModel)DataContext;
-            if(vm.MainViewModel != null )
-                vm.MainViewModel.SelectedCue = vm;
+            if(vm.MainViewModel != null)
+                vm.SelectCommand.Execute(null);
         }
     }
 }

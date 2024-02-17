@@ -1,4 +1,6 @@
 # QPlayer
+![QPlayer Icon](QPlayer/Resources/IconM.png)
+
 QPlayer is a simple media player for theatre. It allows cue lists of sound tracks to be created and 
 played. Media playback is handled by libVLC, providing a large range of supported media.
 

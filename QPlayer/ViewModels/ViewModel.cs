@@ -23,10 +23,13 @@ using System.Windows.Data;
 
 namespace QPlayer.ViewModels
 {
-    public class ViewModel : ObservableObject
+    public class MainViewModel : ObservableObject
     {
         #region Bindable Properties
-        [Reactive, ReactiveDependency(nameof(SelectedCue))] public int SelectedCueInd { get; set; } = 0;
+        [Reactive, ReactiveDependency(nameof(SelectedCue))] public int SelectedCueInd {
+            get => selectedCueInd;
+            set => selectedCueInd = Math.Clamp(value, 0, Cues.Count);
+        }
         [Reactive] public CueViewModel? SelectedCue {
             get => SelectedCueInd >= 0 && SelectedCueInd < Cues.Count ? Cues[SelectedCueInd] : null;
             set { 
@@ -40,6 +43,8 @@ namespace QPlayer.ViewModels
         [Reactive] public ObservableCollection<CueViewModel> Cues { get; set; }
         [Reactive] public ObservableCollection<CueViewModel> ActiveCues { get; set; }
         [Reactive] public ObservableCollection<ObservableStruct<float>> ColumnWidths { get; set; }
+
+        [Reactive] public ProjectSettingsViewModel ProjectSettings { get; private set; }
 
         [Reactive] public RelayCommand NewProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
@@ -55,9 +60,15 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand CreateTimeCodeCueCommand { get; private set; }
         [Reactive] public RelayCommand CreateStopCueCommand { get; private set; }
 
+        [Reactive] public RelayCommand MoveCueUpCommand { get; private set; }
+        [Reactive] public RelayCommand MoveCueDownCommand { get; private set; }
+        [Reactive] public RelayCommand DeleteCueCommand { get; private set; }
+
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
         [Reactive] public RelayCommand StopCommand { get; private set; }
+        [Reactive] public RelayCommand UpCommand { get; private set; }
+        [Reactive] public RelayCommand DownCommand { get; private set; }
 
         [Reactive]
         public static ObservableCollection<string> LogList
@@ -69,12 +80,13 @@ namespace QPlayer.ViewModels
                 BindingOperations.EnableCollectionSynchronization(logList, logListLock);
             }
         }
+        [Reactive] public string WindowTitle => $"QPlayer - {ProjectSettings.Title}";
         [Reactive]
         public string VersionString
         {
             get
             {
-                var assembly = Assembly.GetAssembly(typeof(ViewModel));
+                var assembly = Assembly.GetAssembly(typeof(MainViewModel));
                 if (assembly == null)
                     return string.Empty;
                 var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
@@ -86,7 +98,7 @@ namespace QPlayer.ViewModels
         {
             get
             {
-                var assembly = Assembly.GetAssembly(typeof(ViewModel));
+                var assembly = Assembly.GetAssembly(typeof(MainViewModel));
                 if (assembly == null)
                     return string.Empty;
                 var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
@@ -98,6 +110,7 @@ namespace QPlayer.ViewModels
 
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
 
+        private int selectedCueInd = 0;
         private ShowFile showFile;
         private string openShowFilePath;
         private static ObservableCollection<string> logList;
@@ -114,7 +127,7 @@ namespace QPlayer.ViewModels
         };
         private Timer slowUpdateTimer;
 
-        public ViewModel()
+        public MainViewModel()
         {
             // Only run initialisation code once.
             // Otherwise the log window resets everything when it's opened
@@ -139,11 +152,17 @@ namespace QPlayer.ViewModels
             CreateDummyCueCommand = new(() => CreateCue(CueType.DummyCue));
             CreateSoundCueCommand = new(() => CreateCue(CueType.SoundCue));
             CreateTimeCodeCueCommand = new(() => CreateCue(CueType.TimeCodeCue));
-            CreateStopCueCommand = new(() => CreateCue(CueType.GroupCue));
+            CreateStopCueCommand = new(() => CreateCue(CueType.StopCue));
+
+            MoveCueUpCommand = new(MoveCueUpExecute);
+            MoveCueDownCommand = new(MoveCueDownExecute);
+            DeleteCueCommand = new(DeleteCueExecute);
 
             GoCommand = new(GoExecute);
             PauseCommand = new(PauseExecute);
             StopCommand = new(StopExecute);
+            UpCommand = new(() => SelectedCueInd--);
+            DownCommand = new(() => SelectedCueInd++);
 
             slowUpdateTimer = new(TimeSpan.FromMilliseconds(250));
             slowUpdateTimer.AutoReset = true;
@@ -162,6 +181,12 @@ namespace QPlayer.ViewModels
             }));
             ActiveCues = new();
             Cues = new();
+            ProjectSettings = new(this);
+            ProjectSettings.PropertyChanged += (o, e) =>
+            {
+                if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
+                    OnPropertyChanged(nameof(WindowTitle));
+            };
             showFile = new();
             LoadShowfileModel(showFile);
             CreateCue(CueType.GroupCue, afterLast:true);
@@ -310,6 +335,45 @@ namespace QPlayer.ViewModels
             for(int i = ActiveCues.Count-1; i >= 0; i--)
                 ActiveCues[i].Stop();
         }
+
+        public void MoveCueUpExecute()
+        {
+            if (SelectedCue == null || SelectedCueInd <= 0)
+                return;
+
+            int ind = SelectedCueInd;
+            var prevCue = Cues[ind - 1];
+            // Swap the cue IDs and then swap the cues
+            (prevCue.QID, SelectedCue.QID) = (SelectedCue.QID, prevCue.QID);
+            (Cues[ind], Cues[ind - 1]) = (Cues[ind - 1], Cues[ind]);
+            (showFile.cues[ind], showFile.cues[ind - 1]) = (showFile.cues[ind - 1], showFile.cues[ind]);
+            SelectedCueInd--;
+        }
+
+        public void MoveCueDownExecute() 
+        {
+            if (SelectedCue == null || SelectedCueInd >= Cues.Count-1)
+                return;
+
+            int ind = SelectedCueInd;
+            var nextCue = Cues[ind + 1];
+            // Swap the cue IDs and then swap the cues
+            (nextCue.QID, SelectedCue.QID) = (SelectedCue.QID, nextCue.QID);
+            (Cues[ind], Cues[ind + 1]) = (Cues[ind + 1], Cues[ind]);
+            (showFile.cues[ind], showFile.cues[ind + 1]) = (showFile.cues[ind + 1], showFile.cues[ind]);
+            SelectedCueInd++;
+        }
+
+        public void DeleteCueExecute()
+        {
+            if (SelectedCue == null)
+                return;
+
+            int selectedInd = SelectedCueInd;
+            Cues.RemoveAt(selectedInd);
+            showFile.cues.RemoveAt(selectedInd);
+            SelectedCueInd = selectedInd-1;
+        }
         #endregion
 
         public static void Log(object message, LogLevel level = LogLevel.Info, [CallerMemberName] string caller = "")
@@ -334,6 +398,13 @@ namespace QPlayer.ViewModels
         private void LoadShowfileModel(ShowFile show)
         {
             showFile = show;
+            ProjectSettings = ProjectSettingsViewModel.FromModel(show.showMetadata, this);
+            ProjectSettings.Bind(show.showMetadata);
+            ProjectSettings.PropertyChanged += (o, e) =>
+            {
+                if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
+                    OnPropertyChanged(nameof(WindowTitle));
+            };
             Cues.Clear();
             foreach(Cue c in showFile.cues)
             {
@@ -341,6 +412,7 @@ namespace QPlayer.ViewModels
                 vm.Bind(c);
                 Cues.Add(vm);
             }
+            OnPropertyChanged(nameof(SelectedCue));
         }
 
         /// <summary>
@@ -362,6 +434,7 @@ namespace QPlayer.ViewModels
                     vm.ToModel(q);
                 }
             }
+            ProjectSettings.ToModel(showFile.showMetadata);
         }
 
         public void OpenProject(string path)
@@ -433,8 +506,15 @@ namespace QPlayer.ViewModels
             model.qid = newId;
             var ret = CueViewModel.FromModel(model, this);
             ret.Bind(model);
-            showFile.cues.Insert(insertAfterInd + 1, model);
-            Cues.Insert(insertAfterInd + 1, ret);
+            if (insertAfterInd + 1 <= Cues.Count - 1)
+            {
+                showFile.cues.Insert(insertAfterInd + 1, model);
+                Cues.Insert(insertAfterInd + 1, ret);
+            } else
+            {
+                showFile.cues.Add(model);
+                Cues.Add(ret);
+            }
 
             return ret;
         }

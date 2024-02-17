@@ -20,7 +20,7 @@ namespace QPlayer.Views
     /// </summary>
     public partial class SettingsWindow : Window
     {
-        public SettingsWindow(ViewModel viewModel)
+        public SettingsWindow(MainViewModel viewModel)
         {
             this.DataContext = viewModel;
             InitializeComponent();

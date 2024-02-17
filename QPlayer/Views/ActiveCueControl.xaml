@@ -30,8 +30,14 @@
             </ProgressBar.Value>
         </ProgressBar>
         <Label Content="{Binding Name}" MinWidth="50" Grid.Column="2"/>
-        <Button Content="🔳" Command="{Binding StopCommand}" Grid.Column="3"/>
-        <Button Content="▶️" Command="{Binding GoCommand}" Grid.Column="4"/>
-        <Button Content="⏸️" Command="{Binding PauseCommand}" Grid.Column="5"/>
+        <Button Command="{Binding StopCommand}" Grid.Column="3">
+            <Image Source="{StaticResource IconStop}" Margin="2"/>
+        </Button>
+        <Button Command="{Binding GoCommand}" Grid.Column="4">
+            <Image Source="{StaticResource IconPlay}" Margin="2"/>
+        </Button>
+        <Button Command="{Binding PauseCommand}" Grid.Column="5">
+            <Image Source="{StaticResource IconPause}" Margin="2"/>
+        </Button>
     </Grid>
 </UserControl>

@@ -10,9 +10,9 @@ namespace QPlayer.Views
     /// </summary>
     public partial class LogWindow : Window
     {
-        public ViewModel ViewModel { get; init; }
+        public MainViewModel ViewModel { get; init; }
 
-        public LogWindow(ViewModel viewModel)
+        public LogWindow(MainViewModel viewModel)
         {
             this.ViewModel = viewModel;
             this.DataContext = viewModel;

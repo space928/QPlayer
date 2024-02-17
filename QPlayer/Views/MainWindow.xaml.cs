@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
@@ -33,7 +34,7 @@ namespace QPlayer
 
         public void Window_Closed(object sender, EventArgs e)
         {
-            ((ViewModel)DataContext).OnExit();
+            ((MainViewModel)DataContext).OnExit();
         }
     }
 }
