@@ -141,7 +141,7 @@
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Type"/>
-                                <ComboBox SelectedValue="{Binding Type}" ItemsSource="{Binding CueTypeVals}" Margin="8,2,2,2"/>
+                                <ComboBox SelectedValue="{Binding Type}" IsEnabled="False" ItemsSource="{Binding CueTypeVals}" Margin="8,2,2,2"/>
                             </DockPanel>
                             <Label Content="Timing" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
                             <DockPanel>
@@ -150,11 +150,17 @@
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Wait"/>
-                                <TextBox Text="{Binding Delay, Converter={StaticResource TimeSpanStringConverter}, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                <TextBox Text="{Binding Delay, 
+                                    Converter={StaticResource TimeSpanStringConverter}, 
+                                    ConverterParameter=False,
+                                    UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Duration"/>
-                                <TextBox Text="{Binding Duration, Converter={StaticResource TimeSpanStringConverter}, Mode=OneWay}" IsEnabled="False" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                <TextBox Text="{Binding Duration, 
+                                    Converter={StaticResource TimeSpanStringConverter},
+                                    ConverterParameter=False,
+                                    Mode=OneWay}" IsEnabled="False" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Loop"/>
@@ -177,29 +183,40 @@
                                         <StackPanel>
                                             <DockPanel>
                                                 <Label Content="Media File"/>
-                                                <Button Content="..." Width="30" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+                                                <Button Content="..." Width="30" Command="{Binding OpenMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
                                                 <TextBox Text="{Binding Path}" Margin="8,2,2,2"/>
                                             </DockPanel>
                                             <DockPanel>
-                                                <Label Content="Start Time"/>
-                                                <TextBox Text="{Binding StartTime, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <Label Content="Start Time" ToolTip="The time in the sound file to start playing from."/>
+                                                <TextBox Text="{Binding StartTime, 
+                                                    Converter={StaticResource TimeSpanStringConverter}, 
+                                                    ConverterParameter=False,
+                                                    UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
-                                            <DockPanel>
+                                            <DockPanel ToolTip="Limits the playback duration of the sound. Set to 00:00 to play the full sound.">
                                                 <Label Content="Duration"/>
-                                                <TextBox Text="{Binding Duration, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <TextBox Text="{Binding PlaybackDuration, 
+                                                    Converter={StaticResource TimeSpanStringConverter}, 
+                                                    ConverterParameter=False,
+                                                    UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                             <DockPanel>
                                                 <Label Content="Volume"/>
-                                                <TextBox Text="{Binding Volume}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                                                <Slider Value="{Binding Volume}" Minimum="0" Maximum="2"/>
+                                                <TextBox Text="{Binding Volume, UpdateSourceTrigger=PropertyChanged}" Width="30" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
+                                                        Minimum="0" Maximum="2" 
+                                                        AutoToolTipPlacement="TopLeft" 
+                                                        IsSnapToTickEnabled="True" 
+                                                        TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
+                                                        LargeChange="0.1" SmallChange="0.01"/>
                                             </DockPanel>
-                                            <DockPanel>
+                                            <DockPanel ToolTip="Fade in time in seconds">
                                                 <Label Content="Fade In Time"/>
-                                                <TextBox Text="{Binding FadeIn}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <TextBox Text="{Binding FadeIn, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
-                                            <DockPanel>
+                                            <DockPanel ToolTip="Fade out time in seconds">
                                                 <Label Content="Fade Out Time"/>
-                                                <TextBox Text="{Binding FadeOut}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <TextBox Text="{Binding FadeOut, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                         </StackPanel>
                                     </DataTemplate>
@@ -207,11 +224,17 @@
                                         <StackPanel>
                                             <DockPanel>
                                                 <Label Content="Start Time"/>
-                                                <TextBox Text="{Binding StartTime, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <TextBox Text="{Binding StartTime, 
+                                                    Converter={StaticResource TimeSpanStringConverter},
+                                                    ConverterParameter=True,
+                                                    UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                             <DockPanel>
                                                 <Label Content="Duration"/>
-                                                <TextBox Text="{Binding Duration, Converter={StaticResource TimeSpanStringConverter}}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <TextBox Text="{Binding TCDuration, 
+                                                    Converter={StaticResource TimeSpanStringConverter}, 
+                                                    ConverterParameter=True,
+                                                    UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                         </StackPanel>
                                     </DataTemplate>
@@ -219,7 +242,7 @@
                                         <StackPanel>
                                             <DockPanel>
                                                 <Label Content="Target Q ID"/>
-                                                <TextBox Text="{Binding StopTarget}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                <TextBox Text="{Binding StopTarget, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                             <DockPanel>
                                                 <Label Content="Stop Mode"/>
@@ -238,21 +261,31 @@
                             <StackPanel.DataContext>
                                 <Binding Path="ProjectSettings"/>
                             </StackPanel.DataContext>
+                            <Label Content="Project Metadata" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
                             <DockPanel>
                                 <Label Content="Project Name"/>
-                                <TextBox Text="{Binding Title}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                <TextBox Text="{Binding Title, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Description"/>
-                                <TextBox Text="{Binding Description}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
+                                <TextBox Text="{Binding Description, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Author"/>
-                                <TextBox Text="{Binding Author}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                <TextBox Text="{Binding Author, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Show Date"/>
                                 <DatePicker Text="{Binding Date}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
+                            </DockPanel>
+                            <Label Content="Audio Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+                            <DockPanel>
+                                <Label Content="Sound Driver"/>
+                                <ComboBox SelectedItem="{Binding AudioOutputDriver}" ItemsSource="{Binding AudioOutputDriverValues}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
+                            <DockPanel>
+                                <Label Content="Output Device"/>
+                                <ComboBox SelectedIndex="{Binding SelectedAudioOutputDeviceIndex}" ItemsSource="{Binding AudioOutputDevices}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                             </DockPanel>
                         </StackPanel>
                     </ScrollViewer>

@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.0.0-alpha</Version>
+    <Version>1.1.0-alpha</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
     <PackageProjectUrl>https://github.com/space928/QPlayer</PackageProjectUrl>
@@ -59,7 +59,7 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.2.2" />
-    <PackageReference Include="LibVLCSharp" Version="3.8.2" />
+    <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.1" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
     <PackageReference Include="ReactiveUI.Fody" Version="19.5.41" />

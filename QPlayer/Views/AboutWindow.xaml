@@ -22,17 +22,17 @@
             <ScrollViewer VerticalScrollBarVisibility="Auto">
                 <StackPanel>
                     <TextBlock TextWrapping="WrapWithOverflow" FontSize="10" Opacity="0.8" Margin="5,0,0,0">
-                        <Run>Icons by Font Awesome CC-BY-4.0 License</Run><LineBreak/>
+                        <Run>Icons by Font Awesome, CC-BY-4.0 License</Run><LineBreak/>
                         <Hyperlink NavigateUri="https://fontawesome.com/license/free" RequestNavigate="Hyperlink_RequestNavigate">
                             https://fontawesome.com/license/free
                         </Hyperlink><LineBreak/>
                         <LineBreak/>
-                        <Run>Uses LibVLCSharp LGPLv2.1 License</Run><LineBreak/>
-                        <Hyperlink NavigateUri="https://code.videolan.org/videolan/LibVLCSharp" RequestNavigate="Hyperlink_RequestNavigate">
-                            https://code.videolan.org/videolan/LibVLCSharp
+                        <Run>Uses NAudio, MIT License</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://github.com/naudio/NAudio" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://github.com/naudio/NAudio
                         </Hyperlink><LineBreak/>
                         <LineBreak/>
-                        <Run>Uses PixiEditor ColorPicker MIT License</Run><LineBreak/>
+                        <Run>Uses PixiEditor ColorPicker, MIT License</Run><LineBreak/>
                         <Hyperlink NavigateUri="https://github.com/PixiEditor/ColorPicker" RequestNavigate="Hyperlink_RequestNavigate">
                             https://github.com/PixiEditor/ColorPicker
                         </Hyperlink><LineBreak/>

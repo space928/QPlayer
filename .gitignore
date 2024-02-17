@@ -3,3 +3,5 @@
 */obj
 *.snk
 *.user
+*.pfx
+SigningCertificate_Encoded.txt

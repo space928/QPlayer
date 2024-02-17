@@ -4,15 +4,40 @@
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views"
+             xmlns:vm="clr-namespace:QPlayer.ViewModels"
              xmlns:model="clr-namespace:QPlayer.Models"
              mc:Ignorable="d">
-    
+    <ResourceDictionary.MergedDictionaries>
+        <ResourceDictionary Source="../ThemesV2/Icons.xaml"/>
+    </ResourceDictionary.MergedDictionaries>
+    <vm:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
+    <vm:GreaterThanConverter x:Key="GreaterThanConverter"/>
     <DataTemplate x:Key="GroupIconTemplate" DataType="bool">
         <Rectangle/>
     </DataTemplate>
-    
-    <DataTemplate x:Key="PlaybackIndicatorTemplate" DataType="float">
-        <ProgressBar/>
+
+    <DataTemplate x:Key="PlaybackIndicatorTemplate" DataType="vm:CueViewModel">
+        <Grid Width="{Binding RelativeSource={RelativeSource AncestorType=ContentControl}, Path=ActualWidth}">
+            <ProgressBar HorizontalAlignment="Stretch">
+                <ProgressBar.Value>
+                    <MultiBinding Converter="{StaticResource ElapsedTimeConverter}">
+                        <Binding Path="PlaybackTime" Mode="OneWay"/>
+                        <Binding Path="Duration" Mode="OneWay"/>
+                    </MultiBinding>
+                </ProgressBar.Value>
+            </ProgressBar>
+            <Label Name="PlaybackTimeLabel" Content="{Binding PlaybackTimeStringShort}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+        </Grid>
+        <DataTemplate.Triggers>
+            <DataTrigger 
+                Binding="{Binding Path=ActualWidth,
+                RelativeSource={RelativeSource AncestorType=ContentControl}, 
+                Converter={StaticResource GreaterThanConverter},
+                ConverterParameter=80}" 
+                Value="True">
+                <Setter TargetName="PlaybackTimeLabel" Property="Content" Value="{Binding PlaybackTimeString}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
     </DataTemplate>
     
     <DataTemplate x:Key="CueTypeTemplate" DataType="model:CueType">

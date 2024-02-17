@@ -21,14 +21,7 @@
             <vm:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
         </Grid.Resources>
         <Label Content="{Binding QID}" MinWidth="30" Grid.Column="0"/>
-        <ProgressBar MinWidth="20" Grid.Column="1">
-            <ProgressBar.Value>
-                <MultiBinding Converter="{StaticResource ElapsedTimeConverter}">
-                    <Binding Path="PlaybackTime" Mode="OneWay"/>
-                    <Binding Path="Duration" Mode="OneWay"/>
-                </MultiBinding>
-            </ProgressBar.Value>
-        </ProgressBar>
+        <ContentControl MinWidth="20" Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="1"/>
         <Label Content="{Binding Name}" MinWidth="50" Grid.Column="2"/>
         <Button Command="{Binding StopCommand}" Grid.Column="3">
             <Image Source="{StaticResource IconStop}" Margin="2"/>

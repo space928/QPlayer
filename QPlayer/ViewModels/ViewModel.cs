@@ -70,6 +70,8 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand UpCommand { get; private set; }
         [Reactive] public RelayCommand DownCommand { get; private set; }
 
+        [Reactive] public string? ProjectFilePath { get; private set; }
+
         [Reactive]
         public static ObservableCollection<string> LogList
         {
@@ -108,11 +110,12 @@ namespace QPlayer.ViewModels
         [Reactive] public string Clock => $"{DateTime.Now:HH:mm:ss}";
         #endregion
 
+        public AudioPlaybackManager AudioPlaybackManager => audioPlaybackManager;
+
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
 
         private int selectedCueInd = 0;
         private ShowFile showFile;
-        private string openShowFilePath;
         private static ObservableCollection<string> logList;
         private static LogWindow? logWindow;
         private static SettingsWindow? settingsWindow;
@@ -126,6 +129,7 @@ namespace QPlayer.ViewModels
             WriteIndented = true,
         };
         private Timer slowUpdateTimer;
+        private AudioPlaybackManager audioPlaybackManager;
 
         public MainViewModel()
         {
@@ -138,6 +142,8 @@ namespace QPlayer.ViewModels
             LogList = new();
             Log("Starting QPlayer...");
             Log("  Copyright Thomas Mathieson 2024");
+
+            audioPlaybackManager = new(this);
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute, () => logWindow == null);
@@ -169,7 +175,6 @@ namespace QPlayer.ViewModels
             slowUpdateTimer.Elapsed += SlowUpdate;
             slowUpdateTimer.Start();
 
-            openShowFilePath = string.Empty;
             ColumnWidths = new(Enumerable.Repeat<float>(60, 32).Select(x =>
             {
                 var observable = new ObservableStruct<float>(x);
@@ -179,6 +184,7 @@ namespace QPlayer.ViewModels
                 } ;
                 return observable;
             }));
+            ProjectFilePath = null;
             ActiveCues = new();
             Cues = new();
             ProjectSettings = new(this);
@@ -201,6 +207,8 @@ namespace QPlayer.ViewModels
             CloseAboutExecute();
             CloseSettingsExecute();
             CloseLogExecute();
+            audioPlaybackManager.Stop();
+            audioPlaybackManager.Dispose();
             Log("Goodbye!");
         }
 
@@ -214,27 +222,27 @@ namespace QPlayer.ViewModels
         {
             Log("Creating new project...");
             SaveProject(AUTOBACK_PATH);
-            if (!string.IsNullOrEmpty(openShowFilePath))
+            var curr = File.ReadAllText(AUTOBACK_PATH);
+            var prev = string.IsNullOrEmpty(ProjectFilePath) ? "#" : File.ReadAllText(ProjectFilePath);
+            if (curr != prev)
             {
-                var curr = File.ReadAllText(AUTOBACK_PATH);
-                var prev = File.ReadAllText(openShowFilePath);
-                if (curr != prev)
+                // There are unsaved changes!
+                var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel);
+                switch (mbRes)
                 {
-                    // There are unsaved changes!
-                    var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
-                        "Unsaved Changes",
-                        MessageBoxButton.YesNoCancel);
-                    switch (mbRes)
-                    {
-                        case MessageBoxResult.Yes:
-                            SaveProject(openShowFilePath);
-                            break;
-                        case MessageBoxResult.No:
-                            break;
-                        case MessageBoxResult.Cancel:
-                            Log("   aborted!");
-                            return;
-                    }
+                    case MessageBoxResult.Yes:
+                        if (string.IsNullOrEmpty(ProjectFilePath))
+                            SaveProjectExecute();
+                        else
+                            SaveProject(ProjectFilePath);
+                        break;
+                    case MessageBoxResult.No:
+                        break;
+                    case MessageBoxResult.Cancel:
+                        Log("   aborted!");
+                        return;
                 }
             }
 
@@ -259,6 +267,31 @@ namespace QPlayer.ViewModels
 
         public void OpenProjectExecute()
         {
+            Log("Opening project...");
+            SaveProject(AUTOBACK_PATH);
+            var curr = File.ReadAllText(AUTOBACK_PATH);
+            var prev = string.IsNullOrEmpty(ProjectFilePath)?"#":File.ReadAllText(ProjectFilePath);
+            if (curr != prev)
+            {
+                // There are unsaved changes!
+                var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
+                    "Unsaved Changes",
+                    MessageBoxButton.YesNoCancel);
+                switch (mbRes)
+                {
+                    case MessageBoxResult.Yes:
+                        if (string.IsNullOrEmpty(ProjectFilePath))
+                            SaveProjectExecute();
+                        else
+                            SaveProject(ProjectFilePath);
+                        break;
+                    case MessageBoxResult.No:
+                        break;
+                    case MessageBoxResult.Cancel:
+                        Log("   aborted!");
+                        return;
+                }
+            }
             OpenFileDialog openFileDialog = new()
             {
                 Multiselect = false,
@@ -276,7 +309,7 @@ namespace QPlayer.ViewModels
         {
             logWindow = new(this);
             //logWindow.Owner = ((Window)e.Source);
-            Log("Opening log...");
+            //Log("Opening log...");
             logWindow.Closed += (e, x) => { logWindow = null; };
             logWindow.Show();
         }
@@ -315,11 +348,12 @@ namespace QPlayer.ViewModels
 
         public void GoExecute()
         {
-            if(SelectedCue != null)
+            do
             {
-                SelectedCue.Go();
-            }
-            SelectedCueInd += 1;
+                if (SelectedCue?.Enabled ?? false)
+                    SelectedCue.DelayedGo();
+                SelectedCueInd += 1;
+            } while ((!SelectedCue?.Halt??false) || (!SelectedCue?.Enabled??false));
         }
 
         public void PauseExecute()
@@ -395,6 +429,48 @@ namespace QPlayer.ViewModels
             Error
         }
 
+        /// <summary>
+        /// Converts a path to/from a project relative path. Only paths which are in subdirectories of the project path are made relative.
+        /// </summary>
+        /// <param name="path">the path to convert</param>
+        /// <param name="expand">whether the path should be expanded to an absolute path or made relative to the project</param>
+        /// <returns></returns>
+        public string ResolvePath(string path, bool expand = true)
+        {
+            string? projPath = ProjectFilePath;
+            if (string.IsNullOrEmpty(projPath))
+                return path;
+
+            string? projDir = Path.GetDirectoryName(projPath);
+            if (string.IsNullOrEmpty(projDir))
+                return path;
+
+            if (expand)
+            {
+                if (Path.Exists(path))
+                    return path;
+
+                string ret = Path.Combine(projDir, path);
+                if (Path.Exists(ret))
+                    return ret;
+
+                // The file wasn't found, try searching for it in the project directory
+                string fileName = Path.GetFileName(path);
+                foreach (string file in Directory.EnumerateFiles(projDir, fileName, SearchOption.AllDirectories))
+                    return file;
+
+                // The file couldn't be found, let it fail normally.
+                return path;
+            }
+            else
+            {
+                string absPath = Path.GetFullPath(path);
+                if (absPath.Contains(projDir))
+                    return Path.GetRelativePath(projDir, absPath);
+                return path;
+            }
+        }
+
         private void LoadShowfileModel(ShowFile show)
         {
             showFile = show;
@@ -405,6 +481,8 @@ namespace QPlayer.ViewModels
                 if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
                     OnPropertyChanged(nameof(WindowTitle));
             };
+            for (int i = 0; i < Math.Min(showFile.columnWidths.Count, ColumnWidths.Count); i++)
+                ColumnWidths[i].Value = showFile.columnWidths[i];
             Cues.Clear();
             foreach(Cue c in showFile.cues)
             {
@@ -435,6 +513,8 @@ namespace QPlayer.ViewModels
                 }
             }
             ProjectSettings.ToModel(showFile.showMetadata);
+            showFile.columnWidths = ColumnWidths.Select(x=>x.Value).ToList();
+            showFile.fileFormatVersion = ShowFile.FILE_FORMAT_VERSION;
         }
 
         public void OpenProject(string path)
@@ -447,14 +527,13 @@ namespace QPlayer.ViewModels
                 if (s.fileFormatVersion != ShowFile.FILE_FORMAT_VERSION)
                     Log($"Project file version '{s.fileFormatVersion}' does not match QPlayer version '{ShowFile.FILE_FORMAT_VERSION}'!", LogLevel.Warning);
                 LoadShowfileModel(s);
+                ProjectFilePath = path;
 
-                Log($"Loaded profile from disk! {path}");
+                Log($"Loaded project from disk! {path}");
             }
             catch (Exception e)
             {
-                Log($"Couldn't load profile from disk. Trying to load {path} \n  failed with: {e}", LogLevel.Warning);
-                // Save the default profile instead
-                //ButtonEditors.ToMagicQProfile(ref magicQCTRLProfile);
+                Log($"Couldn't load project from disk. Trying to load {path} \n  failed with: {e}", LogLevel.Warning);
             }
         }
 
@@ -464,11 +543,11 @@ namespace QPlayer.ViewModels
             {
                 EnsureShowfileModelSync();
                 File.WriteAllText(path, JsonSerializer.Serialize(showFile, jsonSerializerOptions));
-                Log($"Saved profile to {path}!");
+                Log($"Saved project to {path}!");
             }
             catch (Exception e)
             {
-                Log($"Couldn't save profile to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
+                Log($"Couldn't save project to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
             }
         }
 

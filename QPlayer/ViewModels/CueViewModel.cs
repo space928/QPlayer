@@ -11,9 +11,13 @@ using System.Drawing;
 using System.Globalization;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using System.Timers;
 using System.Windows;
 using System.Windows.Data;
+using Cue = QPlayer.Models.Cue;
+using Timer = System.Timers.Timer;
 
 namespace QPlayer.ViewModels
 {
@@ -46,6 +50,7 @@ namespace QPlayer.ViewModels
     public enum CueState
     {
         Ready,
+        Delay,
         Playing,
         PlayingLooped,
         Paused,
@@ -64,7 +69,7 @@ namespace QPlayer.ViewModels
         [Reactive] public bool Halt { get; set; }
         [Reactive] public bool Enabled { get; set; } = true;
         [Reactive] public TimeSpan Delay { get; set; }
-        [Reactive] public TimeSpan Duration { get; }
+        [Reactive] public virtual TimeSpan Duration { get; }
         [Reactive] public LoopMode LoopMode { get; set; }
         [Reactive] public int LoopCount { get; set; }
 
@@ -74,6 +79,22 @@ namespace QPlayer.ViewModels
         [Reactive] public TimeSpan PlaybackTime { get; set; }
         [Reactive][ReactiveDependency(nameof(LoopMode))] 
         public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
+        [Reactive]
+        [ReactiveDependency(nameof(PlaybackTime))]
+        public string PlaybackTimeString => State switch
+        {
+            CueState.Delay => $"WAIT {Delay:mm\\:ss\\.ff}",
+            CueState.Playing or CueState.PlayingLooped or CueState.Paused => $"{PlaybackTime:mm\\:ss} / {Duration:mm\\:ss}",
+            _ => $"{Duration:mm\\:ss\\.ff}",
+        };
+        [Reactive]
+        [ReactiveDependency(nameof(PlaybackTime))]
+        public string PlaybackTimeStringShort => State switch
+        {
+            CueState.Delay => $"WAIT",
+            CueState.Playing or CueState.PlayingLooped or CueState.Paused => $"-{PlaybackTime - Duration:mm\\:ss}",
+            _ => $"{Duration:mm\\:ss}",
+        };
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
@@ -85,16 +106,22 @@ namespace QPlayer.ViewModels
         [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
         #endregion
 
-        protected DateTime startTime;
+        private SynchronizationContext? synchronizationContext;
         protected CueViewModel? parent;
         protected Cue? cueModel;
         protected MainViewModel? mainViewModel;
-        protected Task? playbackTask;
+        protected Timer goTimer;
 
         public CueViewModel(MainViewModel mainViewModel)
         {
             this.mainViewModel = mainViewModel;
+            synchronizationContext = SynchronizationContext.Current;
             mainViewModel.PropertyChanged += MainViewModel_PropertyChanged;
+            goTimer = new()
+            {
+                AutoReset = false,
+            };
+            goTimer.Elapsed += (o, e) => synchronizationContext?.Post((x) => Go(), null);
 
             GoCommand = new(Go);
             PauseCommand = new(Pause);
@@ -113,14 +140,36 @@ namespace QPlayer.ViewModels
                 case nameof(MainViewModel.SelectedCue):
                     OnPropertyChanged(nameof(IsSelected));
                     break;
+                case nameof(State):
+                case nameof(Duration): 
+                    OnPropertyChanged(nameof(PlaybackTimeString)); 
+                    OnPropertyChanged(nameof(PlaybackTimeStringShort)); 
+                    break;
             }
         }
 
         #region Command Handlers
+        public virtual void DelayedGo()
+        {
+            if (Delay == TimeSpan.Zero)
+            {
+                Go();
+                return;
+            }
+
+            State = CueState.Delay;
+            goTimer.Interval = Delay.TotalMilliseconds;
+            goTimer.Start();
+
+            if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
+                mainViewModel?.ActiveCues.Add(this);
+        }
+
         public virtual void Go()
         {
+            if (Duration == TimeSpan.Zero)
+                return;
             State = CueState.Playing;
-            startTime = DateTime.Now - PlaybackTime;
             if(!mainViewModel?.ActiveCues?.Contains(this) ?? false)
                 mainViewModel?.ActiveCues.Add(this);
         }
@@ -128,13 +177,11 @@ namespace QPlayer.ViewModels
         public virtual void Pause()
         {
             State = CueState.Paused;
-            PlaybackTime = startTime - DateTime.Now;
         }
 
         public virtual void Stop()
         {
             State = CueState.Ready;
-            PlaybackTime = TimeSpan.Zero;
             mainViewModel?.ActiveCues.Remove(this);
         }
 
@@ -238,206 +285,16 @@ namespace QPlayer.ViewModels
         }
     }
 
-    public class GroupCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
-    {
-        public GroupCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-        {
-        }
-
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            GroupCueViewModel vm = new(mainViewModel);
-            if (cue is GroupCue gcue)
-            {
-                //
-            }
-            return vm;
-        }
-    }
-
-    public class DummyCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
-    {
-        public DummyCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-        {
-        }
-
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            DummyCueViewModel vm = new(mainViewModel);
-            if (cue is DummyCue dcue)
-            {
-                //
-            }
-            return vm;
-        }
-    }
-
-    public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
-    {
-        [Reactive] public string Path { get; set; } = string.Empty;
-        [Reactive] public TimeSpan StartTime { get; set; }
-        [Reactive] public new TimeSpan Duration { get; set; }
-        [Reactive] public float Volume { get; set; }
-        [Reactive] public float FadeIn { get; set; }
-        [Reactive] public float FadeOut { get; set; }
-
-        public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-        {
-        }
-
-        public override void ToModel(string propertyName)
-        {
-            base.ToModel(propertyName);
-            if(cueModel is SoundCue scue)
-            {
-                switch (propertyName)
-                {
-                    case nameof(Path): scue.path = Path; break;
-                    case nameof(StartTime): scue.startTime = StartTime; break;
-                    case nameof(Duration): scue.duration = Duration; break;
-                    case nameof(Volume): scue.volume = Volume; break;
-                    case nameof(FadeIn): scue.fadeIn = FadeIn; break;
-                    case nameof(FadeOut): scue.fadeOut = FadeOut; break;
-                }
-            }
-        }
-
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-            if (cue is SoundCue scue)
-            {
-                scue.path = Path;
-                scue.startTime = StartTime;
-                scue.duration = Duration;
-                scue.volume = Volume;
-                scue.fadeIn = FadeIn;
-                scue.fadeOut = FadeOut;
-            }
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            SoundCueViewModel vm = new(mainViewModel);
-            if(cue is SoundCue scue)
-            {
-                vm.Path = scue.path;
-                vm.StartTime = scue.startTime;
-                vm.Duration = scue.duration;
-                vm.Volume = scue.volume;
-                vm.FadeIn = scue.fadeIn;
-                vm.FadeOut = scue.fadeOut;
-            }
-            return vm;
-        }
-    }
-
-    public class TimeCodeCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
-    {
-        [Reactive] public TimeSpan StartTime { get; set; }
-        [Reactive] public new TimeSpan Duration { get; set; }
-
-        public TimeCodeCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-        {
-        }
-
-        public override void ToModel(string propertyName)
-        {
-            base.ToModel(propertyName);
-            if (cueModel is TimeCodeCue tccue)
-            {
-                switch (propertyName)
-                {
-                    case nameof(StartTime): tccue.startTime = StartTime; break;
-                    case nameof(Duration): tccue.duration = Duration; break;
-                }
-            }
-        }
-
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-            if (cue is TimeCodeCue tccue)
-            {
-                tccue.startTime = StartTime;
-                tccue.duration = Duration;
-            }
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            TimeCodeCueViewModel vm = new(mainViewModel);
-            if (cue is TimeCodeCue tccue)
-            {
-                vm.StartTime = tccue.startTime;
-                vm.Duration = tccue.duration;
-            }
-            return vm;
-        }
-    }
-
-    public class StopCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
-    {
-        [Reactive] public decimal StopTarget { get; set; }
-        [Reactive] public StopMode StopMode { get; set; }
-
-        public StopCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-        {
-        }
-
-        public override void ToModel(string propertyName)
-        {
-            base.ToModel(propertyName);
-            if (cueModel is StopCue scue)
-            {
-                switch (propertyName)
-                {
-                    case nameof(StopTarget): scue.stopQid = StopTarget; break;
-                    case nameof(StopMode): scue.stopMode = StopMode; break;
-                }
-            }
-        }
-
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-            if (cue is StopCue scue)
-            {
-                scue.stopQid = StopTarget;
-                scue.stopMode = StopMode;
-            }
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            StopCueViewModel vm = new(mainViewModel);
-            if (cue is StopCue scue)
-            {
-                vm.StopTarget = scue.stopQid;
-                vm.StopMode = scue.stopMode;
-            }
-            return vm;
-        }
-    }
-
     [ValueConversion(typeof(TimeSpan[]), typeof(double))]
     public class ElapsedTimeConverter : IMultiValueConverter
     {
         public object Convert(object[] value, Type targetType, object parameter, CultureInfo culture)
         {
+            if (value[0] == DependencyProperty.UnsetValue || value[1] == DependencyProperty.UnsetValue)
+                return 0d;
             if (((TimeSpan)value[1]).TotalSeconds == 0)
                 return 0d;
-            return ((TimeSpan)value[0]).TotalSeconds / ((TimeSpan)value[1]).TotalSeconds;
+            return ((TimeSpan)value[0]).TotalSeconds / ((TimeSpan)value[1]).TotalSeconds * 100;
         }
 
         public object[] ConvertBack(object value, Type[] targetType, object parameter, CultureInfo culture)
@@ -466,17 +323,40 @@ namespace QPlayer.ViewModels
     {
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
-            return ((TimeSpan)value).ToString();
+            if (parameter is string useHours && useHours == "True")
+                return ((TimeSpan)value).ToString(@"hh\:mm\:ss\.ff");
+            else 
+                return ((TimeSpan)value).ToString(@"mm\:ss\.ff");
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
             string timeSpan = (string)value;
 
-            if (TimeSpan.TryParse(timeSpan, out TimeSpan ret))
-                return ret;
-            else
-                return DependencyProperty.UnsetValue;
+            if (parameter is string useHours && useHours == "True")
+            {
+                if (TimeSpan.TryParse(timeSpan, out TimeSpan ret))
+                    return ret;
+            } else
+            {
+                if (TimeSpan.TryParse("00:" + timeSpan, out TimeSpan ret))
+                    return ret;
+            }
+            return DependencyProperty.UnsetValue;
+        }
+    }
+
+    [ValueConversion(typeof(double), typeof(bool))]
+    public class GreaterThanConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return (double)value > double.Parse((string)parameter);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return DependencyProperty.UnsetValue;
         }
     }
 }
