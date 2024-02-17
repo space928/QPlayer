@@ -78,6 +78,7 @@ jobs:
         path: ${{ env.Project_Directory }}\QPlayer-release.zip
 
   create-release:
+    needs: build
     name: "Create Release"
     runs-on: "ubuntu-latest"
 
