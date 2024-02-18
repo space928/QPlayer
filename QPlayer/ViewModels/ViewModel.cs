@@ -368,6 +368,8 @@ namespace QPlayer.ViewModels
         {
             for(int i = ActiveCues.Count-1; i >= 0; i--)
                 ActiveCues[i].Stop();
+
+            AudioPlaybackManager.StopAllSounds();
         }
 
         public void MoveCueUpExecute()

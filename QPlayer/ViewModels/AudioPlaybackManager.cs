@@ -145,8 +145,15 @@ namespace QPlayer.ViewModels
             this.driver = driver;
             device.PlaybackStopped += DevicePlaybackStopped;
             deviceClosedEvent.Reset();
-            device.Init(mixer);
-            device.Play();
+            try
+            {
+                device.Init(mixer);
+                device.Play();
+            } catch(Exception ex)
+            {
+                MainViewModel.Log($"Failed to start device '{key}' with driver '{driver}'.\n" + ex,
+                    MainViewModel.LogLevel.Error);
+            }
             /*var sig = new SignalGenerator();
             PlaySound(sig);*/
             MainViewModel.Log($"Opened sound device '{key}' with driver '{driver}'!", MainViewModel.LogLevel.Info);
@@ -184,9 +191,18 @@ namespace QPlayer.ViewModels
         /// <param name="onCompleted">a callback raised when the stream is removed from the mixer</param>
         public void PlaySound(ISampleProvider provider, Action<ISampleProvider>? onCompleted = null)
         {
-            var converted = ConvertToMixerFormat(provider);
-            activeChannels.Add(provider, (converted, onCompleted));
-            mixer.AddMixerInput(converted);
+            try
+            {
+                if (activeChannels.ContainsKey(provider))
+                    return;
+
+                var converted = ConvertToMixerFormat(provider);
+                activeChannels.Add(provider, (converted, onCompleted));
+                mixer.AddMixerInput(converted);
+            } catch (Exception ex)
+            {
+                MainViewModel.Log("Error while trying to play sound! \n" + ex, MainViewModel.LogLevel.Error);
+            }
         }
 
         /// <summary>
@@ -195,11 +211,35 @@ namespace QPlayer.ViewModels
         /// <param name="provider">the sample stream to stop</param>
         public void StopSound(ISampleProvider provider)
         {
-            if (activeChannels.TryGetValue(provider, out var channel))
+            try
             {
-                mixer.RemoveMixerInput(channel.convertedStream);
-                activeChannels.Remove(provider);
+                if (activeChannels.TryGetValue(provider, out var channel))
+                {
+                    mixer.RemoveMixerInput(channel.convertedStream);
+                    activeChannels.Remove(provider);
+                }
+            } catch (Exception ex)
+            {
+                MainViewModel.Log("Error while trying to stop sound! \n" + ex, MainViewModel.LogLevel.Error);
             }
+        }
+
+        /// <summary>
+        /// Gets whether a sound stream is currently playing.
+        /// </summary>
+        /// <param name="provider"></param>
+        /// <returns></returns>
+        public bool IsPlaying(ISampleProvider provider) => activeChannels.ContainsKey(provider);
+
+        /// <summary>
+        /// Stops all sound sources.
+        /// </summary>
+        public void StopAllSounds()
+        {
+            mixer.RemoveAllMixerInputs();
+            foreach (var channel in activeChannels)
+                channel.Value.completedCallback?.Invoke(channel.Key);
+            activeChannels.Clear();
         }
     }
 

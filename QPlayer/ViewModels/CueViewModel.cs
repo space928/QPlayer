@@ -176,11 +176,13 @@ namespace QPlayer.ViewModels
 
         public virtual void Pause()
         {
+            goTimer.Stop();
             State = CueState.Paused;
         }
 
         public virtual void Stop()
         {
+            goTimer.Stop();
             State = CueState.Ready;
             mainViewModel?.ActiveCues.Remove(this);
         }

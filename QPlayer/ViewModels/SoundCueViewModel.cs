@@ -94,8 +94,13 @@ namespace QPlayer.ViewModels
             base.Go();
             if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
                 StopAudio();
+            
             if (audioFile == null || fadeInOutProvider == null || mainViewModel == null)
                 return;
+            // There are a few edge cases where this can happen (notably when starting a cue while it's in the delay state).
+            if (mainViewModel.AudioPlaybackManager.IsPlaying(fadeInOutProvider))
+                StopAudio();
+
             audioProgressUpdater.Start();
             if (FadeOut > 0)
             {
