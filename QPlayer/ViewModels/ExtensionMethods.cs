@@ -12,7 +12,7 @@ namespace QPlayer.ViewModels
     {
         public static Color ToColor(this ColorState x)
         {
-            return Color.FromArgb((byte)(x.A * 255), (byte)(x.RGB_R * 255), (byte)(x.RGB_G * 255), (byte)(x.RGB_B * 255));
+            return Color.FromArgb(255, (byte)(x.RGB_R * 255), (byte)(x.RGB_G * 255), (byte)(x.RGB_B * 255));
         }
 
         public static ColorState ToColorState(this Color x)
@@ -24,7 +24,7 @@ namespace QPlayer.ViewModels
                 RGB_G=x.g/255d,
                 RGB_B=x.b/255d
             };*/
-            c.SetARGB(x.A / 255d, x.R / 255d, x.G / 255d, x.B / 255d);
+            c.SetARGB(1, x.R / 255d, x.G / 255d, x.B / 255d);
 
             return c;
         }

@@ -54,4 +54,32 @@
             </Setter.Value>
         </Setter>
     </Style>
+
+    <Style TargetType="DatePicker">
+        <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
+        <Setter Property="CalendarStyle">
+            <Setter.Value>
+                <Style TargetType="Calendar">
+                    <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
+                    <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
+                    <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
+                    <Setter Property="CalendarItemStyle">
+                        <Setter.Value>
+                            <Style TargetType="CalendarItem" BasedOn="{StaticResource {x:Type CalendarItem}}">
+                                <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
+                            </Style>
+                        </Setter.Value>
+                    </Setter>
+                </Style>
+            </Setter.Value>
+        </Setter>
+    </Style>
+
+    <Style TargetType="DatePickerTextBox">
+        <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
+        <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
+        <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
+    </Style>
 </ResourceDictionary>

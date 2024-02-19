@@ -33,8 +33,35 @@ namespace QPlayer.Views
         private void Grid_MouseDown(object sender, MouseButtonEventArgs e)
         {
             var vm = (CueViewModel)DataContext;
-            if(vm.MainViewModel != null)
+            if (vm.MainViewModel != null)
                 vm.SelectCommand.Execute(null);
+        }
+
+        private void UserControl_Loaded(object sender, RoutedEventArgs e)
+        {
+            var vm = (CueViewModel)DataContext;
+            vm.PropertyChanged += (o, e) =>
+            {
+                switch (e.PropertyName)
+                {
+                    case nameof(CueViewModel.IsSelected):
+                        if (vm.IsSelected)
+                        {
+                            // This is a lazy way to check if the last action that selected us was a click or some other kind of Go()
+                            // If the user clicks on the element we shouldn't risk it moving too much
+                            if (IsMouseOver)
+                                BringIntoView();
+                            else
+                                BringIntoView(new Rect(new Size(10, 200))); // Leave some padding bellow us
+                        }
+                        break;
+                }
+            };
+        }
+
+        private void Grid_PreviewMouseDown(object sender, MouseButtonEventArgs e)
+        {
+            Focus();
         }
     }
 }

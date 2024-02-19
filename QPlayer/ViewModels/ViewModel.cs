@@ -1,11 +1,9 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using DynamicData.Kernel;
 using Microsoft.Win32;
 using QPlayer.Models;
 using QPlayer.Views;
 using ReactiveUI.Fody.Helpers;
-using Splat;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -14,9 +12,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Runtime.CompilerServices;
-using System.Text;
 using System.Text.Json;
-using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Data;
@@ -104,7 +100,7 @@ namespace QPlayer.ViewModels
                 if (assembly == null)
                     return string.Empty;
                 var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
-                return $"Copyright {versionInfo.CompanyName} 2024";
+                return $"Copyright {versionInfo.LegalCopyright}";
             }
         }
         [Reactive] public string Clock => $"{DateTime.Now:HH:mm:ss}";
@@ -116,11 +112,10 @@ namespace QPlayer.ViewModels
 
         private int selectedCueInd = 0;
         private ShowFile showFile;
-        private static ObservableCollection<string> logList;
+        private static ObservableCollection<string> logList = new();
         private static LogWindow? logWindow;
         private static SettingsWindow? settingsWindow;
         private static AboutWindow? aboutWindow;
-        private static bool started = false;
         private static readonly object logListLock = new();
         private JsonSerializerOptions jsonSerializerOptions = new()
         {
@@ -139,7 +134,7 @@ namespace QPlayer.ViewModels
             //    return;
             //started = true;
 
-            LogList = new();
+            LogList = logList;
             Log("Starting QPlayer...");
             Log("  Copyright Thomas Mathieson 2024");
 

@@ -20,16 +20,16 @@
         <Grid.Resources>
             <vm:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
         </Grid.Resources>
-        <Label Content="{Binding QID}" MinWidth="30" Grid.Column="0"/>
+        <Label Content="{Binding QID}" MinWidth="30" Grid.Column="0" VerticalContentAlignment="Center"/>
         <ContentControl MinWidth="20" Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="1"/>
-        <Label Content="{Binding Name}" MinWidth="50" Grid.Column="2"/>
-        <Button Command="{Binding StopCommand}" Grid.Column="3">
+        <Label Content="{Binding Name}" MinWidth="50" Grid.Column="2" VerticalContentAlignment="Center"/>
+        <Button Command="{Binding StopCommand}" Grid.Column="3" ToolTip="Stops this cue">
             <Image Source="{StaticResource IconStop}" Margin="2"/>
         </Button>
-        <Button Command="{Binding GoCommand}" Grid.Column="4">
+        <Button Command="{Binding GoCommand}" Grid.Column="4" ToolTip="Starts this cue">
             <Image Source="{StaticResource IconPlay}" Margin="2"/>
         </Button>
-        <Button Command="{Binding PauseCommand}" Grid.Column="5">
+        <Button Command="{Binding PauseCommand}" Grid.Column="5" ToolTip="Pauses this cue">
             <Image Source="{StaticResource IconPause}" Margin="2"/>
         </Button>
     </Grid>

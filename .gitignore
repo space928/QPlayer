@@ -6,3 +6,4 @@
 *.pfx
 SigningCertificate_Encoded.txt
 **/publish
+*.zip

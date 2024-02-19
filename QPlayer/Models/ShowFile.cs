@@ -65,7 +65,7 @@ namespace QPlayer.Models
         public CueType type;
         public decimal qid;
         public decimal? parent;
-        public Color colour;
+        public Color colour = Color.Black;
         public string name = string.Empty;
         public string description = string.Empty;
         public bool halt = true;
@@ -131,6 +131,7 @@ namespace QPlayer.Models
     {
         public decimal stopQid;
         public StopMode stopMode;
+        public float fadeOutTime;
 
         public StopCue() : base()
         {

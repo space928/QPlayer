@@ -22,6 +22,8 @@ namespace QPlayer
     /// </summary>
     public partial class MainWindow : Window
     {
+        private Dictionary<(Key key, ModifierKeys modifiers), KeyBinding> keyBindings = new();
+
         public MainWindow()
         {
             InitializeComponent();
@@ -29,12 +31,30 @@ namespace QPlayer
 
         public void Window_Loaded(object sender, RoutedEventArgs e)
         {
-
+            keyBindings.Clear();
+            foreach (object binding in InputBindings)
+                if(binding is KeyBinding keyBinding)
+                    keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
         }
 
         public void Window_Closed(object sender, EventArgs e)
         {
             ((MainViewModel)DataContext).OnExit();
+        }
+
+        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        {
+            switch(e.Key)
+            {
+                case Key.Space:
+                case Key.Up:
+                case Key.Down:
+                    e.Handled = true;
+                    var mods = Keyboard.Modifiers;
+                    if (keyBindings.TryGetValue((e.Key, mods), out var binding))
+                        binding.Command.Execute(null);
+                    break;
+            }
         }
     }
 }

@@ -47,9 +47,25 @@ namespace QPlayer.ViewModels
         public abstract void Bind(Model model);
     }
 
+    /// <summary>
+    /// The current state of the Cue's playback.
+    /// 
+    /// Legal state transitions are as follows:
+    /// 
+    ///   /----<---\--<---\-----<----\
+    ///   |        |/--> Paused <--\ |
+    /// Ready --> Delay --> Playing/PlayingLooped
+    ///      \------>------/ 
+    /// </summary>
     public enum CueState
     {
+        /// <summary>
+        /// The Cue is currently stopped and ready to be played
+        /// </summary>
         Ready,
+        /// <summary>
+        /// The Cue is currently waiting to start.
+        /// </summary>
         Delay,
         Playing,
         PlayingLooped,
@@ -106,7 +122,7 @@ namespace QPlayer.ViewModels
         [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
         #endregion
 
-        private SynchronizationContext? synchronizationContext;
+        protected SynchronizationContext? synchronizationContext;
         protected CueViewModel? parent;
         protected Cue? cueModel;
         protected MainViewModel? mainViewModel;
@@ -354,6 +370,20 @@ namespace QPlayer.ViewModels
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
             return (double)value > double.Parse((string)parameter);
+        }
+
+        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return DependencyProperty.UnsetValue;
+        }
+    }
+
+    [ValueConversion(typeof(double), typeof(double))]
+    public class MultiplyByConverter : IValueConverter
+    {
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return (double)value * double.Parse((string)parameter);
         }
 
         public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)

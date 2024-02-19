@@ -8,7 +8,7 @@
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         Title="{Binding WindowTitle}" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
-        Closed="Window_Closed" Loaded="Window_Loaded">
+        Closed="Window_Closed" Loaded="Window_Loaded" PreviewKeyDown="Window_PreviewKeyDown">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
@@ -25,9 +25,12 @@
         <KeyBinding Gesture="CTRL+O" Command="{Binding OpenProjectCommand}"/>
         <KeyBinding Gesture="CTRL+S" Command="{Binding SaveProjectCommand}"/>
         <KeyBinding Gesture="CTRL+E" Command="{Binding PackProjectCommand}"/>
+        <KeyBinding Gesture="CTRL+Up" Command="{Binding MoveCueUpCommand}"/>
+        <KeyBinding Gesture="CTRL+Down" Command="{Binding MoveCueDownCommand}"/>
     </Window.InputBindings>
     <Window.Resources>
         <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        <vm:MultiplyByConverter x:Key="MultiplyByConverter"/>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -43,10 +46,10 @@
             <Image Source="{StaticResource IconImage}" HorizontalAlignment="Left" Grid.Column="0"/>
             <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center">
                 <MenuItem Header="File" Height="30">
-                    <MenuItem Header="New" Command="{Binding NewProjectCommand}"/>
-                    <MenuItem Header="Open" Command="{Binding OpenProjectCommand}"/>
-                    <MenuItem Header="Save" Command="{Binding SaveProjectCommand}"/>
-                    <MenuItem Header="Pack" Command="{Binding PackProjectCommand}"/>
+                    <MenuItem Header="New (Ctrl+N)" Command="{Binding NewProjectCommand}"/>
+                    <MenuItem Header="Open (Ctrl+O)" Command="{Binding OpenProjectCommand}"/>
+                    <MenuItem Header="Save (Ctrl+S)" Command="{Binding SaveProjectCommand}"/>
+                    <MenuItem Header="Pack (Ctrl+E)" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" IsEnabled="False"/>
                 </MenuItem>
                 <MenuItem Header="Edit" Height="30">
@@ -69,20 +72,40 @@
                 <ColumnDefinition Width="*" MinWidth="20"/>
                 <ColumnDefinition Width="250" MinWidth="20"/>
             </Grid.ColumnDefinitions>
-            <StackPanel Grid.Column="0">
-                <Button Content="GO" Command="{Binding GoCommand}" Height="50" FontSize="20" FontWeight="Bold" Background="#FF135F1B" BorderBrush="#FF032707" Style="{DynamicResource SlightlyRoundButton}"/>
-                <Button Content="Stop" Command="{Binding StopCommand}" Height="30" FontSize="16" FontWeight="Bold" Background="#FF5F1313" BorderBrush="#FF270303" Style="{DynamicResource SlightlyRoundButton}"/>
-                <Label Content="{Binding Clock}" HorizontalAlignment="Center" FontStretch="Expanded" FontFamily="Courier New" FontSize="16" FontWeight="Bold" BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"/>
-                <Separator/>
-                <Label Content="Active Cues:" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" FontWeight="Bold" Margin="5,0,0,0"/>
-                <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
-                    <ItemsControl.ItemTemplate>
-                        <DataTemplate>
-                            <local:ActiveCueControl/>
-                        </DataTemplate>
-                    </ItemsControl.ItemTemplate>
-                </ItemsControl>
-            </StackPanel>
+            <DockPanel Grid.Column="0">
+                <Button Content="GO" Command="{Binding GoCommand}"
+                        Height="70"
+                        FontSize="28" FontWeight="Bold" 
+                        Background="#FF135F1B" BorderBrush="#FF032707" 
+                        Style="{DynamicResource SlightlyRoundButton}"
+                        ToolTip="Advances to the next cue (Space)"
+                        DockPanel.Dock="Top"/>
+                <Button Content="Stop" Command="{Binding StopCommand}" 
+                        Height="40"
+                        FontSize="16" FontWeight="Bold" 
+                        Background="#FF5F1313" BorderBrush="#FF4C0707" 
+                        Style="{DynamicResource SlightlyRoundButton}"
+                        ToolTip="Stops all active cues (Esc)"
+                        DockPanel.Dock="Top"/>
+                <Label Content="{Binding Clock}" 
+                       HorizontalAlignment="Center" 
+                       FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
+                       BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
+                       DockPanel.Dock="Top"/>
+                <Separator DockPanel.Dock="Top"/>
+                <Label Content="Active Cues" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                       FontWeight="Bold" Margin="5,0,0,0"
+                       DockPanel.Dock="Top"/>
+                <ScrollViewer VerticalScrollBarVisibility="Auto" DockPanel.Dock="Top">
+                    <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
+                        <ItemsControl.ItemTemplate>
+                            <DataTemplate>
+                                <local:ActiveCueControl/>
+                            </DataTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </ScrollViewer>
+            </DockPanel>
             <GridSplitter Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <GridSplitter Grid.Column="2" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <ScrollViewer Grid.Column="1" Margin="5,5,0,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst">
@@ -94,10 +117,10 @@
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
                         <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
                         <Separator/>
-                        <MenuItem Header="Move Up" Command="{Binding MoveCueUpCommand}"/>
-                        <MenuItem Header="Move Down" Command="{Binding MoveCueDownCommand}"/>
+                        <MenuItem Header="Move Up" Command="{Binding MoveCueUpCommand}" ToolTip="Moves the selected cue up (Ctrl+Up)"/>
+                        <MenuItem Header="Move Down" Command="{Binding MoveCueDownCommand}" ToolTip="Moves the selected cue down (Ctrl+Down)"/>
                         <Separator/>
-                        <MenuItem Header="Delete Cue" Command="{Binding DeleteCueCommand}"/>
+                        <MenuItem Header="Delete Cue" Command="{Binding DeleteCueCommand}" ToolTip="Deletes the selected cue (Delete)"/>
                     </ContextMenu>
                 </ScrollViewer.ContextMenu>
                 <StackPanel>
@@ -109,6 +132,11 @@
                             </DataTemplate>
                         </ItemsControl.ItemTemplate>
                     </ItemsControl>
+                    <Rectangle Height="{Binding 
+                        RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
+                        Path=ActualHeight,
+                        Converter={StaticResource MultiplyByConverter},
+                        ConverterParameter=0.5}"/>
                 </StackPanel>
             </ScrollViewer>
             <TabControl Grid.Column="2" Margin="5,0,0,0">
@@ -133,7 +161,7 @@
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Colour"/>
-                                <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Margin="8,2,2,2" ShowAlpha="False"/>
+                                <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
                             </DockPanel>
                             <DockPanel>
                                 <Label Content="Enabled"/>
@@ -247,6 +275,10 @@
                                             <DockPanel>
                                                 <Label Content="Stop Mode"/>
                                                 <ComboBox SelectedItem="{Binding StopMode}" ItemsSource="{Binding StopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel ToolTip="Fade out time in seconds">
+                                                <Label Content="Fade Out Time"/>
+                                                <TextBox Text="{Binding FadeOutTime, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                         </StackPanel>
                                     </DataTemplate>
