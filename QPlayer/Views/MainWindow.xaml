@@ -7,8 +7,9 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels"
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
+        x:Name="QPlayerMainWindow"
         Title="{Binding WindowTitle}" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
-        Closed="Window_Closed" Loaded="Window_Loaded" PreviewKeyDown="Window_PreviewKeyDown">
+        Closed="Window_Closed" Loaded="Window_Loaded">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
@@ -108,7 +109,9 @@
             </DockPanel>
             <GridSplitter Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <GridSplitter Grid.Column="2" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
-            <ScrollViewer Grid.Column="1" Margin="5,5,0,0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst">
+            <ScrollViewer Grid.Column="1" Margin="5,5,0,0" 
+                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst"
+                          PreviewKeyDown="Consume_PreviewKeyDown">
                 <ScrollViewer.ContextMenu>
                     <ContextMenu>
                         <MenuItem Header="Add Sound Cue" Command="{Binding CreateSoundCueCommand}"/>

@@ -42,7 +42,7 @@ namespace QPlayer
             ((MainViewModel)DataContext).OnExit();
         }
 
-        private void Window_PreviewKeyDown(object sender, KeyEventArgs e)
+        private void Consume_PreviewKeyDown(object sender, KeyEventArgs e)
         {
             switch(e.Key)
             {

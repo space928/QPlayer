@@ -198,7 +198,7 @@ namespace QPlayer.ViewModels
         public void OnExit()
         {
             Log("Shutting down...");
-            SaveProject(AUTOBACK_PATH);
+            UnsavedChangedCheck(false);
             CloseAboutExecute();
             CloseSettingsExecute();
             CloseLogExecute();
@@ -216,30 +216,8 @@ namespace QPlayer.ViewModels
         public void NewProjectExecute()
         {
             Log("Creating new project...");
-            SaveProject(AUTOBACK_PATH);
-            var curr = File.ReadAllText(AUTOBACK_PATH);
-            var prev = string.IsNullOrEmpty(ProjectFilePath) ? "#" : File.ReadAllText(ProjectFilePath);
-            if (curr != prev)
-            {
-                // There are unsaved changes!
-                var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
-                    "Unsaved Changes",
-                    MessageBoxButton.YesNoCancel);
-                switch (mbRes)
-                {
-                    case MessageBoxResult.Yes:
-                        if (string.IsNullOrEmpty(ProjectFilePath))
-                            SaveProjectExecute();
-                        else
-                            SaveProject(ProjectFilePath);
-                        break;
-                    case MessageBoxResult.No:
-                        break;
-                    case MessageBoxResult.Cancel:
-                        Log("   aborted!");
-                        return;
-                }
-            }
+            if (!UnsavedChangedCheck())
+                return;
 
             LoadShowfileModel(new());
         }
@@ -263,30 +241,8 @@ namespace QPlayer.ViewModels
         public void OpenProjectExecute()
         {
             Log("Opening project...");
-            SaveProject(AUTOBACK_PATH);
-            var curr = File.ReadAllText(AUTOBACK_PATH);
-            var prev = string.IsNullOrEmpty(ProjectFilePath)?"#":File.ReadAllText(ProjectFilePath);
-            if (curr != prev)
-            {
-                // There are unsaved changes!
-                var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
-                    "Unsaved Changes",
-                    MessageBoxButton.YesNoCancel);
-                switch (mbRes)
-                {
-                    case MessageBoxResult.Yes:
-                        if (string.IsNullOrEmpty(ProjectFilePath))
-                            SaveProjectExecute();
-                        else
-                            SaveProject(ProjectFilePath);
-                        break;
-                    case MessageBoxResult.No:
-                        break;
-                    case MessageBoxResult.Cancel:
-                        Log("   aborted!");
-                        return;
-                }
-            }
+            if (!UnsavedChangedCheck())
+                return;
             OpenFileDialog openFileDialog = new()
             {
                 Multiselect = false,
@@ -466,6 +422,46 @@ namespace QPlayer.ViewModels
                     return Path.GetRelativePath(projDir, absPath);
                 return path;
             }
+        }
+
+        /// <summary>
+        /// Checks if the project file has unsaved changes and prompts the user to save if needed.
+        /// </summary>
+        /// <returns>false if the user decided to cancel the current operation.</returns>
+        private bool UnsavedChangedCheck(bool canCancel = true)
+        {
+            SaveProject(AUTOBACK_PATH);
+            string? curr = null;
+            string? prev = null;
+            try
+            {
+                curr = File.ReadAllText(AUTOBACK_PATH);
+                prev = string.IsNullOrEmpty(ProjectFilePath) ? "#" : File.ReadAllText(ProjectFilePath);
+            }
+            catch { }
+            if (curr == null || curr != prev)
+            {
+                // There are unsaved changes!
+                var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
+                    "Unsaved Changes",
+                    canCancel ? MessageBoxButton.YesNoCancel : MessageBoxButton.YesNo, 
+                    MessageBoxImage.Warning, MessageBoxResult.Yes);
+                switch (mbRes)
+                {
+                    case MessageBoxResult.Yes:
+                        if (string.IsNullOrEmpty(ProjectFilePath))
+                            SaveProjectExecute();
+                        else
+                            SaveProject(ProjectFilePath);
+                        break;
+                    case MessageBoxResult.No:
+                        return true;
+                    case MessageBoxResult.Cancel:
+                        Log("   aborted!");
+                        return false;
+                }
+            }
+            return true;
         }
 
         private void LoadShowfileModel(ShowFile show)
