@@ -17,7 +17,16 @@ namespace QPlayer.ViewModels
         [Reactive] public string Path { get; set; } = string.Empty;
         [Reactive] public TimeSpan StartTime { get; set; }
         [Reactive] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
-        [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? audioFile?.TotalTime ?? TimeSpan.Zero : PlaybackDuration;
+        [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (audioFile?.TotalTime ?? TimeSpan.Zero) - StartTime : PlaybackDuration;
+        [Reactive] public override TimeSpan PlaybackTime 
+        { 
+            get => IsAudioFileValid ? audioFile.CurrentTime - StartTime : TimeSpan.Zero;
+            set
+            {
+                if(IsAudioFileValid) 
+                    audioFile.CurrentTime = value + StartTime;
+            }
+        }
         [Reactive] public float Volume { get; set; }
         [Reactive] public float FadeIn { get; set; }
         [Reactive] public float FadeOut { get; set; }
@@ -59,6 +68,11 @@ namespace QPlayer.ViewModels
                         if (audioFile != null)
                             audioFile.Volume = Volume;
                         break;
+                    case nameof(StartTime):
+                        OnPropertyChanged(nameof(Duration));
+                        OnPropertyChanged(nameof(PlaybackTimeString));
+                        OnPropertyChanged(nameof(PlaybackTimeStringShort));
+                        break;
                 }
             };
         }
@@ -89,10 +103,9 @@ namespace QPlayer.ViewModels
         private void AudioProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
         {
             synchronizationContext?.Post((x) => {
-                if (!IsAudioFileValid || mainViewModel == null)
-                    return;
-
-                PlaybackTime = audioFile.CurrentTime;
+                OnPropertyChanged(nameof(PlaybackTime));
+                OnPropertyChanged(nameof(PlaybackTimeString));
+                OnPropertyChanged(nameof(PlaybackTimeStringShort));
             }, null);
         }
 
@@ -146,7 +159,7 @@ namespace QPlayer.ViewModels
             audioProgressUpdater.Start();
             if (FadeOut > 0)
             {
-                double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - audioFile.CurrentTime).TotalMilliseconds;
+                double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - audioFile.CurrentTime - StartTime).TotalMilliseconds;
                 if (fadeOutTime <= int.MaxValue)
                 {
                     fadeOutTimer.Interval = fadeOutTime;
@@ -217,7 +230,6 @@ namespace QPlayer.ViewModels
             if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
                 return;
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
-            audioFile.CurrentTime = StartTime;
             PlaybackTime = TimeSpan.Zero;
             audioProgressUpdater.Stop();
             fadeOutTimer.Stop();
@@ -254,7 +266,6 @@ namespace QPlayer.ViewModels
             try
             {
                 audioFile = new(path);
-                audioFile.CurrentTime = StartTime;
                 OnPropertyChanged(nameof(Duration));
                 PlaybackTime = TimeSpan.Zero;
                 // For some reason these don't get raised automatically...

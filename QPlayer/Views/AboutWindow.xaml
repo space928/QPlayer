@@ -7,7 +7,10 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
-        Title="QPlayer - About" Height="300" Width="350" Style="{DynamicResource CustomWindowStyle}" ResizeMode="NoResize" WindowStartupLocation="CenterScreen">
+        Title="QPlayer - About" Height="300" Width="350" 
+        Style="{DynamicResource CustomWindowStyle}" 
+        ResizeMode="NoResize" WindowStartupLocation="CenterScreen" 
+        Icon="{StaticResource IconImage}">
     <Grid Margin="10,10,10,10">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="100"/>

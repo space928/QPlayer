@@ -18,7 +18,7 @@
         <KeyBinding Key="Esc" Command="{Binding StopCommand}"/>
         <KeyBinding Key="Backspace" Command="{Binding PauseCommand}"/>
         <KeyBinding Key="OemOpenBrackets" Command="{Binding PauseCommand}"/>
-        <KeyBinding Key="OemCloseBrackets" Command="{Binding GoCommand}"/>
+        <KeyBinding Key="OemCloseBrackets" Command="{Binding UnpauseCommand}"/>
         <KeyBinding Key="Up" Command="{Binding UpCommand}"/>
         <KeyBinding Key="Down" Command="{Binding DownCommand}"/>
         <KeyBinding Key="Delete" Command="{Binding DeleteCueCommand}"/>
@@ -73,40 +73,59 @@
                 <ColumnDefinition Width="*" MinWidth="20"/>
                 <ColumnDefinition Width="250" MinWidth="20"/>
             </Grid.ColumnDefinitions>
-            <DockPanel Grid.Column="0">
-                <Button Content="GO" Command="{Binding GoCommand}"
+            <Grid Grid.Column="0">
+                <Grid.RowDefinitions>
+                    <RowDefinition/>
+                    <RowDefinition MaxHeight="85"/>
+                </Grid.RowDefinitions>
+                <DockPanel Grid.Row="0">
+                    <Button Content="GO" Command="{Binding GoCommand}"
                         Height="70"
                         FontSize="28" FontWeight="Bold" 
                         Background="#FF135F1B" BorderBrush="#FF032707" 
                         Style="{DynamicResource SlightlyRoundButton}"
                         ToolTip="Advances to the next cue (Space)"
                         DockPanel.Dock="Top"/>
-                <Button Content="Stop" Command="{Binding StopCommand}" 
+                    <Button Content="Stop" Command="{Binding StopCommand}" 
                         Height="40"
                         FontSize="16" FontWeight="Bold" 
                         Background="#FF5F1313" BorderBrush="#FF4C0707" 
                         Style="{DynamicResource SlightlyRoundButton}"
                         ToolTip="Stops all active cues (Esc)"
                         DockPanel.Dock="Top"/>
-                <Label Content="{Binding Clock}" 
+                    <Label Content="{Binding Clock}" 
                        HorizontalAlignment="Center" 
                        FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
                        BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
                        DockPanel.Dock="Top"/>
-                <Separator DockPanel.Dock="Top"/>
-                <Label Content="Active Cues" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                    <Separator DockPanel.Dock="Top"/>
+                    <Label Content="Active Cues" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
                        FontWeight="Bold" Margin="5,0,0,0"
                        DockPanel.Dock="Top"/>
-                <ScrollViewer VerticalScrollBarVisibility="Auto" DockPanel.Dock="Top">
-                    <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
-                        <ItemsControl.ItemTemplate>
-                            <DataTemplate>
-                                <local:ActiveCueControl/>
-                            </DataTemplate>
-                        </ItemsControl.ItemTemplate>
-                    </ItemsControl>
-                </ScrollViewer>
-            </DockPanel>
+                    <ScrollViewer VerticalScrollBarVisibility="Auto" DockPanel.Dock="Top">
+                        <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
+                            <ItemsControl.ItemTemplate>
+                                <DataTemplate>
+                                    <local:ActiveCueControl/>
+                                </DataTemplate>
+                            </ItemsControl.ItemTemplate>
+                        </ItemsControl>
+                    </ScrollViewer>
+                </DockPanel>
+                <StackPanel Grid.Row="1">
+                    <Label Content="Preload Cue" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                           FontWeight="Bold" Margin="5,0,0,0"/>
+                    <DockPanel>
+                        <Label Content="Preload Time"/>
+                        <TextBox Text="{Binding PreloadTime, 
+                                        Converter={StaticResource TimeSpanStringConverter}, 
+                                        ConverterParameter=False,
+                                        UpdateSourceTrigger=PropertyChanged}" 
+                                 DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                    </DockPanel>
+                    <Button Content="Preload Cue" Command="{Binding PreloadCommand}" Margin="2" ToolTip="Loads the selected cue to given time"/>
+                </StackPanel>
+            </Grid>
             <GridSplitter Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <GridSplitter Grid.Column="2" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <ScrollViewer Grid.Column="1" Margin="5,5,0,0" 

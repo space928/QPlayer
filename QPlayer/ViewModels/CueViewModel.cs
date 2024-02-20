@@ -92,7 +92,7 @@ namespace QPlayer.ViewModels
         [Reactive] public MainViewModel? MainViewModel => mainViewModel;
         [Reactive] public bool IsSelected => mainViewModel?.SelectedCue == this;
         [Reactive] public CueState State { get; set; }
-        [Reactive] public TimeSpan PlaybackTime { get; set; }
+        [Reactive] public virtual TimeSpan PlaybackTime { get; set; }
         [Reactive][ReactiveDependency(nameof(LoopMode))] 
         public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
         [Reactive]
@@ -165,6 +165,9 @@ namespace QPlayer.ViewModels
         }
 
         #region Command Handlers
+        /// <summary>
+        /// Starts this cues after it's delay has elapsed.
+        /// </summary>
         public virtual void DelayedGo()
         {
             if (Delay == TimeSpan.Zero)
@@ -181,6 +184,9 @@ namespace QPlayer.ViewModels
                 mainViewModel?.ActiveCues.Add(this);
         }
 
+        /// <summary>
+        /// Starts this cue immediately.
+        /// </summary>
         public virtual void Go()
         {
             if (Duration == TimeSpan.Zero)
@@ -190,17 +196,40 @@ namespace QPlayer.ViewModels
                 mainViewModel?.ActiveCues.Add(this);
         }
 
+        /// <summary>
+        /// Pauses this cue. It can be resumed again by calling Go.
+        /// 
+        /// Not all cues support pausing. For unsupported cues, this should Stop().
+        /// </summary>
         public virtual void Pause()
         {
             goTimer.Stop();
             State = CueState.Paused;
         }
 
+        /// <summary>
+        /// Stops this cue immediately.
+        /// </summary>
         public virtual void Stop()
         {
             goTimer.Stop();
             State = CueState.Ready;
             mainViewModel?.ActiveCues.Remove(this);
+        }
+
+        /// <summary>
+        /// Sets the playback time of the cue to the given time, and puts it in the paused state.
+        /// </summary>
+        /// <param name="startTime">the time to start the cue at.</param>
+        public virtual void Preload(TimeSpan startTime)
+        {
+            if(State == CueState.Ready || State == CueState.Paused)
+            {
+                PlaybackTime = startTime;
+                State = CueState.Paused;
+                OnPropertyChanged(nameof(PlaybackTimeString));
+                OnPropertyChanged(nameof(PlaybackTimeStringShort));
+            }
         }
 
         public void SelectExecute()

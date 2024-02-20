@@ -42,6 +42,8 @@ namespace QPlayer.ViewModels
 
         [Reactive] public ProjectSettingsViewModel ProjectSettings { get; private set; }
 
+        [Reactive] public TimeSpan PreloadTime { get; set; }
+
         [Reactive] public RelayCommand NewProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
         [Reactive] public RelayCommand SaveProjectCommand { get; private set; }
@@ -62,9 +64,11 @@ namespace QPlayer.ViewModels
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
+        [Reactive] public RelayCommand UnpauseCommand { get; private set; }
         [Reactive] public RelayCommand StopCommand { get; private set; }
         [Reactive] public RelayCommand UpCommand { get; private set; }
         [Reactive] public RelayCommand DownCommand { get; private set; }
+        [Reactive] public RelayCommand PreloadCommand { get; private set; }
 
         [Reactive] public string? ProjectFilePath { get; private set; }
 
@@ -141,7 +145,7 @@ namespace QPlayer.ViewModels
             audioPlaybackManager = new(this);
 
             // Bind commands
-            OpenLogCommand = new(OpenLogExecute, () => logWindow == null);
+            OpenLogCommand = new(OpenLogExecute);
             NewProjectCommand = new(NewProjectExecute);
             OpenProjectCommand = new(OpenProjectExecute);
             SaveProjectCommand = new(SaveProjectExecute);
@@ -161,9 +165,11 @@ namespace QPlayer.ViewModels
 
             GoCommand = new(GoExecute);
             PauseCommand = new(PauseExecute);
+            UnpauseCommand = new(UnpauseExecute);
             StopCommand = new(StopExecute);
             UpCommand = new(() => SelectedCueInd--);
             DownCommand = new(() => SelectedCueInd++);
+            PreloadCommand = new(PreloadExecute);
 
             slowUpdateTimer = new(TimeSpan.FromMilliseconds(250));
             slowUpdateTimer.AutoReset = true;
@@ -258,6 +264,12 @@ namespace QPlayer.ViewModels
 
         public void OpenLogExecute()
         {
+            if(logWindow != null)
+            {
+                logWindow.Activate();
+                return;
+            }
+
             logWindow = new(this);
             //logWindow.Owner = ((Window)e.Source);
             //Log("Opening log...");
@@ -309,10 +321,15 @@ namespace QPlayer.ViewModels
 
         public void PauseExecute()
         {
-            if (SelectedCue != null)
-            {
-                SelectedCue.Pause();
-            }
+            for (int i = ActiveCues.Count - 1; i >= 0; i--)
+                ActiveCues[i].Pause();
+        }
+
+        public void UnpauseExecute()
+        {
+            for (int i = ActiveCues.Count - 1; i >= 0; i--)
+                if (ActiveCues[i].State == CueState.Paused)
+                    ActiveCues[i].Go();
         }
 
         public void StopExecute()
@@ -321,6 +338,11 @@ namespace QPlayer.ViewModels
                 ActiveCues[i].Stop();
 
             AudioPlaybackManager.StopAllSounds();
+        }
+
+        public void PreloadExecute()
+        {
+            SelectedCue?.Preload(PreloadTime);
         }
 
         public void MoveCueUpExecute()

@@ -5,9 +5,11 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QPlayer.Views" 
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
-        d:DataContext="{d:DesignInstance Type=vm:ViewModel}"
+        d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
-        Title="QPlayer - Log Window" Height="450" Width="800" Style="{DynamicResource CustomWindowStyle}">
+        Title="QPlayer - Log Window" Height="450" Width="800" 
+        Style="{DynamicResource CustomWindowStyle}" 
+        Icon="{StaticResource IconImage}">
     <Grid>
         <ListBox ItemsSource="{Binding LogList}" FontSize="11" FontFamily="Cascadia Mono" x:Name="LogListBox" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"/>
     </Grid>
