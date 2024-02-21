@@ -63,6 +63,7 @@ jobs:
         cert-password: '${{ secrets.Pfx_Key }}'
         cert-sha1: '${{ secrets.PFX_HASH }}'
         folder: '${{ env.Project_Directory }}\publish'
+        timestamp-server: 'http://timestamp.digicert.com'
         recursive: true
 
     # Compress build artifacts
