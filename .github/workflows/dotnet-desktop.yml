@@ -62,8 +62,6 @@ jobs:
         certificate: '${{ secrets.Base64_Encoded_Pfx }}'
         cert-password: '${{ secrets.Pfx_Key }}'
         cert-sha1: '${{ secrets.PFX_HASH }}'
-        # We use this option to inject the /as switch to sign tool which makes the signature append instead of replace
-        timestamp-server: 'http://timestamp.verisign.com/scripts/timstamp.dll /as'
         folder: '${{ env.Project_Directory }}\publish'
         recursive: true
 
