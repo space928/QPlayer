@@ -1,10 +1,25 @@
 # QPlayer
-![QPlayer Icon](QPlayer/Resources/IconM.png)
+<p align="center">
+    <img src="https://github.com/space928/QPlayer/blob/main/QPlayer/Resources/IconM.png?raw=true" alt="QPlayer Logo" width="128" height="128">
+</p>
+
+[![Build Status](https://github.com/space928/QPlayer/actions/workflows/dotnet-desktop.yml/badge.svg?branch=main)](https://github.com/space928/QPlayer/actions/workflows/dotnet-desktop.yml)
+[![GitHub License](https://img.shields.io/github/license/space928/QPlayer)](https://github.com/space928/QPlayer/blob/main/LICENSE)
+[![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/space928/QPlayer/total)](https://github.com/space928/QPlayer/releases)
+
 
 QPlayer is a simple media player for theatre. It allows cue lists of sound tracks to be created and 
-played. Media playback is handled by libVLC, providing a large range of supported media.
+played. Media playback is handled by NAudio, providing a large range of supported media.
 
-![image](https://github.com/space928/QPlayer/assets/15130114/973429cc-b6c8-4f3e-b61d-2a7791125bdf)
+**Features:**
+ - Playback of a range of audio types (wav, mp3, etc...)
+ - Playback of multiple cues concurrently
+ - Fade in and fade out
+ - Pausing and preloading cues
+ - Cue pre-delays
+
+
+![Application screenshot](https://github.com/space928/QPlayer/assets/15130114/1a63eaaa-2c13-48e4-be0e-e33b5921bb41)
 
 ## Building
 QPlayer can be built with Visual Studio 2022 using the .NET SDK 7.
