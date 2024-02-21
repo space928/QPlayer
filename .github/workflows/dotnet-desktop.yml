@@ -48,29 +48,24 @@ jobs:
       env:
         Configuration: ${{ matrix.configuration }}
 
-    # Decode the base 64 encoded pfx and save the Signing_Certificate
-    - name: Decode the pfx
-      run: |
-        $pfx_cert_byte = [System.Convert]::FromBase64String("${{ secrets.Base64_Encoded_Pfx }}")
-        $certificatePath = Join-Path -Path $env:Project_Directory -ChildPath GitHubActionsWorkflow.pfx
-        [IO.File]::WriteAllBytes("$certificatePath", $pfx_cert_byte)
-
     # Create the app package by building and packaging the Windows Application Packaging project
     - name: Create the app package
-      run: msbuild $env:Project_Path /p:Configuration=$env:Configuration /p:PublishProfile=$env:PublishProfileDir /p:PublishDir="publish/" /target:publish  # /p:PackageCertificateKeyFile=GitHubActionsWorkflow.pfx /p:PackageCertificatePassword=${{ secrets.Pfx_Key }}
+      run: msbuild $env:Project_Path /p:Configuration=$env:Configuration /p:PublishProfile=$env:PublishProfileDir /p:PublishDir="publish/" /target:publish
       env:
         PublishProfileDir: "/QPlayer/Properties/PublishProfiles/ClickOnceProfile.pubxml"
         Configuration: ${{ matrix.configuration }}
 
     # Sign the assembly
     - name: Sign the assembly
-      run: |
-        signtool sign /f GitHubActionsWorkflow.pfx /p ${{ secrets.Pfx_Key }} $env:Project_Directory\publish\QPlayer.dll
-        signtool sign /f GitHubActionsWorkflow.pfx /p ${{ secrets.Pfx_Key }} $env:Project_Directory\publish\QPlayer.exe
-
-    # Remove the pfx
-    - name: Remove the pfx
-      run: Remove-Item -path $env:Project_Directory\GitHubActionsWorkflow.pfx
+      uses: GabrielAcostaEngler/signtool-code-sign@main
+      with:
+        certificate: '${{ secrets.Base64_Encoded_Pfx }}'
+        cert-password: '${{ secrets.Pfx_Key }}'
+        cert-sha1: '${{ secrets.PFX_HASH }}'
+        # We use this option to inject the /as switch to sign tool which makes the signature append instead of replace
+        timestamp-server: 'http://timestamp.verisign.com/scripts/timstamp.dll /as'
+        folder: '${{ env.Project_Directory }}\publish'
+        recursive: true
 
     # Compress build artifacts
     - name: Compress build artifacts
