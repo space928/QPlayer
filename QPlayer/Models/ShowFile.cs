@@ -37,6 +37,7 @@ namespace QPlayer.Models
         SoundCue,
         TimeCodeCue,
         StopCue,
+        VolumeCue
     }
 
     public enum LoopMode
@@ -60,6 +61,7 @@ namespace QPlayer.Models
     [JsonDerivedType(typeof(SoundCue), typeDiscriminator: nameof(SoundCue))]
     [JsonDerivedType(typeof(TimeCodeCue), typeDiscriminator: nameof(TimeCodeCue))]
     [JsonDerivedType(typeof(StopCue), typeDiscriminator: nameof(StopCue))]
+    [JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
     public record Cue
     {
         public CueType type;
@@ -105,6 +107,7 @@ namespace QPlayer.Models
         public float volume = 1;
         public float fadeIn;
         public float fadeOut;
+        public FadeType fadeType;
 
         public SoundCue() : base()
         {
@@ -132,10 +135,26 @@ namespace QPlayer.Models
         public decimal stopQid;
         public StopMode stopMode;
         public float fadeOutTime;
+        public FadeType fadeType;
 
         public StopCue() : base()
         {
             type = CueType.StopCue;
+        }
+    }
+
+    [Serializable]
+    [JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
+    public record VolumeCue : Cue
+    {
+        public decimal soundQid;
+        public float fadeTime;
+        public float volume;
+        public FadeType fadeType;
+
+        public VolumeCue() : base()
+        {
+            type = CueType.VolumeCue;
         }
     }
 }

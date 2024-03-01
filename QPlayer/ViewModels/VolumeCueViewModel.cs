@@ -7,19 +7,19 @@ using Cue = QPlayer.Models.Cue;
 
 namespace QPlayer.ViewModels
 {
-    public class StopCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
+    public class VolumeCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
     {
-        [Reactive, ReactiveDependency(nameof(FadeOutTime))] 
-        public override TimeSpan Duration => TimeSpan.FromSeconds(FadeOutTime);
-        [Reactive] public decimal StopTarget { get; set; }
-        [Reactive] public StopMode StopMode { get; set; }
-        [Reactive] public float FadeOutTime { get; set; }
+        [Reactive, ReactiveDependency(nameof(FadeTime))] 
+        public override TimeSpan Duration => TimeSpan.FromSeconds(FadeTime);
+        [Reactive] public decimal Target { get; set; }
+        [Reactive] public float Volume { get; set; }
+        [Reactive] public float FadeTime { get; set; }
         [Reactive] public FadeType FadeType { get; set; }
 
         private readonly Timer playbackProgressUpdater;
         private DateTime startTime;
 
-        public StopCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
+        public VolumeCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
             playbackProgressUpdater = new Timer
             {
@@ -31,7 +31,7 @@ namespace QPlayer.ViewModels
             {
                 switch (e.PropertyName)
                 {
-                    case nameof(FadeOutTime):
+                    case nameof(FadeTime):
                         OnPropertyChanged(nameof(Duration));
                         OnPropertyChanged(nameof(PlaybackTimeString));
                         OnPropertyChanged(nameof(PlaybackTimeStringShort));
@@ -52,20 +52,17 @@ namespace QPlayer.ViewModels
         public override void Go()
         {
             base.Go();
-            // Stop cues don't support preloading
+            // Volume cues don't support preloading
             PlaybackTime = TimeSpan.Zero;
             startTime = DateTime.Now;
             playbackProgressUpdater.Start();
-            var cue = mainViewModel?.Cues.FirstOrDefault(x => x.QID == StopTarget);
+            var cue = mainViewModel?.Cues.FirstOrDefault(x => x.QID == Target);
             if(cue != null)
             {
                 if (cue is SoundCueViewModel soundCue)
-                    soundCue.FadeOutAndStop(FadeOutTime, FadeType);
+                    soundCue.Fade(Volume, FadeTime, FadeType);
                 else
-                {
-                    cue.Stop();
                     Stop();
-                }
             } else
             {
                 Stop();
@@ -89,13 +86,13 @@ namespace QPlayer.ViewModels
         public override void ToModel(string propertyName)
         {
             base.ToModel(propertyName);
-            if (cueModel is StopCue scue)
+            if (cueModel is VolumeCue scue)
             {
                 switch (propertyName)
                 {
-                    case nameof(StopTarget): scue.stopQid = StopTarget; break;
-                    case nameof(StopMode): scue.stopMode = StopMode; break;
-                    case nameof(FadeOutTime): scue.fadeOutTime = FadeOutTime; break;
+                    case nameof(Target): scue.soundQid = Target; break;
+                    case nameof(Volume): scue.volume = Volume; break;
+                    case nameof(FadeTime): scue.fadeTime = FadeTime; break;
                     case nameof(FadeType): scue.fadeType = FadeType; break;
                 }
             }
@@ -104,23 +101,23 @@ namespace QPlayer.ViewModels
         public override void ToModel(Cue cue)
         {
             base.ToModel(cue);
-            if (cue is StopCue scue)
+            if (cue is VolumeCue scue)
             {
-                scue.stopQid = StopTarget;
-                scue.stopMode = StopMode;
-                scue.fadeOutTime = FadeOutTime;
+                scue.soundQid = Target;
+                scue.volume = Volume;
+                scue.fadeTime = FadeTime;
                 scue.fadeType = FadeType;
             }
         }
 
         public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
-            StopCueViewModel vm = new(mainViewModel);
-            if (cue is StopCue scue)
+            VolumeCueViewModel vm = new(mainViewModel);
+            if (cue is VolumeCue scue)
             {
-                vm.StopTarget = scue.stopQid;
-                vm.StopMode = scue.stopMode;
-                vm.FadeOutTime = scue.fadeOutTime;
+                vm.Target = scue.soundQid;
+                vm.Volume = scue.volume;
+                vm.FadeTime = scue.fadeTime;
                 vm.FadeType = scue.fadeType;
             }
             return vm;

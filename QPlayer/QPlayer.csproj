@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.3.3-beta</Version>
+    <Version>1.4.1-beta</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
 	<Copyright>©️ Thomas Mathieson 2024</Copyright>

@@ -57,6 +57,7 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand CreateSoundCueCommand { get; private set; }
         [Reactive] public RelayCommand CreateTimeCodeCueCommand { get; private set; }
         [Reactive] public RelayCommand CreateStopCueCommand { get; private set; }
+        [Reactive] public RelayCommand CreateVolumeCueCommand { get; private set; }
 
         [Reactive] public RelayCommand MoveCueUpCommand { get; private set; }
         [Reactive] public RelayCommand MoveCueDownCommand { get; private set; }
@@ -158,6 +159,7 @@ namespace QPlayer.ViewModels
             CreateSoundCueCommand = new(() => CreateCue(CueType.SoundCue));
             CreateTimeCodeCueCommand = new(() => CreateCue(CueType.TimeCodeCue));
             CreateStopCueCommand = new(() => CreateCue(CueType.StopCue));
+            CreateVolumeCueCommand = new(() => CreateCue(CueType.VolumeCue));
 
             MoveCueUpCommand = new(MoveCueUpExecute);
             MoveCueDownCommand = new(MoveCueDownExecute);
@@ -225,6 +227,7 @@ namespace QPlayer.ViewModels
             if (!UnsavedChangedCheck())
                 return;
 
+            ProjectFilePath = null;
             LoadShowfileModel(new());
         }
 
@@ -422,25 +425,30 @@ namespace QPlayer.ViewModels
 
             if (expand)
             {
-                if (Path.Exists(path))
+                if (File.Exists(path))
                     return path;
 
                 string ret = Path.Combine(projDir, path);
-                if (Path.Exists(ret))
+                if (File.Exists(ret))
                     return ret;
 
                 // The file wasn't found, try searching for it in the project directory
                 string fileName = Path.GetFileName(path);
+                if(string.IsNullOrEmpty(fileName) || fileName == ".")
+                    return path;
                 foreach (string file in Directory.EnumerateFiles(projDir, fileName, SearchOption.AllDirectories))
-                    return file;
+                    if (Path.GetFileName(file) == fileName)
+                        return file;
 
                 // The file couldn't be found, let it fail normally.
                 return path;
             }
             else
             {
+                if(string.IsNullOrEmpty(path))
+                    return path;
                 string absPath = Path.GetFullPath(path);
-                if (absPath.Contains(projDir))
+                if (absPath.Contains(projDir) && absPath != projDir)
                     return Path.GetRelativePath(projDir, absPath);
                 return path;
             }
@@ -541,8 +549,8 @@ namespace QPlayer.ViewModels
                     throw new FileFormatException("Show file deserialized as null!");
                 if (s.fileFormatVersion != ShowFile.FILE_FORMAT_VERSION)
                     Log($"Project file version '{s.fileFormatVersion}' does not match QPlayer version '{ShowFile.FILE_FORMAT_VERSION}'!", LogLevel.Warning);
-                LoadShowfileModel(s);
                 ProjectFilePath = path;
+                LoadShowfileModel(s);
 
                 Log($"Loaded project from disk! {path}");
             }
@@ -581,6 +589,7 @@ namespace QPlayer.ViewModels
                 case CueType.SoundCue: model = new SoundCue(); ; break;
                 case CueType.TimeCodeCue: model = new TimeCodeCue(); ; break;
                 case CueType.StopCue: model = new StopCue(); ; break;
+                case CueType.VolumeCue : model = new VolumeCue(); ; break;
                 default: throw new NotImplementedException();
             }
             decimal newId;

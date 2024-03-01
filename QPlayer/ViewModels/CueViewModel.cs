@@ -120,7 +120,10 @@ namespace QPlayer.ViewModels
         [Reactive] public static ObservableCollection<CueType>? CueTypeVals { get; private set; }
         [Reactive] public static ObservableCollection<LoopMode>? LoopModeVals { get; private set; }
         [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
+        [Reactive] public static ObservableCollection<FadeType>? FadeTypeVals { get; private set; }
         #endregion
+
+        public event EventHandler? OnCompleted;
 
         protected SynchronizationContext? synchronizationContext;
         protected CueViewModel? parent;
@@ -147,6 +150,7 @@ namespace QPlayer.ViewModels
             CueTypeVals ??= new ObservableCollection<CueType>(Enum.GetValues<CueType>());
             LoopModeVals ??= new ObservableCollection<LoopMode>(Enum.GetValues<LoopMode>());
             StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
+            FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
         }
 
         private void MainViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
@@ -190,7 +194,10 @@ namespace QPlayer.ViewModels
         public virtual void Go()
         {
             if (Duration == TimeSpan.Zero)
+            {
+                OnCompleted?.Invoke(this, EventArgs.Empty);
                 return;
+            }
             State = CueState.Playing;
             if(!mainViewModel?.ActiveCues?.Contains(this) ?? false)
                 mainViewModel?.ActiveCues.Add(this);
@@ -215,6 +222,7 @@ namespace QPlayer.ViewModels
             goTimer.Stop();
             State = CueState.Ready;
             mainViewModel?.ActiveCues.Remove(this);
+            OnCompleted?.Invoke(this, EventArgs.Empty);
         }
 
         /// <summary>
@@ -312,6 +320,7 @@ namespace QPlayer.ViewModels
                 case CueType.SoundCue: viewModel = SoundCueViewModel.FromModel(cue, mainViewModel); break;
                 case CueType.TimeCodeCue: viewModel = TimeCodeCueViewModel.FromModel(cue, mainViewModel); break;
                 case CueType.StopCue: viewModel = StopCueViewModel.FromModel(cue, mainViewModel); break;
+                case CueType.VolumeCue: viewModel = VolumeCueViewModel.FromModel(cue, mainViewModel); break;
                 default: throw new ArgumentException(null, nameof(cue.type));
             }
             viewModel.mainViewModel = mainViewModel;

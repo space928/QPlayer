@@ -62,6 +62,9 @@
             <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.TimeCodeCue}">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconTimeCodeCue}"/>
             </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.VolumeCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconVolumeCue}"/>
+            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 

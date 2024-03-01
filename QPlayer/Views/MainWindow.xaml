@@ -138,6 +138,7 @@
                         <MenuItem Header="Add Dummy Cue" Command="{Binding CreateDummyCueCommand}"/>
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
                         <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
+                        <MenuItem Header="Add Volume Cue" Command="{Binding CreateVolumeCueCommand}"/>
                         <Separator/>
                         <MenuItem Header="Move Up" Command="{Binding MoveCueUpCommand}" ToolTip="Moves the selected cue up (Ctrl+Up)"/>
                         <MenuItem Header="Move Down" Command="{Binding MoveCueDownCommand}" ToolTip="Moves the selected cue down (Ctrl+Down)"/>
@@ -268,6 +269,10 @@
                                                 <Label Content="Fade Out Time"/>
                                                 <TextBox Text="{Binding FadeOut, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
+                                            <DockPanel ToolTip="The type of curve to use when fading the volume">
+                                                <Label Content="Fade Type"/>
+                                                <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
                                         </StackPanel>
                                     </DataTemplate>
                                     <DataTemplate DataType="{x:Type vm:TimeCodeCueViewModel}">
@@ -301,6 +306,30 @@
                                             <DockPanel ToolTip="Fade out time in seconds">
                                                 <Label Content="Fade Out Time"/>
                                                 <TextBox Text="{Binding FadeOutTime, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel ToolTip="The type of curve to use when fading out">
+                                                <Label Content="Fade Type"/>
+                                                <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                        </StackPanel>
+                                    </DataTemplate>
+                                    <DataTemplate DataType="{x:Type vm:VolumeCueViewModel}">
+                                        <StackPanel>
+                                            <DockPanel>
+                                                <Label Content="Target Q ID"/>
+                                                <TextBox Text="{Binding Target, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel ToolTip="The volume to fade to">
+                                                <Label Content="Volume"/>
+                                                <TextBox Text="{Binding Volume, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel ToolTip="Fade time in seconds">
+                                                <Label Content="Fade Time"/>
+                                                <TextBox Text="{Binding FadeTime, UpdateSourceTrigger=PropertyChanged}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                            </DockPanel>
+                                            <DockPanel ToolTip="The type of curve to use when fading the volume">
+                                                <Label Content="Fade Type"/>
+                                                <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=PropertyChanged}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                                             </DockPanel>
                                         </StackPanel>
                                     </DataTemplate>

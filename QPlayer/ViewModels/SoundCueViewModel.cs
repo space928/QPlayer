@@ -30,13 +30,13 @@ namespace QPlayer.ViewModels
         [Reactive] public float Volume { get; set; }
         [Reactive] public float FadeIn { get; set; }
         [Reactive] public float FadeOut { get; set; }
+        [Reactive] public FadeType FadeType { get; set; }
         [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
 
         private AudioFileReader? audioFile;
-        private FadeInOutSampleProvider? fadeInOutProvider;
+        private FadingSampleProvider? fadeInOutProvider;
         private readonly Timer audioProgressUpdater;
         private readonly Timer fadeOutTimer;
-        private readonly Timer fadeOutEndTimer;
 
         public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
@@ -48,15 +48,7 @@ namespace QPlayer.ViewModels
                 AutoReset = false
             };
             fadeOutTimer.Elapsed += FadeOutTimer_Elapsed;
-            fadeOutEndTimer = new Timer
-            {
-                AutoReset = false
-            };
-            fadeOutEndTimer.Elapsed += (o, e) =>
-            {
-                fadeOutEndTimer.Enabled = false;
-                synchronizationContext?.Post((x) => Stop(), null);
-            };
+
             PropertyChanged += (o, e) =>
             {
                 switch (e.PropertyName)
@@ -65,8 +57,8 @@ namespace QPlayer.ViewModels
                         LoadAudioFile();
                         break;
                     case nameof(Volume):
-                        if (audioFile != null)
-                            audioFile.Volume = Volume;
+                        if (fadeInOutProvider != null)
+                            fadeInOutProvider.Volume = Volume;
                         break;
                     case nameof(StartTime):
                         OnPropertyChanged(nameof(Duration));
@@ -75,38 +67,6 @@ namespace QPlayer.ViewModels
                         break;
                 }
             };
-        }
-
-        private void FadeOutTimer_Elapsed(object? sender, ElapsedEventArgs e)
-        {
-            synchronizationContext?.Post((x) => {
-                if (fadeInOutProvider == null || mainViewModel == null)
-                    return;
-
-                switch (State)
-                {
-                    case CueState.Ready:
-                    case CueState.Paused:
-                        return;
-                    case CueState.PlayingLooped:
-                    case CueState.Playing:
-                        break;
-                    case CueState.Delay:
-                        Stop();
-                        break;
-                }
-
-                fadeInOutProvider.BeginFadeOut(FadeOut * 1000);
-            }, null);
-        }
-
-        private void AudioProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
-        {
-            synchronizationContext?.Post((x) => {
-                OnPropertyChanged(nameof(PlaybackTime));
-                OnPropertyChanged(nameof(PlaybackTimeString));
-                OnPropertyChanged(nameof(PlaybackTimeStringShort));
-            }, null);
         }
 
         /// <summary>
@@ -159,17 +119,15 @@ namespace QPlayer.ViewModels
             audioProgressUpdater.Start();
             if (FadeOut > 0)
             {
-                double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - audioFile.CurrentTime - StartTime).TotalMilliseconds;
-                if (fadeOutTime <= int.MaxValue)
+                double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - audioFile.CurrentTime + StartTime).TotalMilliseconds;
+                if (fadeOutTime > 0 && fadeOutTime <= int.MaxValue)
                 {
                     fadeOutTimer.Interval = fadeOutTime;
                     fadeOutTimer.Start();
                 }
             }
-            if (fadeOutEndTimer.Enabled)
-                fadeOutEndTimer.Start();
             mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x)=>Stop());
-            fadeInOutProvider.BeginFadeIn(Math.Max(FadeIn * 1000, 1000/(double)fadeInOutProvider.WaveFormat.SampleRate));
+            fadeInOutProvider.BeginFade(1, Math.Max(FadeIn * 1000, 1000/(double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
         }
 
         public override void Pause()
@@ -180,7 +138,6 @@ namespace QPlayer.ViewModels
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
             audioProgressUpdater.Stop();
             fadeOutTimer.Stop();
-            fadeOutEndTimer.Stop();
         }
 
         public override void Stop()
@@ -190,10 +147,11 @@ namespace QPlayer.ViewModels
         }
 
         /// <summary>
-        /// Fades out the current playing sound
+        /// Fades out the current playing sound.
         /// </summary>
-        /// <param name="duration"></param>
-        public void FadeOutAndStop(float duration)
+        /// <param name="duration">The duration in seconds to fade over</param>
+        /// <param name="fadeType">The type of fade to use</param>
+        public void FadeOutAndStop(float duration, FadeType? fadeType = null)
         {
             if (fadeInOutProvider == null || mainViewModel == null)
                 return;
@@ -216,10 +174,74 @@ namespace QPlayer.ViewModels
                 return;
             }
 
-            fadeInOutProvider.BeginFadeOut(duration * 1000);
-            fadeOutEndTimer.Interval = duration * 1000;
-            fadeOutEndTimer.Enabled = true;
-            fadeOutEndTimer.Start();
+            fadeInOutProvider.BeginFade(0, duration * 1000, fadeType ?? FadeType, FadeOut_Completed);
+        }
+
+        /// <summary>
+        /// Fades this sound to the given volume in a given amount of time.
+        /// </summary>
+        /// <param name="volume">The volume to fade to</param>
+        /// <param name="duration">The duration in seconds to fade over</param>
+        /// <param name="fadeType">The type of fade to use</param>
+        public void Fade(float volume, float duration, FadeType? fadeType = null)
+        {
+            if (fadeInOutProvider == null || mainViewModel == null)
+                return;
+            switch (State)
+            {
+                case CueState.Ready:
+                case CueState.Paused:
+                case CueState.Delay: 
+                    return;
+                case CueState.PlayingLooped:
+                case CueState.Playing:
+                    break;
+            }
+
+            if (duration == 0)
+            {
+                return;
+            }
+
+            fadeInOutProvider.BeginFade(volume, duration * 1000, fadeType ?? FadeType);
+        }
+
+        private void FadeOutTimer_Elapsed(object? sender, ElapsedEventArgs e)
+        {
+            synchronizationContext?.Post((x) => {
+                if (fadeInOutProvider == null || mainViewModel == null)
+                    return;
+
+                switch (State)
+                {
+                    case CueState.Ready:
+                    case CueState.Paused:
+                        return;
+                    case CueState.PlayingLooped:
+                    case CueState.Playing:
+                        break;
+                    case CueState.Delay:
+                        Stop();
+                        break;
+                }
+
+                fadeInOutProvider.BeginFade(0, FadeOut * 1000, FadeType, FadeOut_Completed);
+            }, null);
+        }
+
+        private void AudioProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
+        {
+            synchronizationContext?.Post((x) => {
+                OnPropertyChanged(nameof(PlaybackTime));
+                OnPropertyChanged(nameof(PlaybackTimeString));
+                OnPropertyChanged(nameof(PlaybackTimeStringShort));
+            }, null);
+        }
+
+        private void FadeOut_Completed(bool completed)
+        {
+            if (completed)
+                Stop();
         }
 
         /// <summary>
@@ -233,7 +255,6 @@ namespace QPlayer.ViewModels
             PlaybackTime = TimeSpan.Zero;
             audioProgressUpdater.Stop();
             fadeOutTimer.Stop();
-            fadeOutEndTimer.Stop();
         }
 
         private void UnloadAudioFile()
@@ -271,9 +292,7 @@ namespace QPlayer.ViewModels
                 // For some reason these don't get raised automatically...
                 OnPropertyChanged(nameof(PlaybackTimeString));
                 OnPropertyChanged(nameof(PlaybackTimeStringShort));
-                //if (PlaybackDuration == TimeSpan.Zero)
-                //    PlaybackDuration = audioFile.TotalTime;
-                audioFile.Volume = Volume;
+                // audioFile.Volume = Volume;
                 fadeInOutProvider = new(audioFile, true);
             } catch (Exception ex)
             {
@@ -288,12 +307,13 @@ namespace QPlayer.ViewModels
             {
                 switch (propertyName)
                 {
-                    case nameof(Path): scue.path = Path; break;
+                    case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
                     case nameof(StartTime): scue.startTime = StartTime; break;
                     case nameof(PlaybackDuration): scue.duration = PlaybackDuration; break;
                     case nameof(Volume): scue.volume = Volume; break;
                     case nameof(FadeIn): scue.fadeIn = FadeIn; break;
                     case nameof(FadeOut): scue.fadeOut = FadeOut; break;
+                    case nameof(FadeType): scue.fadeType = FadeType; break;
                 }
             }
         }
@@ -303,12 +323,13 @@ namespace QPlayer.ViewModels
             base.ToModel(cue);
             if (cue is SoundCue scue)
             {
-                scue.path = Path;
+                scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path;
                 scue.startTime = StartTime;
                 scue.duration = PlaybackDuration;
                 scue.volume = Volume;
                 scue.fadeIn = FadeIn;
                 scue.fadeOut = FadeOut;
+                scue.fadeType = FadeType;
             }
         }
 
@@ -323,6 +344,7 @@ namespace QPlayer.ViewModels
                 vm.Volume = scue.volume;
                 vm.FadeIn = scue.fadeIn;
                 vm.FadeOut = scue.fadeOut;
+                vm.FadeType = scue.fadeType;
             }
             return vm;
         }
