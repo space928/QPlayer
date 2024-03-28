@@ -390,6 +390,11 @@ namespace QPlayer.ViewModels
 
         public static void Log(object message, LogLevel level = LogLevel.Info, [CallerMemberName] string caller = "")
         {
+#if !DEBUG
+            if (level <= LogLevel.Debug)
+                return;
+#endif
+
             lock (logListLock)
             {
                 string msg = $"[{level}] [{DateTime.Now}] [{caller}] {message}";

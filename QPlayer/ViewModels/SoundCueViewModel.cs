@@ -7,7 +7,9 @@ using ReactiveUI.Fody.Helpers;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
+using System.Threading.Tasks;
 using System.Timers;
+using System.Windows.Media;
 using Cue = QPlayer.Models.Cue;
 
 namespace QPlayer.ViewModels
@@ -18,12 +20,12 @@ namespace QPlayer.ViewModels
         [Reactive] public TimeSpan StartTime { get; set; }
         [Reactive] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
         [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (audioFile?.TotalTime ?? TimeSpan.Zero) - StartTime : PlaybackDuration;
-        [Reactive] public override TimeSpan PlaybackTime 
-        { 
+        [Reactive] public override TimeSpan PlaybackTime
+        {
             get => IsAudioFileValid ? audioFile.CurrentTime - StartTime : TimeSpan.Zero;
             set
             {
-                if(IsAudioFileValid) 
+                if (IsAudioFileValid)
                     audioFile.CurrentTime = value + StartTime;
             }
         }
@@ -33,10 +35,13 @@ namespace QPlayer.ViewModels
         [Reactive] public FadeType FadeType { get; set; }
         [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
 
+        [Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
+
         private AudioFileReader? audioFile;
         private FadingSampleProvider? fadeInOutProvider;
         private readonly Timer audioProgressUpdater;
         private readonly Timer fadeOutTimer;
+        private readonly WaveFormRenderer waveFormRenderer;
 
         public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
@@ -67,6 +72,7 @@ namespace QPlayer.ViewModels
                         break;
                 }
             };
+            waveFormRenderer = new WaveFormRenderer();
         }
 
         /// <summary>
@@ -294,6 +300,14 @@ namespace QPlayer.ViewModels
                 OnPropertyChanged(nameof(PlaybackTimeStringShort));
                 // audioFile.Volume = Volume;
                 fadeInOutProvider = new(audioFile, true);
+
+                Task.Run(async () =>
+                {
+                    return await PeakFileWriter.LoadOrGeneratePeakFile(path);
+                }).ContinueWith(x =>
+                {
+                    waveFormRenderer.PeakFile = x.Result;
+                });
             } catch (Exception ex)
             {
                 MainViewModel.Log($"Error while loading audio file ({path}): \n" + ex, MainViewModel.LogLevel.Error);

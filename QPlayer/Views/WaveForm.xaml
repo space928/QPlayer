@@ -1,0 +1,57 @@
+﻿<UserControl x:Class="QPlayer.Views.WaveForm"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:QPlayer.Views" xmlns:viewmodels="clr-namespace:QPlayer.ViewModels"
+             mc:Ignorable="d" 
+             d:DataContext="{d:DesignInstance Type=viewmodels:SoundCueViewModel}"
+             d:DesignHeight="100" d:DesignWidth="250">
+    <DockPanel LastChildFill="True" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}">
+        <Grid x:Name="NavBar" Cursor="SizeWE" DockPanel.Dock="Bottom"
+              Height="{Binding NavBarHeight, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}, FallbackValue=20}"
+          MouseDown="WaveFormZoom_MouseDown" 
+          MouseLeave="WaveFormZoom_MouseLeave" MouseMove="WaveFormZoom_MouseMove"
+          Loaded="NavBar_Loaded" Unloaded="NavBar_Unloaded">
+            <Grid.Background>
+                <LinearGradientBrush EndPoint="10,0.5" StartPoint="0,0.5" SpreadMethod="Reflect" MappingMode="Absolute">
+                    <LinearGradientBrush.RelativeTransform>
+                        <TransformGroup>
+                            <ScaleTransform x:Name="NavBarScale" CenterY="0.5" CenterX="0.5" ScaleX="1.0"/>
+                            <TranslateTransform x:Name="NavBarTranslate" X="1"/>
+                        </TransformGroup>
+                    </LinearGradientBrush.RelativeTransform>
+                    <GradientStop Color="{DynamicResource AREghZyColour.Deep.1.Border.Static}"/>
+                    <GradientStop Color="{DynamicResource AREghZyColour.Deep.3.Border.Static}" Offset=".06"/>
+                </LinearGradientBrush>
+            </Grid.Background>
+            <TextBlock Text="{Binding WaveFormRenderer.ViewStart, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}, 
+                FallbackValue=00:00:00,
+                StringFormat=hh\\:mm\\:ss\\.ff}" 
+                       FontSize="{Binding TimeStampFontSize, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"
+                       HorizontalAlignment="Left" VerticalAlignment="Center" Padding="5,0"/>
+            <TextBlock Text="{Binding WaveFormRenderer.ViewEnd, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}, 
+                FallbackValue=00:00:00, 
+                StringFormat=hh\\:mm\\:ss\\.ff}" 
+                       FontSize="{Binding TimeStampFontSize, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}" 
+                       HorizontalAlignment="Right" VerticalAlignment="Center" Padding="5,0"/>
+        </Grid>
+        <Grid>
+            <TextBlock Padding="2" Text="Waveform is being displayed in another window..." 
+                       TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Visibility="{Binding InvWaveFormVisible, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"/>
+            <Rectangle x:Name="Graph" Margin="2" SizeChanged="WaveForm_SizeChanged" 
+                       Visibility="{Binding WaveFormVisible, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}">
+                <Rectangle.Fill>
+                    <DrawingBrush Drawing="{Binding WaveFormRenderer.WaveFormDrawing, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}" 
+                                  AlignmentY="Bottom" AlignmentX="Left" Stretch="Uniform"/>
+                </Rectangle.Fill>
+            </Rectangle>
+            <Button Content="[  ]"
+                    Command="{Binding PopupCommand, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"
+                    FontSize="6" Width="16" Height="16" Padding="0"
+                    HorizontalAlignment="Right" VerticalAlignment="Top"
+                    VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+        </Grid>
+    </DockPanel>
+</UserControl>
