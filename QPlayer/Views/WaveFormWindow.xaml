@@ -5,12 +5,34 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QPlayer.Views" 
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
-        d:DataContext="{d:DesignInstance Type=vm:WaveFormRenderer}"
+        d:DataContext="{d:DesignInstance Type=vm:SoundCueViewModel}"
         mc:Ignorable="d"
-        Title="{Binding WindowTitle}" Height="500" Width="1000" 
+        Title="{Binding WaveForm.WindowTitle}" Height="500" Width="1000" 
         Style="{DynamicResource CustomWindowStyle}" 
         Icon="{StaticResource IconImage}">
     <Grid>
-        <local:WaveForm WaveFormRenderer="{Binding}" NavBarHeight="60"/>
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition Height="20"/>
+        </Grid.RowDefinitions>
+        <local:WaveForm WaveFormRenderer="{Binding WaveForm}" SoundCue="{Binding}" NavBarHeight="60"/>
+        <Grid Grid.Row="1" Margin="0">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition Width="20"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Button Command="{Binding StopCommand}" Grid.Column="0" ToolTip="Stops this cue">
+                <Image Source="{StaticResource IconStop}" Margin="2"/>
+            </Button>
+            <Button Command="{Binding GoCommand}" Grid.Column="1" ToolTip="Starts this cue">
+                <Image Source="{StaticResource IconPlay}" Margin="2"/>
+            </Button>
+            <Button Command="{Binding PauseCommand}" Grid.Column="2" ToolTip="Pauses this cue">
+                <Image Source="{StaticResource IconPause}" Margin="2"/>
+            </Button>
+            <TextBlock Text="{Binding PlaybackTimeString, FallbackValue=00:00:00}" Margin="8,0" VerticalAlignment="Center" Grid.Column="3"/>
+        </Grid>
     </Grid>
 </Window>

@@ -46,7 +46,7 @@ namespace QPlayer.ViewModels
         public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
             OpenMediaFileCommand = new(OpenMediaFileExecute);
-            audioProgressUpdater = new Timer(100);
+            audioProgressUpdater = new Timer(50);
             audioProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;
             fadeOutTimer = new Timer
             {
@@ -72,7 +72,7 @@ namespace QPlayer.ViewModels
                         break;
                 }
             };
-            waveFormRenderer = new WaveFormRenderer();
+            waveFormRenderer = new WaveFormRenderer(this);
         }
 
         /// <summary>
@@ -133,7 +133,8 @@ namespace QPlayer.ViewModels
                 }
             }
             mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x)=>Stop());
-            fadeInOutProvider.BeginFade(1, Math.Max(FadeIn * 1000, 1000/(double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
+            fadeInOutProvider.Volume = 0;
+            fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000/(double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
         }
 
         public override void Pause()
@@ -144,6 +145,9 @@ namespace QPlayer.ViewModels
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
             audioProgressUpdater.Stop();
             fadeOutTimer.Stop();
+            OnPropertyChanged(nameof(PlaybackTime));
+            OnPropertyChanged(nameof(PlaybackTimeString));
+            OnPropertyChanged(nameof(PlaybackTimeStringShort));
         }
 
         public override void Stop()
@@ -241,6 +245,11 @@ namespace QPlayer.ViewModels
                 OnPropertyChanged(nameof(PlaybackTime));
                 OnPropertyChanged(nameof(PlaybackTimeString));
                 OnPropertyChanged(nameof(PlaybackTimeStringShort));
+
+                // When not using a fadeout, there's nothing to stop the sound early if it's been trimmed.
+                // This won't be very accurate, but should work for now...
+                if (PlaybackTime >= Duration)
+                    Stop();
             }, null);
         }
 
@@ -306,7 +315,11 @@ namespace QPlayer.ViewModels
                     return await PeakFileWriter.LoadOrGeneratePeakFile(path);
                 }).ContinueWith(x =>
                 {
-                    waveFormRenderer.PeakFile = x.Result;
+                    // Make sure this happens on the UI thread...
+                    synchronizationContext?.Post(x =>
+                    {
+                        waveFormRenderer.PeakFile = (PeakFile?)x;
+                    }, x.Result);
                 });
             } catch (Exception ex)
             {

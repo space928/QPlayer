@@ -237,7 +237,7 @@
                                                 <Button Content="..." Width="30" Command="{Binding OpenMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
                                                 <TextBox Text="{Binding Path}" Margin="8,2,2,2"/>
                                             </DockPanel>
-                                            <local:WaveForm Height="80" WaveFormRenderer="{Binding WaveForm}"/>
+                                            <local:WaveForm Height="80" WaveFormRenderer="{Binding WaveForm}" SoundCue="{Binding}"/>
                                             <DockPanel>
                                                 <Label Content="Start Time" ToolTip="The time in the sound file to start playing from."/>
                                                 <TextBox Text="{Binding StartTime, 

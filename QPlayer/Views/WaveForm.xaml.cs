@@ -23,16 +23,44 @@ namespace QPlayer.Views
         private const float panSpeed = 0.5f;
 
         private bool isWaveformCapturingMouse = false;
+        private bool isTimeinCapturing = false;
+        private bool isTimeoutCapturing = false;
         private POINT mouseStartPos;
         private Window? window;
-        private WaveFormWindow? waveFormWindow;
-        private bool enabled = true;
+        private static WaveFormWindow? waveFormWindow;
+        private double timeOutMarkerPos = 0;
+        private double timeInMarkerPos = 0;
+        private double timeHandleMouseOffset = 0;
+        private TimeSpan timeOutStart = TimeSpan.Zero;
 
-        [Reactive] public bool Enabled => enabled;
-        [Reactive] public Visibility WaveFormVisible => enabled ? Visibility.Visible : Visibility.Hidden;
-        [Reactive] public Visibility InvWaveFormVisible => enabled ? Visibility.Hidden : Visibility.Visible;
+        [Reactive] public bool Enabled => waveFormWindow == null || waveFormWindow == window || waveFormWindow.DataContext != SoundCue;
+        [Reactive] public Visibility WaveFormVisible => Enabled ? Visibility.Visible : Visibility.Hidden;
+        [Reactive] public Visibility InvWaveFormVisible => Enabled ? Visibility.Hidden : Visibility.Visible;
         [Reactive] public RelayCommand PopupCommand { get; private set; }
         [Reactive, ReactiveDependency(nameof(NavBarHeight))] public double TimeStampFontSize => NavBarHeight / 2;
+        [Reactive]
+        public Thickness PlaybackMarkerPos
+        {
+            get
+            {
+                if (SoundCue == null || WaveFormRenderer == null || WaveFormRenderer.ViewSpan == TimeSpan.Zero)
+                    return new(-10, 0, 0, 0);
+                return new((SoundCue.PlaybackTime - WaveFormRenderer.ViewStart + SoundCue.StartTime) / WaveFormRenderer.ViewSpan * Graph.ActualWidth - PlaybackMarker.Width, 0, 0, 0);
+            }
+        }
+        [Reactive] public Thickness TimeInMarkerPos => new(timeInMarkerPos,0,0,0);
+        [Reactive] public Thickness TimeOutMarkerPos => new(timeOutMarkerPos,0,0,0);
+
+        #region Dependency Properties
+
+        public SoundCueViewModel SoundCue
+        {
+            get { return (SoundCueViewModel)GetValue(SoundCueProperty); }
+            set { SetValue(SoundCueProperty, value); }
+        }
+
+        public static readonly DependencyProperty SoundCueProperty =
+            DependencyProperty.Register("SoundCue", typeof(SoundCueViewModel), typeof(WaveForm), new PropertyMetadata(SoundCueUpdated));
 
         public double NavBarHeight
         {
@@ -49,34 +77,104 @@ namespace QPlayer.Views
             set { SetValue(WaveFormRendererProperty, value); }
         }
 
-        // Using a DependencyProperty as the backing store for WaveFormRenderer.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty WaveFormRendererProperty =
-            DependencyProperty.Register("WaveFormRenderer", typeof(WaveFormRenderer), typeof(WaveForm), new PropertyMetadata(null));
+            DependencyProperty.Register("WaveFormRenderer", typeof(WaveFormRenderer), typeof(WaveForm), new PropertyMetadata(WaveFormRendererUpdated));
+
+        #endregion
 
         public WaveForm()
         {
             InitializeComponent();
 
             PopupCommand = new(OpenPopup);
+            UpdateTimePositions();
         }
 
-        private void WaveForm_SizeChanged(object sender, SizeChangedEventArgs e)
+        private static void SoundCueUpdated(DependencyObject sender, DependencyPropertyChangedEventArgs e)
         {
-            if (!enabled)
+            // The property change notfification chain to make this all work is jank-saurus-rex
+            // Basically, a SoundCueViewModel owns a WaveFormRenderer (which is also a vm);
+            // in the view we create a WaveForm usercontrol, the WaveForm usercontrol uses it's code-behind (this) as it's vm
+            // as such it defines 2 important dep properties: SoundCue and WaveFormRenderer (the important VMs which store
+            // everything we care about). Changes in in any of the 3 VMs (WaveForm, WaveFormRenderer, and SoundCue) are important
+            // to the view. Traditional data-bindings aren't flexible enough for all the data transformation we're doing
+            // (ValueConverters are inefficient and a mess, and very error prone) so we have to link up all these dependencies
+            // manually through property change notifications. And of course MS didn't really intend us to do this, so it's a pain.
+            // Maybe there's some neat solution to this I'm not seeing, but for now we have a tangled mess of dependencies.
+            PropertyChangedEventHandler f = (o, a) => SoundCue_PropertyChanged((WaveForm)sender, a);
+            if (e.OldValue != null)
+                ((SoundCueViewModel)e.OldValue).PropertyChanged -= f;
+            if(e.NewValue != null)
+                ((SoundCueViewModel)e.NewValue).PropertyChanged += f;
+        }
+
+        private static void WaveFormRendererUpdated(DependencyObject sender, DependencyPropertyChangedEventArgs e)
+        {
+            // Use a lambda to capture the dependency object (which is just this) sending the message, otherwise
+            // we won't know who to route notifications to.
+            // Did I mention that this is janky........
+            PropertyChangedEventHandler f = (o, a) => WaveFormRenderer_PropertyChanged((WaveForm)sender, a);
+            if (e.OldValue != null)
+                ((WaveFormRenderer)e.OldValue).PropertyChanged -= f;
+            if (e.NewValue != null)
+                ((WaveFormRenderer)e.NewValue).PropertyChanged += f;
+        }
+
+        private static void SoundCue_PropertyChanged(WaveForm sender, PropertyChangedEventArgs e)
+        {
+            if (sender is not WaveForm vm)
+                return;
+            switch (e.PropertyName)
+            {
+                case (nameof(vm.SoundCue.PlaybackTime)):
+                    vm.OnPropertyChanged(nameof(PlaybackMarkerPos));
+                    break;
+                case (nameof(vm.SoundCue.StartTime)):
+                case (nameof(vm.SoundCue.PlaybackDuration)):
+                case (nameof(vm.SoundCue.Duration)):
+                    vm.UpdateTimePositions();
+                    break;
+            }
+        }
+
+        private static void WaveFormRenderer_PropertyChanged(WaveForm sender, PropertyChangedEventArgs e)
+        {
+            if (sender is not WaveForm vm)
+                return;
+            switch (e.PropertyName)
+            {
+                case (nameof(vm.WaveFormRenderer.ViewStart)):
+                case (nameof(vm.WaveFormRenderer.ViewEnd)):
+                case (nameof(vm.WaveFormRenderer.WaveFormDrawing)):
+                    vm.OnPropertyChanged(nameof(PlaybackMarkerPos));
+                    vm.UpdateTimePositions();
+                    break;
+                case (nameof(vm.WaveFormRenderer.PeakFile)):
+                    vm.WaveForm_SizeChanged(vm, null);
+                    break;
+            }
+        }
+
+        private void WaveForm_SizeChanged(object sender, SizeChangedEventArgs? e)
+        {
+            if (!Enabled)
                 return;
             if (WaveFormRenderer == null)
                 return;
 
-            WaveFormRenderer.Width = ((Rectangle)sender).ActualWidth;
-            WaveFormRenderer.Height = ((Rectangle)sender).ActualHeight;
+            WaveFormRenderer.Width = Graph.ActualWidth;
+            WaveFormRenderer.Height = Graph.ActualHeight;
+            OnPropertyChanged(nameof(PlaybackMarkerPos));
+            UpdateTimePositions();
         }
 
         private void WaveFormZoom_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            if (!enabled)
+            if (!Enabled)
                 return;
 
             isWaveformCapturingMouse = true;
+            e.MouseDevice.Capture(NavBar);
             ShowCursor(false);
             GetCursorPos(out mouseStartPos);
             mouseStartPos.y -= 40;
@@ -88,13 +186,14 @@ namespace QPlayer.Views
 
         private void WaveFormZoom_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            if(!enabled) 
+            if(!Enabled) 
                 return;
             if(!isWaveformCapturingMouse) 
                 return;
 
             isWaveformCapturingMouse = false;
             SetCursorPos(mouseStartPos.x, mouseStartPos.y + 40);
+            e.MouseDevice.Capture(null);
             ShowCursor(true);
             NavBarScale.ScaleX = 1;
             NavBarTranslate.X = 0;
@@ -124,7 +223,7 @@ namespace QPlayer.Views
         {
             if (!isWaveformCapturingMouse)
                 return;
-            if (!enabled)
+            if (!Enabled)
                 return;
 
             GetCursorPos(out POINT nPos);
@@ -164,22 +263,13 @@ namespace QPlayer.Views
             if (window == null)
                 return;
 
-            window.MouseMove += WaveFormZoom_MouseMove;
-            window.MouseUp += WaveFormZoom_MouseUp;
-
-            WaveFormRenderer.Width = Graph.ActualWidth;
-            WaveFormRenderer.Height = Graph.ActualHeight;
+            WaveForm_SizeChanged(sender, null);
         }
 
         private void NavBar_Unloaded(object sender, RoutedEventArgs e)
         {
             if (window == null)
                 return;
-
-            window.MouseUp -= WaveFormZoom_MouseUp;
-            window.MouseMove -= WaveFormZoom_MouseMove;
-
-            waveFormWindow?.Close();
         }
 
         private void OpenPopup()
@@ -192,16 +282,15 @@ namespace QPlayer.Views
                 return;
             if (waveFormWindow != null)
             {
-                waveFormWindow.DataContext = WaveFormRenderer;
+                waveFormWindow.DataContext = SoundCue;
                 waveFormWindow.Activate();
                 return;
             }
 
             waveFormWindow = new();
-            waveFormWindow.DataContext = WaveFormRenderer;
+            waveFormWindow.DataContext = SoundCue;
             waveFormWindow.Closed += (s, e) =>
             {
-                enabled = true;
                 waveFormWindow = null;
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WaveFormVisible)));
                 PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InvWaveFormVisible)));
@@ -212,12 +301,114 @@ namespace QPlayer.Views
                     WaveFormRenderer.Height = Graph.ActualHeight;
                 }
             };
-            enabled = false;
+            window.Closed += (s, e) =>
+            {
+                waveFormWindow?.Close();
+            };
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(WaveFormVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InvWaveFormVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Enabled)));
             waveFormWindow.Show();
         }
+
+        #region Time In/Out Markers
+        private void TimeInMarker_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            isTimeinCapturing = true;
+            timeHandleMouseOffset = e.GetPosition(TimeInMarker).X;
+            if(SoundCue != null)
+                timeOutStart = SoundCue.Duration + SoundCue.StartTime;
+            e.MouseDevice.Capture(TimeInMarker, CaptureMode.Element);
+        }
+
+        private void TimeInMarker_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!isTimeinCapturing)
+                return;
+
+            isTimeinCapturing = false;
+            e.MouseDevice.Capture(null);
+        }
+
+        private void TimeInMarker_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!isTimeinCapturing)
+                return;
+            if(SoundCue == null || WaveFormRenderer == null) 
+                return;
+
+            var relGraph = e.GetPosition(Graph);
+            relGraph.X -= timeHandleMouseOffset;
+            var width = Graph.ActualWidth;
+            var time = (relGraph.X / width) * WaveFormRenderer.ViewSpan + WaveFormRenderer.ViewStart;
+            if (time < TimeSpan.Zero)
+                time = TimeSpan.Zero;
+            SoundCue.StartTime = time;
+            var duration = timeOutStart - time;
+            if(duration < TimeSpan.Zero)
+                duration = TimeSpan.Zero;
+            SoundCue.PlaybackDuration = duration;
+            if(SoundCue.State == CueState.Ready)
+                SoundCue.PlaybackTime = TimeSpan.Zero;
+        }
+
+        private void TimeOutMarker_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            isTimeoutCapturing = true;
+            timeHandleMouseOffset = e.GetPosition(TimeOutMarker).X;
+            e.MouseDevice.Capture(TimeOutMarker, CaptureMode.Element);
+        }
+
+        private void TimeOutMarker_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            if (!isTimeoutCapturing)
+                return;
+
+            isTimeoutCapturing = false;
+            e.MouseDevice.Capture(null);
+        }
+
+        private void TimeOutMarker_MouseMove(object sender, MouseEventArgs e)
+        {
+            if (!isTimeoutCapturing)
+                return;
+            if (SoundCue == null || WaveFormRenderer == null)
+                return;
+
+            var relGraph = e.GetPosition(Graph);
+            relGraph.X += TimeOutMarker.ActualWidth - timeHandleMouseOffset;
+            var width = Graph.ActualWidth;
+            var time = (relGraph.X / width) * WaveFormRenderer.ViewSpan + WaveFormRenderer.ViewStart - SoundCue.StartTime;
+            if(time < TimeSpan.Zero)
+                time = TimeSpan.Zero;
+            SoundCue.PlaybackDuration = time;
+        }
+
+        private void UpdateTimePositions()
+        {
+            if (SoundCue == null || WaveFormRenderer == null || WaveFormRenderer.ViewSpan == TimeSpan.Zero)
+            {
+                timeInMarkerPos = 0;
+                timeOutMarkerPos = 0;
+                OnPropertyChanged(nameof(TimeInMarkerPos));
+                OnPropertyChanged(nameof(TimeOutMarkerPos));
+                return;
+            }
+
+            var start = WaveFormRenderer.ViewStart;
+            var end = WaveFormRenderer.ViewEnd;
+            var span = WaveFormRenderer.ViewSpan;
+            double left = (SoundCue.StartTime - start) / span;
+            double right = (SoundCue.Duration + SoundCue.StartTime - start) / span;
+            var markerWidth = TimeInMarker.ActualWidth;
+            var graphWidth = Graph.ActualWidth;
+            timeInMarkerPos = left * graphWidth;
+            timeOutMarkerPos = right * graphWidth - markerWidth;
+
+            OnPropertyChanged(nameof(TimeInMarkerPos));
+            OnPropertyChanged(nameof(TimeOutMarkerPos));
+        }
+        #endregion
 
         [StructLayout(LayoutKind.Sequential)]
         private struct POINT
