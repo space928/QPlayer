@@ -1,0 +1,14 @@
+﻿<UserControl x:Class="QPlayer.Views.HiddenTextbox"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:QPlayer.Views"
+             x:Name="HiddenTextboxInst"
+             mc:Ignorable="d" 
+             d:DesignHeight="30" d:DesignWidth="200">
+    <Grid>
+        <Label Name="Label" MouseDown="Label_MouseDown" MouseDoubleClick="Label_MouseDoubleClick" Content="{Binding Text, ElementName=HiddenTextboxInst}"/>
+        <TextBox x:Name="TextBox" LostKeyboardFocus="TextBox_LostKeyboardFocus" KeyUp="TextBox_KeyUp" Visibility="Hidden" Text="{Binding Text, ElementName=HiddenTextboxInst}"/>
+    </Grid>
+</UserControl>

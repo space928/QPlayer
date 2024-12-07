@@ -1,0 +1,184 @@
+﻿<UserControl x:Class="QPlayer.Views.CueEditor"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:QPlayer.Views"
+             xmlns:vm="clr-namespace:QPlayer.ViewModels"
+             xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
+             mc:Ignorable="d" 
+             d:DesignHeight="600" d:DesignWidth="500" d:DataContext="{d:DesignInstance Type=vm:SoundCueViewModel}">
+    <UserControl.Resources>
+        <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        <vm:MultiplyByConverter x:Key="MultiplyByConverter"/>
+    </UserControl.Resources>
+    <StackPanel>
+        <Label Content="Cue Information" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <DockPanel>
+            <Label Content="Cue ID"/>
+            <TextBox Text="{Binding QID, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Cue Name"/>
+            <TextBox Text="{Binding Name, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Description"/>
+            <TextBox Text="{Binding Description, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Colour"/>
+            <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Enabled"/>
+            <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Type"/>
+            <ComboBox SelectedValue="{Binding Type}" IsEnabled="False" ItemsSource="{Binding CueTypeVals}" Margin="8,2,2,2"/>
+        </DockPanel>
+        <Label Content="Timing" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <DockPanel>
+            <Label Content="Halt"/>
+            <CheckBox IsChecked="{Binding Halt}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Wait"/>
+            <TextBox Text="{Binding Delay, 
+            Converter={StaticResource TimeSpanStringConverter}, 
+            ConverterParameter=False,
+            UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Duration"/>
+            <TextBox Text="{Binding Duration, 
+            Converter={StaticResource TimeSpanStringConverter},
+            ConverterParameter=False,
+            Mode=OneWay}" IsEnabled="False" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Loop"/>
+            <ComboBox SelectedItem="{Binding LoopMode}" ItemsSource="{Binding LoopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Loop Count"/>
+            <TextBox Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <Label Content="{Binding Type}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <ContentControl Content="{Binding}">
+            <ContentControl.Resources>
+                <DataTemplate DataType="{x:Type vm:DummyCueViewModel}">
+                    <Label Content="No additional properties" FontStyle="Italic"/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:GroupCueViewModel}">
+                    <Label Content="No additional properties" FontStyle="Italic"/>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:SoundCueViewModel}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Label Content="Media File"/>
+                            <Button Content="..." Width="30" Command="{Binding OpenMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+                            <TextBox Text="{Binding Path}" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <local:WaveForm Height="80" WaveFormRenderer="{Binding WaveForm}" SoundCue="{Binding}"/>
+                        <DockPanel>
+                            <Label Content="Start Time" ToolTip="The time in the sound file to start playing from."/>
+                            <TextBox Text="{Binding StartTime, 
+                            Converter={StaticResource TimeSpanStringConverter}, 
+                            ConverterParameter=False,
+                            UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Limits the playback duration of the sound. Set to 00:00 to play the full sound.">
+                            <Label Content="Duration"/>
+                            <TextBox Text="{Binding PlaybackDuration, 
+                            Converter={StaticResource TimeSpanStringConverter}, 
+                            ConverterParameter=False,
+                            UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel>
+                            <Label Content="Volume"/>
+                            <TextBox Text="{Binding Volume, UpdateSourceTrigger=Default}" Width="30" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
+                                Minimum="0" Maximum="2" 
+                                AutoToolTipPlacement="TopLeft" 
+                                IsSnapToTickEnabled="True" 
+                                TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
+                                LargeChange="0.1" SmallChange="0.01"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Fade in time in seconds">
+                            <Label Content="Fade In Time"/>
+                            <TextBox Text="{Binding FadeIn, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Fade out time in seconds">
+                            <Label Content="Fade Out Time"/>
+                            <TextBox Text="{Binding FadeOut, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                            <Label Content="Fade Type"/>
+                            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:TimeCodeCueViewModel}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Label Content="Start Time"/>
+                            <TextBox Text="{Binding StartTime, 
+                            Converter={StaticResource TimeSpanStringConverter},
+                            ConverterParameter=True,
+                            UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel>
+                            <Label Content="Duration"/>
+                            <TextBox Text="{Binding TCDuration, 
+                            Converter={StaticResource TimeSpanStringConverter}, 
+                            ConverterParameter=True,
+                            UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:StopCueViewModel}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Label Content="Target Q ID"/>
+                            <TextBox Text="{Binding StopTarget, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel>
+                            <Label Content="Stop Mode"/>
+                            <ComboBox SelectedItem="{Binding StopMode}" ItemsSource="{Binding StopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Fade out time in seconds">
+                            <Label Content="Fade Out Time"/>
+                            <TextBox Text="{Binding FadeOutTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The type of curve to use when fading out">
+                            <Label Content="Fade Type"/>
+                            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:VolumeCueViewModel}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Label Content="Target Q ID"/>
+                            <TextBox Text="{Binding Target, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The volume to fade to">
+                            <Label Content="Volume"/>
+                            <TextBox Text="{Binding Volume, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Fade time in seconds">
+                            <Label Content="Fade Time"/>
+                            <TextBox Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                            <Label Content="Fade Type"/>
+                            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+            </ContentControl.Resources>
+        </ContentControl>
+    </StackPanel>
+</UserControl>

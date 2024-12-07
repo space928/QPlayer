@@ -75,7 +75,15 @@ namespace QPlayer.ViewModels
     public abstract class CueViewModel : ObservableObject, IConvertibleModel<Cue, CueViewModel>
     {
         #region Bindable Properties
-        [Reactive] public decimal QID { get; set; }
+        [Reactive] public decimal QID
+        {
+            get => qid;
+            set
+            {
+                mainViewModel?.OnQIDChanged(qid, value, this);
+                qid = value;
+            }
+        }
         [Reactive] public CueType Type { get; set; }
         [Reactive] public decimal? ParentId { get; set; }
         [Reactive] public CueViewModel? Parent => ParentId != null ? (parent ??= mainViewModel?.Cues.FirstOrDefault(x=>x.QID==ParentId)) : null;
@@ -125,6 +133,7 @@ namespace QPlayer.ViewModels
 
         public event EventHandler? OnCompleted;
 
+        protected decimal qid;
         protected SynchronizationContext? synchronizationContext;
         protected CueViewModel? parent;
         protected Cue? cueModel;
@@ -311,18 +320,16 @@ namespace QPlayer.ViewModels
         {
             if(cue.qid == cue.parent)
                 throw new ArgumentException($"Circular reference detected! Cue {cue.qid} has itself as a parent!");
-
-            CueViewModel viewModel;
-            switch(cue.type)
+            CueViewModel viewModel = cue.type switch
             {
-                case CueType.GroupCue: viewModel = GroupCueViewModel.FromModel(cue, mainViewModel); break;
-                case CueType.DummyCue: viewModel = DummyCueViewModel.FromModel(cue, mainViewModel); break;
-                case CueType.SoundCue: viewModel = SoundCueViewModel.FromModel(cue, mainViewModel); break;
-                case CueType.TimeCodeCue: viewModel = TimeCodeCueViewModel.FromModel(cue, mainViewModel); break;
-                case CueType.StopCue: viewModel = StopCueViewModel.FromModel(cue, mainViewModel); break;
-                case CueType.VolumeCue: viewModel = VolumeCueViewModel.FromModel(cue, mainViewModel); break;
-                default: throw new ArgumentException(null, nameof(cue.type));
-            }
+                CueType.GroupCue => GroupCueViewModel.FromModel(cue, mainViewModel),
+                CueType.DummyCue => DummyCueViewModel.FromModel(cue, mainViewModel),
+                CueType.SoundCue => SoundCueViewModel.FromModel(cue, mainViewModel),
+                CueType.TimeCodeCue => TimeCodeCueViewModel.FromModel(cue, mainViewModel),
+                CueType.StopCue => StopCueViewModel.FromModel(cue, mainViewModel),
+                CueType.VolumeCue => VolumeCueViewModel.FromModel(cue, mainViewModel),
+                _ => throw new ArgumentException(null, nameof(cue.type)),
+            };
             viewModel.mainViewModel = mainViewModel;
 
             viewModel.QID = cue.qid;

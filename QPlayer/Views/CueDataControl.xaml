@@ -8,7 +8,8 @@
              d:DataContext="{d:DesignInstance Type=vm:DummyCueViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded">
-    <Grid MouseDown="Grid_MouseDown" PreviewMouseDown="Grid_PreviewMouseDown">
+    <Grid MouseDown="Grid_MouseDown" PreviewMouseDown="Grid_PreviewMouseDown" AllowDrop="True"
+          MouseMove="Grid_MouseMove" GiveFeedback="Grid_GiveFeedback" Drop="Grid_Drop">
         <Grid.Resources>
             <vm:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
             <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
@@ -36,13 +37,13 @@
             <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[10].Value}"/>
         </Grid.ColumnDefinitions>
         <Label Content="{Binding Parent}" Grid.Column="0" VerticalContentAlignment="Center"/>
-        <Label Content="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center"/>
+        <local:HiddenTextbox Text="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center"/>
         <Label Content="{Binding Type}" ContentTemplate="{StaticResource CueTypeTemplate}" VerticalContentAlignment="Center" Grid.Column="2"/>
         <ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3"/>
-        <Label Content="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center"/>
+        <local:HiddenTextbox Text="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center"/>
         <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5"/>
         <CheckBox IsChecked="{Binding Halt}" IsEnabled="{Binding IsSelected}" Grid.Column="6"/>
-        <Label Content="{Binding Delay, 
+        <local:HiddenTextbox Text="{Binding Delay, 
             Converter={StaticResource TimeSpanStringConverter}, 
             ConverterParameter=False}" 
                Grid.Column="7" VerticalContentAlignment="Center"/>

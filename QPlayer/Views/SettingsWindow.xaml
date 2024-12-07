@@ -12,14 +12,10 @@
         Icon="{StaticResource IconImage}">
     <Grid>
         <Grid Margin="5">
-            <Grid.RowDefinitions>
-                <RowDefinition MaxHeight="26"/>
-                <RowDefinition/>
-            </Grid.RowDefinitions>
-            <Label Content="Keyboard Shortcuts" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
-                   FontWeight="Bold" Margin="5,0,0,0" Grid.Row="0"/>
             <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto" Grid.Row="1">
                 <StackPanel>
+                    <Label Content="Keyboard Shortcuts" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                   FontWeight="Bold" Margin="5,0,0,0" Grid.Row="0"/>
                     <DockPanel>
                         <Label Content="Go"/>
                         <TextBlock Text="Space" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
@@ -77,6 +73,45 @@
                     <DockPanel>
                         <Label Content="Pack project"/>
                         <TextBlock Text="Ctrl+E" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <Separator Height="20" Background="Transparent"/>
+                    <Label Content="OSC Commands" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+       FontWeight="Bold" Margin="5,0,0,0" Grid.Row="0"/>
+                    <DockPanel>
+                        <Label Content="Go"/>
+                        <TextBlock Text="qplayer/go,[qid],[select]" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Pause"/>
+                        <TextBlock Text="qplayer/pause,[qid]" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Unpause"/>
+                        <TextBlock Text="qplayer/unpause,[qid]" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Stop"/>
+                        <TextBlock Text="qplayer/stop,[qid]" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Preload"/>
+                        <TextBlock Text="qplayer/preload,qid,[time]" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Select"/>
+                        <TextBlock Text="qplayer/select,[qid]" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Select previous"/>
+                        <TextBlock Text="qplayer/up" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Select next"/>
+                        <TextBlock Text="qplayer/down" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Save showfile"/>
+                        <TextBlock Text="qplayer/save" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
                     </DockPanel>
                 </StackPanel>
             </ScrollViewer>
