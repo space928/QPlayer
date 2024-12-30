@@ -92,6 +92,13 @@ namespace QPlayer.ViewModels
             UnloadAudioFile();
         }
 
+        internal override void OnFocussed()
+        {
+            base.OnFocussed();
+
+            WaveForm.Update();
+        }
+
         public void OpenMediaFileExecute()
         {
             OpenFileDialog openFileDialog = new()

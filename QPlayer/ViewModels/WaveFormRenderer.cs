@@ -29,7 +29,7 @@ public class WaveFormRenderer : ObservableObject
             peakFile = value;
             startTime = 0;
             endTime = 1;
-            Update();
+            InternalUpdate();
         }
         get => peakFile;
     }
@@ -38,24 +38,26 @@ public class WaveFormRenderer : ObservableObject
     [Reactive]
     public double Width
     {
-        set { width = (int)value; Update(); }
+        get => width;
+        set { var prev = width; width = (int)value; if (prev != value) InternalUpdate(); }
     }
     [Reactive]
     public double Height
     {
-        set { height = (int)value; Update(); }
+        get => height;
+        set { var prev = height; height = (int)value; if (prev != value) InternalUpdate(); }
     }
     [Reactive]
     public TimeSpan ViewStart
     {
         get => TimeSpan.FromSeconds(startTime * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
-        set { startTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); Update(); }
+        set { startTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); InternalUpdate(); }
     }
     [Reactive]
     public TimeSpan ViewEnd
     {
         get => TimeSpan.FromSeconds(endTime * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
-        set { endTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); Update(); }
+        set { endTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); InternalUpdate(); }
     }
     [Reactive]
     public TimeSpan ViewSpan => TimeSpan.FromSeconds((endTime - startTime) * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
@@ -63,6 +65,12 @@ public class WaveFormRenderer : ObservableObject
     public TimeSpan Duration => TimeSpan.FromSeconds((peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
     [Reactive, ReactiveDependency(nameof(PeakFile))] public string FileName => peakFile?.sourceName ?? string.Empty;
     [Reactive, ReactiveDependency(nameof(PeakFile))] public string WindowTitle => $"QPlayer - Waveform - {peakFile?.sourceName ?? string.Empty}";
+
+    /// <summary>
+    /// This is the name of a special property change notification which the view listens to so that it knows to
+    /// propagate the correct width/height/cursors back to the renderer.
+    /// </summary>
+    internal const string OnVMUpdate = "OnVMUpdate";
 
     // Accursed over-abstraction...
     private readonly Brush peakBrush = new SolidColorBrush(Color.FromArgb(200, 10, 90, 255));
@@ -134,11 +142,17 @@ public class WaveFormRenderer : ObservableObject
         //WaveFormDrawing = new DrawingImage(drawingGroup);
     }
 
-    public void Update()
+    private void InternalUpdate()
     {
         OnPropertyChanged(nameof(ViewSpan));
         OnPropertyChanged(nameof(Duration));
         Render();
+    }
+
+    public void Update()
+    {
+        OnPropertyChanged(OnVMUpdate);
+        //InternalUpdate();
     }
 
     private void Render()
@@ -165,7 +179,7 @@ public class WaveFormRenderer : ObservableObject
             x => x.samples.Length <= targetLength,
             peakFile.Value.peakDataPyramid[0]);
         // A value between 0-1 where 1 indicates that we are close to using the full resolution of the pyramid, and 0 means we are close to the lower resolution
-        float lodLerp = (buff.samples.Length * 2 - targetLength) / targetLength;
+        float lodLerp = MathF.Max(0, (buff.samples.Length * 2 - targetLength) / targetLength);
         int sampleStart = Math.Clamp((int)(buff.samples.Length * startTime), 0, buff.samples.Length - 1);
         int sampleEnd = Math.Clamp((int)(buff.samples.Length * endTime), 0, buff.samples.Length - 1);
         int samples = sampleEnd - sampleStart;
@@ -199,6 +213,8 @@ public class WaveFormRenderer : ObservableObject
         rmsPoly.Points.Clear();
         peakPoly.Points.Add(peakPoints);
         rmsPoly.Points.Add(rmsPoints);
+
+        OnPropertyChanged(nameof(WaveFormDrawing));
     }
 
     private static float Lerp(float a, float b, float t)

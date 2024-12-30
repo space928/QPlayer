@@ -27,11 +27,18 @@ namespace QPlayer.ViewModels
     public class MainViewModel : ObservableObject
     {
         #region Bindable Properties
-        [Reactive, ReactiveDependency(nameof(SelectedCue))]
+        [Reactive]
         public int SelectedCueInd
         {
             get => selectedCueInd;
-            set => selectedCueInd = Math.Clamp(value, 0, Cues.Count);
+            set
+            {
+                var prev = selectedCueInd;
+                selectedCueInd = Math.Clamp(value, 0, Cues.Count);
+                SelectedCue?.OnFocussed();
+                if (prev != selectedCueInd)
+                    OnPropertyChanged(nameof(SelectedCue));
+            }
         }
         [Reactive]
         public CueViewModel? SelectedCue
@@ -43,12 +50,14 @@ namespace QPlayer.ViewModels
                 {
                     SelectedCueInd = Cues.IndexOf(value);
                     OnPropertyChanged(nameof(SelectedCueInd));
+                    value.OnFocussed();
                 }
             }
         }
         [Reactive] public ObservableCollection<CueViewModel> Cues { get; set; }
         [Reactive] public ObservableCollection<CueViewModel> ActiveCues { get; set; }
         [Reactive] public ObservableCollection<ObservableStruct<float>> ColumnWidths { get; set; }
+        [Reactive] public ObservableCollection<CueViewModel> DraggingCues { get; set; }
 
         [Reactive] public ProjectSettingsViewModel ProjectSettings { get; private set; }
 
@@ -57,6 +66,7 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand NewProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
         [Reactive] public RelayCommand SaveProjectCommand { get; private set; }
+        [Reactive] public RelayCommand SaveProjectAsCommand { get; private set; }
         [Reactive] public RelayCommand PackProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenLogCommand { get; private set; }
         [Reactive] public RelayCommand OpenSetttingsCommand { get; private set; }
@@ -74,6 +84,7 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand MoveCueUpCommand { get; private set; }
         [Reactive] public RelayCommand MoveCueDownCommand { get; private set; }
         [Reactive] public RelayCommand DeleteCueCommand { get; private set; }
+        [Reactive] public RelayCommand DuplicateCueCommand { get; private set; }
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
@@ -167,7 +178,8 @@ namespace QPlayer.ViewModels
             NewProjectCommand = new(NewProjectExecute);
             OpenProjectCommand = new(OpenProjectExecute);
             SaveProjectCommand = new(SaveProjectExecute);
-            PackProjectCommand = new(SaveProjectExecute);
+            SaveProjectAsCommand = new(SaveProjectAsExecute);
+            PackProjectCommand = new(SaveProjectAsExecute);
             OpenAboutCommand = new(OpenAboutExecute);
             OpenSetttingsCommand = new(OpenSettingsExecute);
 
@@ -182,6 +194,7 @@ namespace QPlayer.ViewModels
             MoveCueUpCommand = new(MoveCueUpExecute);
             MoveCueDownCommand = new(MoveCueDownExecute);
             DeleteCueCommand = new(DeleteCueExecute);
+            DuplicateCueCommand = new(() => DuplicateCueExecute());
 
             GoCommand = new(GoExecute);
             PauseCommand = new(PauseExecute);
@@ -209,6 +222,7 @@ namespace QPlayer.ViewModels
             ProjectFilePath = null;
             ActiveCues = [];
             Cues = [];
+            DraggingCues = [];
             cuesDict = [];
             Cues.CollectionChanged += (o, e) =>
             {
@@ -297,6 +311,14 @@ namespace QPlayer.ViewModels
         }
 
         public void SaveProjectExecute()
+        {
+            if (ProjectFilePath != null)
+                SaveProject(ProjectFilePath);
+            else
+                SaveProjectAsExecute();
+        }
+
+        public void SaveProjectAsExecute()
         {
             SaveFileDialog saveFileDialog = new()
             {
@@ -421,10 +443,11 @@ namespace QPlayer.ViewModels
             int ind = SelectedCueInd;
             var prevCue = Cues[ind - 1];
             // Swap the cue IDs and then swap the cues
-            (prevCue.QID, SelectedCue.QID) = (SelectedCue.QID, prevCue.QID);
+            //(prevCue.QID, SelectedCue.QID) = (SelectedCue.QID, prevCue.QID);
             (Cues[ind], Cues[ind - 1]) = (Cues[ind - 1], Cues[ind]);
             (showFile.cues[ind], showFile.cues[ind - 1]) = (showFile.cues[ind - 1], showFile.cues[ind]);
             SelectedCueInd--;
+            SelectedCue.QID = ChooseQID(SelectedCueInd, true);
         }
 
         public void MoveCueDownExecute()
@@ -435,10 +458,11 @@ namespace QPlayer.ViewModels
             int ind = SelectedCueInd;
             var nextCue = Cues[ind + 1];
             // Swap the cue IDs and then swap the cues
-            (nextCue.QID, SelectedCue.QID) = (SelectedCue.QID, nextCue.QID);
+            //(nextCue.QID, SelectedCue.QID) = (SelectedCue.QID, nextCue.QID);
             (Cues[ind], Cues[ind + 1]) = (Cues[ind + 1], Cues[ind]);
             (showFile.cues[ind], showFile.cues[ind + 1]) = (showFile.cues[ind + 1], showFile.cues[ind]);
             SelectedCueInd++;
+            SelectedCue.QID = ChooseQID(SelectedCueInd, true);
         }
 
         public void DeleteCueExecute()
@@ -449,7 +473,17 @@ namespace QPlayer.ViewModels
             int selectedInd = SelectedCueInd;
             Cues.RemoveAt(selectedInd);
             showFile.cues.RemoveAt(selectedInd);
-            SelectedCueInd = selectedInd - 1;
+            SelectedCueInd = selectedInd;
+            OnPropertyChanged(nameof(SelectedCue));
+        }
+
+        public CueViewModel? DuplicateCueExecute(CueViewModel? src = null)
+        {
+            src ??= SelectedCue;
+            if (src == null)
+                return null;
+
+            return CreateCue(src.Type, false, false, src);
         }
 
         public void ShowCreateCueMenuExecute()
@@ -581,6 +615,65 @@ namespace QPlayer.ViewModels
         }
 
         /// <summary>
+        /// Moves the given cue in the cue stack to the given cue ID, or directly after it if the 
+        /// specified cue ID is already in use.
+        /// </summary>
+        /// <param name="cue">The cue to move in the cue stack.</param>
+        /// <param name="newId">The cue ID to insert the cue at.</param>
+        /// <param name="select">Whether the moved cue should be reselected.</param>
+        public void MoveCue(CueViewModel cue, decimal newId, bool select = true)
+        {
+            int ind;
+            for (ind = 0; ind < Cues.Count; ind++)
+            {
+                var qid = Cues[ind].QID;
+                if (newId == qid)
+                    newId = ChooseQID(ind);
+                if (newId >= qid)
+                    break;
+            }
+
+            MoveCue(cue, ind, select);
+            cue.QID = newId;
+        }
+
+        /// <summary>
+        /// Moves the given cue in the cue stack to the specified index.
+        /// </summary>
+        /// <param name="cue">The cue to move in the cue stack.</param>
+        /// <param name="index">The index within the cue stack to move the cue to.</param>
+        /// <param name="select">Whether the moved cue should be reselected.</param>
+        public void MoveCue(CueViewModel cue, int index, bool select = true)
+        {
+            // Find the src and dst indices
+            index = Math.Clamp(index, 0, Cues.Count);
+            int origIndex = Cues.IndexOf(cue);
+            if (origIndex == -1)
+            {
+                Log($"Failed to move cue {cue.QID} '{cue.Name}'! Could not be found in cue stack.", LogLevel.Error);
+                return;
+            }
+
+            // Remove the cue
+            Cues.RemoveAt(origIndex);
+            var cueModel = showFile.cues[origIndex];
+            showFile.cues.RemoveAt(origIndex);
+
+            if (index > origIndex)
+                index--;
+
+            // Update it's qid
+            cue.QID = ChooseQID(index - 1);
+
+            // Reinsert it
+            Cues.Insert(index, cue);
+            showFile.cues.Insert(index, cueModel);
+
+            if (select)
+                SelectedCueInd = index;
+        }
+
+        /// <summary>
         /// Checks if the project file has unsaved changes and prompts the user to save if needed.
         /// </summary>
         /// <returns>false if the user decided to cancel the current operation.</returns>
@@ -671,9 +764,8 @@ namespace QPlayer.ViewModels
         {
             try
             {
-                var s = JsonSerializer.Deserialize<ShowFile>(File.ReadAllText(path), jsonSerializerOptions);
-                if (s == null)
-                    throw new FileFormatException("Show file deserialized as null!");
+                var s = JsonSerializer.Deserialize<ShowFile>(File.ReadAllText(path), jsonSerializerOptions)
+                    ?? throw new FileFormatException("Show file deserialized as null!");
                 if (s.fileFormatVersion != ShowFile.FILE_FORMAT_VERSION)
                     Log($"Project file version '{s.fileFormatVersion}' does not match QPlayer version '{ShowFile.FILE_FORMAT_VERSION}'!", LogLevel.Warning);
                 ProjectFilePath = path;
@@ -701,40 +793,30 @@ namespace QPlayer.ViewModels
             }
         }
 
-        public CueViewModel CreateCue(CueType type, bool beforeCurrent = false, bool afterLast = false)
+        public CueViewModel CreateCue(CueType type, bool beforeCurrent = false, bool afterLast = false, CueViewModel? src = null)
         {
             int insertAfterInd = SelectedCueInd;
             if (beforeCurrent)
                 insertAfterInd--;
             if (afterLast)
                 insertAfterInd = Cues.Count - 1;
+
             Cue model;
             switch (type)
             {
                 case CueType.GroupCue: model = new GroupCue(); break;
-                case CueType.DummyCue: model = new DummyCue(); ; break;
-                case CueType.SoundCue: model = new SoundCue(); ; break;
-                case CueType.TimeCodeCue: model = new TimeCodeCue(); ; break;
+                case CueType.DummyCue: model = new DummyCue(); break;
+                case CueType.SoundCue: model = new SoundCue(); break;
+                case CueType.TimeCodeCue: model = new TimeCodeCue(); break;
                 case CueType.StopCue: model = new StopCue(); ; break;
-                case CueType.VolumeCue: model = new VolumeCue(); ; break;
+                case CueType.VolumeCue: model = new VolumeCue(); break;
                 default: throw new NotImplementedException();
             }
-            decimal newId;
-            decimal prevId = 0;
-            if (insertAfterInd >= 0 && insertAfterInd < Cues.Count)
-                prevId = Cues[insertAfterInd].QID;
-            if (insertAfterInd + 1 >= 0 && insertAfterInd + 1 < Cues.Count)
-            {
-                decimal nextId = Cues[insertAfterInd + 1].QID;
-                if (nextId - prevId <= 1)
-                    newId = (prevId + nextId) / 2;
-                else
-                    newId = prevId + 1;
-            }
-            else
-            {
-                newId = prevId + 1;
-            }
+
+            src?.ToModel(model);
+
+            decimal newId = ChooseQID(insertAfterInd);
+
             model.qid = newId;
             var ret = CueViewModel.FromModel(model, this);
             ret.Bind(model);
@@ -750,6 +832,57 @@ namespace QPlayer.ViewModels
             }
 
             return ret;
+        }
+
+        /// <summary>
+        /// Generates a QID at the given insertion point in the cue stack, renumbering cues if needed.
+        /// </summary>
+        /// <param name="insertAfterInd">The index of the cue after which to insert the new QID.</param>
+        /// <param name="ignoreCurrent">When enabled the first parameter is the index of the cue to 
+        /// renumber such that it fits in between it's neighbours.</param>
+        /// <returns></returns>
+        private decimal ChooseQID(int insertAfterInd, bool ignoreCurrent = false)
+        {
+            if (Cues.Count == 0)
+                return 1;
+
+            decimal newId = 1;
+            decimal prevId = 0;
+            decimal nextId = decimal.MaxValue;
+
+            int insertBeforeInd = insertAfterInd + 1;
+            if (ignoreCurrent)
+            {
+                insertAfterInd--;
+                //insertBeforeInd++;
+            }
+
+            if (insertAfterInd >= 0)
+                prevId = Cues[Math.Min(insertAfterInd, Cues.Count - 1)].QID;
+
+            if (insertBeforeInd - 1 < Cues.Count - 1)
+                nextId = Cues[Math.Max(insertBeforeInd, 0)].QID;
+
+            decimal increment = 10;
+            for (int i = 0; i < 4; i++)
+            {
+                increment *= 0.1m;
+                newId = ((int)(prevId / increment) * increment) + increment;//(int)(prevId * increment) + increment;
+                if (newId < nextId)
+                    return newId.Normalize();
+            }
+
+            // No suitable cue ID could be found, renumber subsequent cues to fit this one in
+            decimal prev = newId;
+            for (int i = insertBeforeInd; i < Cues.Count; i++)
+            {
+                var next = Cues[i].QID;
+                if (next > prev)
+                    break;
+                Cues[i].QID = prev = (next + increment).Normalize();
+            }
+
+            return newId.Normalize();
         }
 
         public void ConnectOSC()
@@ -794,7 +927,7 @@ namespace QPlayer.ViewModels
                     {
                         if (msg.Count > 1)
                         {
-                            SelectedCueInd = Cues.IndexOf(cue);
+                            SelectedCue = cue;
                             GoExecute();
                         }
                         else
@@ -862,7 +995,7 @@ namespace QPlayer.ViewModels
             {
                 if (msg.Count > 0 && FindCue(msg[0], out var cue))
                 {
-                    SelectedCueInd = Cues.IndexOf(cue);
+                    SelectedCue = cue;
                 }
             }, syncContext);
             oscDriver.Subscribe("/qplayer/up", _ => SelectedCueInd--, syncContext);

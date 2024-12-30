@@ -50,6 +50,10 @@
                         <TextBlock Text="Delete" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
                     </DockPanel>
                     <DockPanel>
+                        <Label Content="Duplicate selected cue"/>
+                        <TextBlock Text="Ctrl+D" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
                         <Label Content="Move selected cue up"/>
                         <TextBlock Text="Ctrl+Up" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
                     </DockPanel>
@@ -69,6 +73,10 @@
                     <DockPanel>
                         <Label Content="Save project"/>
                         <TextBlock Text="Ctrl+S" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
+                    </DockPanel>
+                    <DockPanel>
+                        <Label Content="Save project as"/>
+                        <TextBlock Text="Ctrl+Shift+S" FontStyle="Italic" HorizontalAlignment="Right" Margin="5" DockPanel.Dock="Right"/>
                     </DockPanel>
                     <DockPanel>
                         <Label Content="Pack project"/>

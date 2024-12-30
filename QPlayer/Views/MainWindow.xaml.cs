@@ -51,6 +51,7 @@ public partial class MainWindow : Window
 
     private void Consume_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Override list viewer key bindings
         switch (e.Key)
         {
             case Key.Space:
@@ -68,12 +69,24 @@ public partial class MainWindow : Window
     {
         base.OnGiveFeedback(e);
 
+        var vm = (MainViewModel)DataContext;
         if (e.Effects.HasFlag(DragDropEffects.Copy))
             Mouse.SetCursor(Cursors.Cross);
         else if (e.Effects.HasFlag(DragDropEffects.Move))
             Mouse.SetCursor(Cursors.Hand);
         else
             Mouse.SetCursor(Cursors.No);
+
+        /*if (vm.DraggingCues.Count > 0)
+        {
+            if (DraggingItemsPanel.Visibility != Visibility.Visible)
+                DraggingItemsPanel.Visibility = Visibility.Visible;
+
+            //var mousePos = Mouse.GetPosition((Panel)DraggingItemsPanel.Parent);
+            var mousePos = Mouse.PrimaryDevice.GetPosition((Panel)DraggingItemsPanel.Parent);
+            Debug.WriteLine(mousePos);
+            DraggingItemsPanel.Margin = new(mousePos.X+2, mousePos.Y+2, 0, 0);
+        }*/
 
         e.Handled = true;
     }
@@ -83,22 +96,40 @@ public partial class MainWindow : Window
         base.OnDrop(e);
 
         var vm = (MainViewModel)DataContext;
+        HandleCueListDrop(e, vm, null);
+    }
 
-        // If the DataObject contains string data, extract it.
-        if (e.Data.GetDataPresent("Cue"))
+    internal static void HandleCueListDrop(DragEventArgs e, MainViewModel vm, CueViewModel? dropTargetVm)
+    {
+        int dstIndex;
+        if (dropTargetVm == null)
+            dstIndex = vm.Cues.Count;
+        else
+            dstIndex = vm.Cues.IndexOf(dropTargetVm);
+
+        if (e.Data.GetDataPresent("Cues"))
         {
-            CueViewModel dataCue = (CueViewModel)e.Data.GetData("Cue");
+            CueViewModel[] dataCues = (CueViewModel[])e.Data.GetData("Cues"); // The items being drag/dropped
 
-            if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
+            foreach (var dataCue in dataCues.Reverse())
             {
-                e.Effects = DragDropEffects.Copy;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.Move;
+                if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
+                {
+                    e.Effects = DragDropEffects.Copy;
+
+                    var copy = vm.DuplicateCueExecute(dataCue);
+                    if (copy != null)
+                        vm.MoveCue(copy, dstIndex);
+                }
+                else
+                {
+                    e.Effects = DragDropEffects.Move;
+
+                    vm.MoveCue(dataCue, dstIndex);
+                }
             }
 
-            // TODO: Move/insert the new cue
+            vm.DraggingCues.Clear();
         }
         else if (e.Data.GetDataPresent(DataFormats.FileDrop))
         {
@@ -118,6 +149,7 @@ public partial class MainWindow : Window
                             var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
                             cue.Path = file;
                             cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                            vm.MoveCue(cue, dstIndex++);
                             break;
                         default:
                             break;
@@ -126,5 +158,27 @@ public partial class MainWindow : Window
             }
         }
         e.Handled = true;
+    }
+
+    private void QPlayerMainWindow_DragOver(object sender, DragEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        if (vm.DraggingCues.Count > 0)
+        {
+            if (DraggingItemsPanel.Visibility != Visibility.Visible)
+                DraggingItemsPanel.Visibility = Visibility.Visible;
+
+            //var mousePos = Mouse.GetPosition((Panel)DraggingItemsPanel.Parent);
+            var mousePos = e.GetPosition((Panel)DraggingItemsPanel.Parent);
+            //Debug.WriteLine(mousePos);
+            DraggingItemsPanel.Margin = new(mousePos.X + 2, mousePos.Y + 2, 0, 0);
+        }
+    }
+
+    private void QPlayerMainWindow_MouseMove(object sender, MouseEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        if (vm.DraggingCues.Count == 0 && DraggingItemsPanel.Visibility == Visibility.Visible)
+            DraggingItemsPanel.Visibility = Visibility.Hidden;
     }
 }

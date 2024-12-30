@@ -9,6 +9,6 @@
              d:DesignHeight="30" d:DesignWidth="200">
     <Grid>
         <Label Name="Label" MouseDown="Label_MouseDown" MouseDoubleClick="Label_MouseDoubleClick" Content="{Binding Text, ElementName=HiddenTextboxInst}"/>
-        <TextBox x:Name="TextBox" LostKeyboardFocus="TextBox_LostKeyboardFocus" KeyUp="TextBox_KeyUp" Visibility="Hidden" Text="{Binding Text, ElementName=HiddenTextboxInst}"/>
+        <local:TextField x:Name="TextFieldInst" ReturnValidates="True" LostKeyboardFocus="TextBox_LostKeyboardFocus" Visibility="Collapsed" Text="{Binding Text, ElementName=HiddenTextboxInst}"/>
     </Grid>
 </UserControl>

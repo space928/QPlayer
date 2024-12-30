@@ -9,7 +9,7 @@
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
         Title="{Binding WindowTitle}" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
-        Closed="Window_Closed" Loaded="Window_Loaded">
+        Closed="Window_Closed" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
@@ -25,9 +25,11 @@
         <KeyBinding Gesture="CTRL+N" Command="{Binding NewProjectCommand}"/>
         <KeyBinding Gesture="CTRL+O" Command="{Binding OpenProjectCommand}"/>
         <KeyBinding Gesture="CTRL+S" Command="{Binding SaveProjectCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+S" Command="{Binding SaveProjectAsCommand}"/>
         <KeyBinding Gesture="CTRL+E" Command="{Binding PackProjectCommand}"/>
         <KeyBinding Gesture="CTRL+Up" Command="{Binding MoveCueUpCommand}"/>
         <KeyBinding Gesture="CTRL+Down" Command="{Binding MoveCueDownCommand}"/>
+        <KeyBinding Gesture="CTRL+D" Command="{Binding DuplicateCueCommand}"/>
         <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueCommand}"/>
     </Window.InputBindings>
     <Window.Resources>
@@ -39,6 +41,19 @@
             <RowDefinition Height="30"/>
             <RowDefinition Height="*"/>
         </Grid.RowDefinitions>
+        <ItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
+                      Background="{DynamicResource AREghZyBrush.Deep.1.Background.Static}" BorderBrush="{DynamicResource AREghZyBrush.Deep.1.Border.Static}" BorderThickness="1"
+                      Panel.ZIndex="999" Width="400" MaxHeight="250" Grid.ColumnSpan="99" Grid.RowSpan="99" HorizontalAlignment="Left" VerticalAlignment="Top" 
+                      Visibility="Visible" IsTabStop="False" Focusable="False" IsHitTestVisible="False">
+            <ItemsControl.ItemTemplate>
+                <DataTemplate>
+                    <local:CueDataControl/>
+                </DataTemplate>
+            </ItemsControl.ItemTemplate>
+            <ItemsControl.Effect>
+                <DropShadowEffect BlurRadius="20" Color="{DynamicResource AREghZyColour.Primary.4.Border.Static}"/>
+            </ItemsControl.Effect>
+        </ItemsControl>
         <!--#region Title Bar-->
         <Grid Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
             <Grid.ColumnDefinitions>
@@ -51,12 +66,25 @@
                     <MenuItem Header="New (Ctrl+N)" Command="{Binding NewProjectCommand}"/>
                     <MenuItem Header="Open (Ctrl+O)" Command="{Binding OpenProjectCommand}"/>
                     <MenuItem Header="Save (Ctrl+S)" Command="{Binding SaveProjectCommand}"/>
-                    <MenuItem Header="Pack (Ctrl+E)" Command="{Binding PackProjectCommand}"/>
+                    <MenuItem Header="Save As (Ctrl+Shift+S)" Command="{Binding SaveProjectAsCommand}"/>
+                    <MenuItem IsEnabled="False" Header="Pack (Ctrl+E)" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" IsEnabled="False"/>
                 </MenuItem>
                 <MenuItem Header="Edit" Height="30">
                     <MenuItem Header="Undo" IsEnabled="False"/>
                     <MenuItem Header="Redo" IsEnabled="False"/>
+                    <MenuItem Header="Move Cue Up (Ctrl+Up)" Command="{Binding MoveCueUpCommand}"/>
+                    <MenuItem Header="Move Cue Down (Ctrl+Down)" Command="{Binding MoveCueDownCommand}"/>
+                    <MenuItem Header="Duplicate Cue (Ctrl+D)" Command="{Binding DuplicateCueCommand}"/>
+                    <MenuItem Header="Delete Cue (Del)" Command="{Binding DeleteCueCommand}"/>
+                    <MenuItem Header="Create Cue (Ctrl+T)">
+                        <MenuItem Header="Add Sound Cue" Command="{Binding CreateSoundCueCommand}"/>
+                        <MenuItem Header="Add Group Cue" Command="{Binding CreateGroupCueCommand}"/>
+                        <MenuItem Header="Add Dummy Cue" Command="{Binding CreateDummyCueCommand}"/>
+                        <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
+                        <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
+                        <MenuItem Header="Add Volume Cue" Command="{Binding CreateVolumeCueCommand}"/>
+                    </MenuItem>
                 </MenuItem>
                 <MenuItem Header="Window" Height="30">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
@@ -158,6 +186,7 @@
                             <MenuItem Header="Move Down" Command="{Binding MoveCueDownCommand}" ToolTip="Moves the selected cue down (Ctrl+Down)"/>
                             <Separator/>
                             <MenuItem Header="Delete Cue" Command="{Binding DeleteCueCommand}" ToolTip="Deletes the selected cue (Delete)"/>
+                            <MenuItem Header="Duplicate Cue" Command="{Binding DuplicateCueCommand}" ToolTip="Duplicates the selected cue (Ctrl+D)"/>
                         </ContextMenu>
                     </ScrollViewer.ContextMenu>
                     <StackPanel>

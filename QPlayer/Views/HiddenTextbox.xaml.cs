@@ -34,8 +34,8 @@ public partial class HiddenTextbox : UserControl
     private void Label_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         editing = true;
-        TextBox.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, TextBox.Focus);
+        TextFieldInst.Visibility = Visibility.Visible;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, TextFieldInst.TextBox.Focus);
     }
 
     private void Label_MouseDown(object sender, MouseButtonEventArgs e)
@@ -46,20 +46,6 @@ public partial class HiddenTextbox : UserControl
     private void TextBox_LostKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
         editing = false;
-        TextBox.Visibility = Visibility.Hidden;
-    }
-
-    private void TextBox_KeyUp(object? sender, KeyEventArgs e)
-    {
-        if (sender is not TextBox tb)
-            return;
-
-        if (e.Key == Key.Enter)
-        {
-            var binding = BindingOperations.GetBindingExpression(tb, TextBox.TextProperty);
-            binding?.UpdateSource();
-            Keyboard.ClearFocus();
-            //tb.MoveFocus(new TraversalRequest(FocusNavigationDirection.Down));
-        }
+        TextFieldInst.Visibility = Visibility.Collapsed;
     }
 }

@@ -1,0 +1,20 @@
+﻿<UserControl x:Class="QPlayer.Views.TextField"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:QPlayer.Views"
+             mc:Ignorable="d" 
+             x:Name="TextFieldInst"
+             d:DesignHeight="30" d:DesignWidth="200">
+    <Grid>
+        <TextBox x:Name="TextBox" KeyUp="TextBox_KeyUp" Visibility="Visible" Text="{Binding Text, ElementName=TextFieldInst}"/>
+        <Grid x:Name="Spinner" Background="{StaticResource AREghZyBrush.Primary.1.Background.Static}" 
+              Width="20" HorizontalAlignment="Right" VerticalAlignment="Stretch" Cursor="SizeNS"
+              MouseDown="Spinner_MouseDown" MouseUp="Spinner_MouseUp" MouseMove="Spinner_MouseMove" MouseLeave="Spinner_MouseLeave" Loaded="Spinner_Loaded">
+            <Polygon Fill="{StaticResource AREghZyBrush.Primary.3.Border.Static}" Height="14" Points="10,0,4,6,16,6"/>
+            <Polygon Fill="{StaticResource AREghZyBrush.Primary.3.Border.Static}" Height="14" Points="10,14,16,8,4,8"/>
+            <Border BorderThickness="1" BorderBrush="{StaticResource AREghZyBrush.Primary.1.Border.Static}"/>
+        </Grid>
+    </Grid>
+</UserControl>

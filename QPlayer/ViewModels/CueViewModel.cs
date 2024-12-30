@@ -75,7 +75,8 @@ namespace QPlayer.ViewModels
     public abstract class CueViewModel : ObservableObject, IConvertibleModel<Cue, CueViewModel>
     {
         #region Bindable Properties
-        [Reactive] public decimal QID
+        [Reactive]
+        public decimal QID
         {
             get => qid;
             set
@@ -86,7 +87,7 @@ namespace QPlayer.ViewModels
         }
         [Reactive] public CueType Type { get; set; }
         [Reactive] public decimal? ParentId { get; set; }
-        [Reactive] public CueViewModel? Parent => ParentId != null ? (parent ??= mainViewModel?.Cues.FirstOrDefault(x=>x.QID==ParentId)) : null;
+        [Reactive] public CueViewModel? Parent => ParentId != null ? (parent ??= mainViewModel?.Cues.FirstOrDefault(x => x.QID == ParentId)) : null;
         [Reactive] public ColorState Colour { get; set; }
         [Reactive] public string Name { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
@@ -101,7 +102,8 @@ namespace QPlayer.ViewModels
         [Reactive] public bool IsSelected => mainViewModel?.SelectedCue == this;
         [Reactive] public CueState State { get; set; }
         [Reactive] public virtual TimeSpan PlaybackTime { get; set; }
-        [Reactive][ReactiveDependency(nameof(LoopMode))] 
+        [Reactive]
+        [ReactiveDependency(nameof(LoopMode))]
         public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
         [Reactive]
         [ReactiveDependency(nameof(PlaybackTime))]
@@ -162,6 +164,11 @@ namespace QPlayer.ViewModels
             FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
         }
 
+        internal virtual void OnFocussed()
+        {
+
+        }
+
         private void MainViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
         {
             switch (e.PropertyName)
@@ -170,9 +177,9 @@ namespace QPlayer.ViewModels
                     OnPropertyChanged(nameof(IsSelected));
                     break;
                 case nameof(State):
-                case nameof(Duration): 
-                    OnPropertyChanged(nameof(PlaybackTimeString)); 
-                    OnPropertyChanged(nameof(PlaybackTimeStringShort)); 
+                case nameof(Duration):
+                    OnPropertyChanged(nameof(PlaybackTimeString));
+                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
                     break;
             }
         }
@@ -208,7 +215,7 @@ namespace QPlayer.ViewModels
                 return;
             }
             State = CueState.Playing;
-            if(!mainViewModel?.ActiveCues?.Contains(this) ?? false)
+            if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
                 mainViewModel?.ActiveCues.Add(this);
         }
 
@@ -240,7 +247,7 @@ namespace QPlayer.ViewModels
         /// <param name="startTime">the time to start the cue at.</param>
         public virtual void Preload(TimeSpan startTime)
         {
-            if(State == CueState.Ready || State == CueState.Paused)
+            if (State == CueState.Ready || State == CueState.Paused)
             {
                 PlaybackTime = startTime;
                 State = CueState.Paused;
@@ -251,7 +258,7 @@ namespace QPlayer.ViewModels
 
         public void SelectExecute()
         {
-            if(mainViewModel != null)
+            if (mainViewModel != null)
                 mainViewModel.SelectedCue = this;
         }
         #endregion
@@ -267,7 +274,7 @@ namespace QPlayer.ViewModels
             PropertyChanged += (o, e) =>
             {
                 CueViewModel vm = (CueViewModel)(o ?? throw new NullReferenceException(nameof(CueViewModel)));
-                if(e.PropertyName != null)
+                if (e.PropertyName != null)
                     vm.ToModel(e.PropertyName);
             };
         }
@@ -279,7 +286,7 @@ namespace QPlayer.ViewModels
         /// <exception cref="ArgumentNullException"></exception>
         public virtual void ToModel(string propertyName)
         {
-            if(cueModel == null)
+            if (cueModel == null)
                 throw new ArgumentNullException(null, nameof(cueModel));
             switch (propertyName)
             {
@@ -318,7 +325,7 @@ namespace QPlayer.ViewModels
 
         public static CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
-            if(cue.qid == cue.parent)
+            if (cue.qid == cue.parent)
                 throw new ArgumentException($"Circular reference detected! Cue {cue.qid} has itself as a parent!");
             CueViewModel viewModel = cue.type switch
             {
@@ -384,28 +391,35 @@ namespace QPlayer.ViewModels
     [ValueConversion(typeof(TimeSpan), typeof(string))]
     public class TimeSpanStringConverter : IValueConverter
     {
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
         {
-            if (parameter is string useHours && useHours == "True")
-                return ((TimeSpan)value).ToString(@"hh\:mm\:ss\.ff");
-            else 
-                return ((TimeSpan)value).ToString(@"mm\:ss\.ff");
+            return Convert((TimeSpan)value, parameter is string useHours && useHours == "True");
         }
 
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
         {
             string timeSpan = (string)value;
 
-            if (parameter is string useHours && useHours == "True")
-            {
-                if (TimeSpan.TryParse(timeSpan, out TimeSpan ret))
-                    return ret;
-            } else
-            {
-                if (TimeSpan.TryParse("00:" + timeSpan, out TimeSpan ret))
-                    return ret;
-            }
+            if (ConvertBack(timeSpan, out TimeSpan ret, parameter is string useHours && useHours == "True"))
+                return ret;
+
             return DependencyProperty.UnsetValue;
+        }
+
+        public static string Convert(TimeSpan value, bool useHours = false)
+        {
+            if (useHours)
+                return value.ToString(@"hh\:mm\:ss\.ff");
+            else
+                return value.ToString(@"mm\:ss\.ff");
+        }
+
+        public static bool ConvertBack(string value, out TimeSpan result, bool useHours = false)
+        {
+            if (useHours)
+                return TimeSpan.TryParse(value, out result);
+            else
+                return TimeSpan.TryParse($"00:{value}", out result);
         }
     }
 

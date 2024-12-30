@@ -23,6 +23,8 @@ namespace QPlayer.Views;
 /// </summary>
 public partial class CueDataControl : UserControl
 {
+    const int DragDeadzone = 10;
+
     private Point startPos;
 
     public CueDataControl()
@@ -72,13 +74,18 @@ public partial class CueDataControl : UserControl
         base.OnMouseMove(e);
 
         var delta = e.GetPosition(this) - startPos;
-        if (e.LeftButton == MouseButtonState.Pressed && delta.Length > 10
+        var vm = (CueViewModel)DataContext;
+        if (e.LeftButton == MouseButtonState.Pressed && delta.Length > DragDeadzone
+            && (vm.MainViewModel?.DraggingCues?.Count ?? -1) == 0
             && !e.OriginalSource.GetType().IsAssignableTo(typeof(TextBox)))
         {
             DataObject data = new();
-            data.SetData("Cue", (CueViewModel)DataContext);
+            vm.MainViewModel?.DraggingCues?.Add(vm);
+            data.SetData("Cues", new CueViewModel[] { vm });
 
             DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
+
+            vm.MainViewModel?.DraggingCues?.Clear();
         }
     }
 
@@ -100,22 +107,23 @@ public partial class CueDataControl : UserControl
     {
         base.OnDrop(e);
 
-        // If the DataObject contains string data, extract it.
-        if (e.Data.GetDataPresent("Cue"))
-        {
-            CueViewModel dataCue = (CueViewModel)e.Data.GetData("Cue");
+        InsertMarker.Visibility = Visibility.Hidden;
 
-            if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
-            {
-                e.Effects = DragDropEffects.Copy;
-            }
-            else
-            {
-                e.Effects = DragDropEffects.Move;
-            }
+        var targetVm = (CueViewModel)DataContext;
+        var mainVm = targetVm.MainViewModel;
+        if (mainVm != null)
+            MainWindow.HandleCueListDrop(e, mainVm, targetVm);
 
-            // TODO: Move/insert the new cue
-        }
         e.Handled = true;
+    }
+
+    private void Grid_DragEnter(object sender, DragEventArgs e)
+    {
+        InsertMarker.Visibility = Visibility.Visible;
+    }
+
+    private void Grid_DragLeave(object sender, DragEventArgs e)
+    {
+        InsertMarker.Visibility = Visibility.Hidden;
     }
 }
