@@ -10,6 +10,7 @@ using System.Net.Sockets;
 using System.Net;
 using System.Text;
 using System.Threading.Tasks;
+using QPlayer.Audio;
 
 namespace QPlayer.ViewModels;
 
@@ -21,6 +22,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public string Author { get; set; } = string.Empty;
     [Reactive] public DateTime Date { get; set; }
 
+    [Reactive] public int AudioLatency { get; set; }
     [Reactive] public AudioOutputDriver AudioOutputDriver { get; set; }
     [Reactive] public int SelectedAudioOutputDeviceIndex { get; set; }
 
@@ -43,6 +45,16 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     #endregion
 
     public IPAddress OSCNic => (SelectedNIC >= 0 && SelectedNIC < nicAddresses.Count) ? nicAddresses[SelectedNIC] : (nicAddresses.FirstOrDefault() ?? IPAddress.Any);
+    internal object? SelectedAudioOutputDeviceKey
+    {
+        get
+        {
+            var i = Math.Max(0, SelectedAudioOutputDeviceIndex);
+            if (i >= audioOutputDevices.Length)
+                return null;
+            return audioOutputDevices[i].key;
+        }
+    }
 
     private (object key, string identifier)[] audioOutputDevices = [];
     private readonly MainViewModel mainViewModel;
@@ -58,11 +70,10 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         {
             switch (e.PropertyName)
             {
+                case nameof(AudioLatency):
                 case nameof(SelectedAudioOutputDeviceIndex):
                     if (SelectedAudioOutputDeviceIndex >= 0 && SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
-                        mainViewModel.AudioPlaybackManager.OpenOutputDevice(
-                            AudioOutputDriver,
-                            audioOutputDevices[SelectedAudioOutputDeviceIndex].key);
+                        mainViewModel.OpenAudioDevice();
                     break;
                 case nameof(SelectedNIC):
                 case nameof(OSCRXPort):
@@ -76,9 +87,8 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         };
 
         _ = AudioOutputDevices; // Update the list of audio devices...
-        if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
-            mainViewModel.AudioPlaybackManager.OpenOutputDevice(
-                AudioOutputDriver, audioOutputDevices[SelectedAudioOutputDeviceIndex].key);
+        //if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
+        //    mainViewModel.OpenAudioDevice();
 
         QueryNICs();
     }
@@ -91,6 +101,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         ret.Author = model.author;
         ret.Date = model.date;
 
+        ret.AudioLatency = model.audioLatency;
         ret.AudioOutputDriver = model.audioOutputDriver;
         ret.SelectedAudioOutputDeviceIndex = ret.AudioOutputDevices.IndexOf(model.audioOutputDevice);
 
@@ -120,6 +131,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         model.author = Author;
         model.date = Date;
 
+        model.audioLatency = AudioLatency;
         model.audioOutputDriver = AudioOutputDriver;
         var devices = AudioOutputDevices;
         model.audioOutputDevice = devices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, devices.Count)];
@@ -147,11 +159,15 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             case nameof(Date):
                 projectSettings.date = Date;
                 break;
+            case nameof(AudioLatency):
+                projectSettings.audioLatency = AudioLatency;
+                break;
             case nameof(AudioOutputDriver):
                 projectSettings.audioOutputDriver = AudioOutputDriver;
                 break;
             case nameof(SelectedAudioOutputDeviceIndex):
-                projectSettings.audioOutputDevice = AudioOutputDevices[SelectedAudioOutputDeviceIndex];
+                var outputDevices = AudioOutputDevices;
+                projectSettings.audioOutputDevice = outputDevices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, outputDevices.Count - 1)];
                 break;
             case nameof(AudioOutputDevices):
             case nameof(AudioOutputDriverValues):
@@ -168,6 +184,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             case nameof(NICs):
             case nameof(MonitorOSCMessages):
             case nameof(OSCNic):
+            case nameof(SelectedAudioOutputDeviceKey):
                 break;
             default:
                 throw new ArgumentException($"Couldn't convert property {propertyName} to model!", nameof(propertyName));
@@ -183,7 +200,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             var ipProps = nic.GetIPProperties();
             var nicAddr = ipProps.UnicastAddresses.Select(x => x.Address);
             if (nicAddr.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork) is IPAddress naddr
-                && ipProps.GatewayAddresses.Count > 0)
+                && ipProps.GatewayAddresses.Count >= 0)
             {
                 nicAddresses.AddRange(nicAddr);
                 foreach (var addr in nicAddr)

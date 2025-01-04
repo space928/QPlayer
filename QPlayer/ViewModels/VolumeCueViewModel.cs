@@ -4,6 +4,7 @@ using System;
 using System.Linq;
 using System.Timers;
 using Cue = QPlayer.Models.Cue;
+using QPlayer.Audio;
 
 namespace QPlayer.ViewModels
 {

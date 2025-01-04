@@ -2,6 +2,7 @@
 using Microsoft.Win32;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using QPlayer.Audio;
 using QPlayer.Models;
 using ReactiveUI.Fody.Helpers;
 using System;
@@ -139,6 +140,8 @@ namespace QPlayer.ViewModels
                     fadeOutTimer.Start();
                 }
             }
+            //var dbg_t = DateTime.Now;
+            //MainViewModel.Log($"[Playback Debugging] Cue about to start! {dbg_t:HH:mm:ss.ffff} dt={(dbg_t-MainViewModel.dbg_cueStartTime)}");
             mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x)=>Stop());
             fadeInOutProvider.Volume = 0;
             fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000/(double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);

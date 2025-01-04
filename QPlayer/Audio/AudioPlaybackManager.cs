@@ -1,6 +1,7 @@
 ﻿using NAudio.CoreAudioApi;
 using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
+using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -8,7 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace QPlayer.ViewModels;
+namespace QPlayer.Audio;
 
 public enum AudioOutputDriver
 {
@@ -28,11 +29,14 @@ public class AudioPlaybackManager : IDisposable
 
     private AudioOutputDriver driver;
     private IWavePlayer? device;
+    private int restartAudioDeviceDelay = 100;
+    private CancellationTokenSource cancelAudioDeviceRestart;
 
     public AudioPlaybackManager(MainViewModel mainViewModel)
     {
         this.mainViewModel = mainViewModel;
         synchronizationContext = SynchronizationContext.Current;
+        cancelAudioDeviceRestart = new();
         activeChannels = [];
         deviceClosedEvent = new(false);
         // TODO: Expose sample rate, channel, and latency controls
@@ -50,6 +54,9 @@ public class AudioPlaybackManager : IDisposable
                     }, null);
                 else
                     channel.Value.completedCallback?.Invoke(e.SampleProvider);
+
+                // Need to put this somewhere...
+                restartAudioDeviceDelay = 100;
             }
         };
     }
@@ -78,7 +85,7 @@ public class AudioPlaybackManager : IDisposable
         catch { }
         // Wait for the device to finish playing...
         deviceClosedEvent.Wait(200);
-        device.Dispose();
+        device?.Dispose();
     }
 
     private void DevicePlaybackStopped(object? sender, StoppedEventArgs e)
@@ -86,6 +93,18 @@ public class AudioPlaybackManager : IDisposable
         if (e.Exception != null)
         {
             MainViewModel.Log($"Audio device error! \n{e.Exception}", MainViewModel.LogLevel.Error);
+
+            restartAudioDeviceDelay *= 2;
+            restartAudioDeviceDelay = Math.Min(restartAudioDeviceDelay, 60 * 1000);
+            cancelAudioDeviceRestart = new();
+            Task.Delay(restartAudioDeviceDelay, cancelAudioDeviceRestart.Token).ContinueWith(_ =>
+            {
+                synchronizationContext?.Post(_ =>
+                {
+                    MainViewModel.Log($"Automatically restarting audio driver...");
+                    mainViewModel.OpenAudioDevice();
+                }, null);
+            });
         }
         deviceClosedEvent.Set();
     }
@@ -121,17 +140,22 @@ public class AudioPlaybackManager : IDisposable
         }
     }
 
-    public void OpenOutputDevice(AudioOutputDriver driver, object key)
+    public void OpenOutputDevice(AudioOutputDriver driver, object? key, int desiredLatency = 40)
     {
         CloseAudioDevices();
+        desiredLatency = Math.Max(desiredLatency, 0);
+        if (key == null)
+            return;
+
+        cancelAudioDeviceRestart.Cancel();
 
         try
         {
             device = driver switch
             {
-                AudioOutputDriver.Wave => new WaveOutEvent() { DeviceNumber = (int)key },
-                AudioOutputDriver.DirectSound => new DirectSoundOut((Guid)key),
-                AudioOutputDriver.WASAPI => new WasapiOut((MMDevice)key, AudioClientShareMode.Shared, true, 40),
+                AudioOutputDriver.Wave => new WaveOutEvent() { DeviceNumber = (int)key, DesiredLatency = desiredLatency },
+                AudioOutputDriver.DirectSound => new DirectSoundOut((Guid)key, desiredLatency),
+                AudioOutputDriver.WASAPI => new WasapiOut((MMDevice)key, AudioClientShareMode.Shared, true, desiredLatency),
                 AudioOutputDriver.ASIO => new AsioOut((string)key),
                 _ => throw new NotImplementedException($"Unsupported audio driver '{driver}'!"),
             };
@@ -155,6 +179,7 @@ public class AudioPlaybackManager : IDisposable
         {
             MainViewModel.Log($"Failed to start device '{key}' with driver '{driver}'.\n" + ex,
                 MainViewModel.LogLevel.Error);
+            return;
         }
         /*var sig = new SignalGenerator();
         PlaySound(sig);*/

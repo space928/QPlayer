@@ -1,6 +1,8 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using JetBrains.Profiler.Api;
 using Microsoft.Win32;
+using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.Views;
 using ReactiveUI.Fody.Helpers;
@@ -20,6 +22,7 @@ using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Media;
 using Timer = System.Timers.Timer;
 
 namespace QPlayer.ViewModels
@@ -96,6 +99,9 @@ namespace QPlayer.ViewModels
 
         [Reactive] public string? ProjectFilePath { get; private set; }
 
+        [Reactive] public string StatusText { get; private set; } = "Ready";
+        [Reactive] public SolidColorBrush StatusTextColour { get; private set; } = StatusInfoBrush;
+
         [Reactive]
         public static ObservableCollection<string> LogList
         {
@@ -156,6 +162,14 @@ namespace QPlayer.ViewModels
         private readonly OSCDriver oscDriver;
         private readonly SynchronizationContext syncContext;
         private readonly Dictionary<decimal, CueViewModel> cuesDict;
+        private static readonly SolidColorBrush StatusInfoBrush = new (Color.FromArgb(255, 220, 220, 220));
+        private static readonly SolidColorBrush StatusWarningBrush = new (Color.FromArgb(255, 200, 220, 50));
+        private static readonly SolidColorBrush StatusErrorBrush = new (Color.FromArgb(255, 220, 60, 40));
+        private static string lastStatusMessage = "";
+        private static DateTime lastStatusMessageTime = DateTime.MinValue;
+        private static LogLevel lastStatusLevel = LogLevel.Info;
+
+        //public static DateTime dbg_cueStartTime;
 
         public MainViewModel()
         {
@@ -278,7 +292,9 @@ namespace QPlayer.ViewModels
             CreateCue(CueType.SoundCue, afterLast: true);
             CreateCue(CueType.TimeCodeCue, afterLast: true);
 
-            ConnectOSC();
+            // These are redundant, they are done when we load the showfile
+            //ConnectOSC();
+            //OpenAudioDevice();
             SubscribeOSC();
         }
 
@@ -297,6 +313,27 @@ namespace QPlayer.ViewModels
         private void SlowUpdate(object? sender, ElapsedEventArgs e)
         {
             OnPropertyChanged(nameof(Clock));
+
+            syncContext.Post(_ =>
+            {
+                if (DateTime.Now - lastStatusMessageTime > TimeSpan.FromSeconds(5))
+                {
+                    StatusText = $"Ready - {Cues.Count} cues in project";
+                    StatusTextColour = StatusInfoBrush;
+                }
+                else
+                {
+                    StatusText = lastStatusMessage;
+                    StatusTextColour = lastStatusLevel switch
+                    {
+                        LogLevel.Info => StatusInfoBrush,
+                        LogLevel.Debug => StatusInfoBrush,
+                        LogLevel.Warning => StatusWarningBrush,
+                        LogLevel.Error => StatusErrorBrush,
+                        _ => StatusInfoBrush
+                    };
+                }
+            }, null);
         }
 
         #region Commands
@@ -401,6 +438,10 @@ namespace QPlayer.ViewModels
 
         public void GoExecute()
         {
+            //dbg_cueStartTime = DateTime.Now;
+            //Log($"[Playback Debugging] Go command started! {dbg_cueStartTime:HH:mm:ss.ffff}");
+            MeasureProfiler.StartCollectingData("Go Execute");
+
             do
             {
                 if (SelectedCue?.Enabled ?? false)
@@ -513,10 +554,19 @@ namespace QPlayer.ViewModels
 
             lock (logListLock)
             {
-                string msg = $"[{level}] [{DateTime.Now}] [{caller}] {message}";
+                var time = DateTime.Now;
+                string messageString = message?.ToString() ?? "null";
+                string msg = $"[{level}] [{time}] [{caller}] {messageString}";
                 LogList.Add(msg);
                 Console.WriteLine(msg);
                 Debug.WriteLine(msg);
+
+                if (level != LogLevel.Debug)
+                {
+                    lastStatusLevel = level;
+                    lastStatusMessage = messageString;
+                    lastStatusMessageTime = time;
+                }
             }
         }
 
@@ -734,6 +784,7 @@ namespace QPlayer.ViewModels
             }
             OnPropertyChanged(nameof(SelectedCue));
             ConnectOSC();
+            OpenAudioDevice();
         }
 
         /// <summary>
@@ -885,6 +936,14 @@ namespace QPlayer.ViewModels
             return newId.Normalize();
         }
 
+        public void OpenAudioDevice()
+        {
+            AudioPlaybackManager.OpenOutputDevice(
+                ProjectSettings.AudioOutputDriver,
+                ProjectSettings.SelectedAudioOutputDeviceKey,
+                ProjectSettings.AudioLatency);
+        }
+
         public void ConnectOSC()
         {
             if (oscDriver.OSCConnect(ProjectSettings.OSCNic, ProjectSettings.OSCRXPort, ProjectSettings.OSCTXPort))
@@ -1002,6 +1061,24 @@ namespace QPlayer.ViewModels
             oscDriver.Subscribe("/qplayer/down", _ => SelectedCueInd++, syncContext);
 
             oscDriver.Subscribe("/qplayer/save", _ => SaveProjectExecute(), syncContext);
+        }
+
+        /// <summary>
+        /// Attempts to load an embedded resource file from the executing assembly.
+        /// </summary>
+        /// <param name="path">The path/filename to the file to load.</param>
+        /// <returns>A stream of the file contents.</returns>
+        /// <exception cref="FileNotFoundException"></exception>
+        public static Stream LoadResourceFile(string path)
+        {
+            var assembly = Assembly.GetExecutingAssembly();
+            string? resourceName = assembly.GetManifestResourceNames()
+                .FirstOrDefault(str => str.EndsWith(Path.GetFileName(path)));
+
+            if (resourceName == null || assembly == null)
+                throw new FileNotFoundException(path);
+
+            return assembly.GetManifestResourceStream(resourceName) ?? throw new FileNotFoundException(path);
         }
     }
 

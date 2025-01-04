@@ -11,6 +11,14 @@
         Style="{DynamicResource CustomWindowStyle}" 
         Icon="{StaticResource IconImage}">
     <Grid>
-        <ListBox ItemsSource="{Binding LogList}" FontSize="11" FontFamily="Cascadia Mono" x:Name="LogListBox" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"/>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="26"/>
+            <RowDefinition/>
+        </Grid.RowDefinitions>
+        <StackPanel Orientation="Horizontal">
+            <Button Content="Clear" Padding="10, 2" Margin="4,0,0,0" Click="ClearButton_Click"/>
+            <Button Content="Save To Disk" Padding="10, 2" Margin="4,0,0,0" Click="SaveToDiskButton_Click"/>
+        </StackPanel>
+        <ListBox ItemsSource="{Binding LogList}" FontSize="11" FontFamily="Cascadia Mono" x:Name="LogListBox" Grid.Row="1" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"/>
     </Grid>
 </Window>

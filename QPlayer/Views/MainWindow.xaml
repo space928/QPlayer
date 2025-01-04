@@ -40,6 +40,7 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="*"/>
+            <RowDefinition Height="22"/>
         </Grid.RowDefinitions>
         <ItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
                       Background="{DynamicResource AREghZyBrush.Deep.1.Background.Static}" BorderBrush="{DynamicResource AREghZyBrush.Deep.1.Border.Static}" BorderThickness="1"
@@ -55,7 +56,7 @@
             </ItemsControl.Effect>
         </ItemsControl>
         <!--#region Title Bar-->
-        <Grid Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
+        <Grid x:Name="TitleBar" Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="40"/>
                 <ColumnDefinition/>
@@ -103,7 +104,7 @@
                 <ColumnDefinition Width="250" MinWidth="20"/>
             </Grid.ColumnDefinitions>
             <!--#region Left Column-->
-            <Grid Grid.Column="0">
+            <Grid x:Name="LeftColumn" Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition/>
                     <RowDefinition MaxHeight="85"/>
@@ -166,7 +167,7 @@
             <GridSplitter Grid.Column="1" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <GridSplitter Grid.Column="2" HorizontalAlignment="Left" Margin="0,0,0,0" Width="5" ResizeBehavior="PreviousAndCurrent"/>
             <!--#region Cue List-->
-            <DockPanel Grid.Column="1" Margin="5,0,0,0" LastChildFill="True">
+            <DockPanel x:Name="CueList" Grid.Column="1" Margin="5,0,0,0" LastChildFill="True">
                 <Grid DockPanel.Dock="Top" ScrollViewer.VerticalScrollBarVisibility="Disabled" ClipToBounds="True">
                     <local:CueDataHeaderControl x:Name="CueListHeader" HorizontalContentAlignment="Left"/>
                 </Grid>
@@ -207,7 +208,7 @@
             </DockPanel>
             <!--#endregion-->
             <!--#region Cue Editor-->
-            <TabControl Grid.Column="2" Margin="5,0,0,0">
+            <TabControl x:Name="CueEditor" Grid.Column="2" Margin="5,0,0,0">
                 <TabItem Header="Selected Cue">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
                         <local:CueEditor DataContext="{Binding SelectedCue}"/>
@@ -237,6 +238,10 @@
                                 <DatePicker Text="{Binding Date}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
                             </DockPanel>
                             <Label Content="Audio Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+                            <DockPanel ToolTip="Sets the desired latency of the audio driver. Some drivers may ignore or impose limits on this parameter.">
+                                <Label Content="Audio Latency (ms)"/>
+                                <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="1" MaxValue="500" SpinnerType="Int" ClampValue="True" Text="{Binding AudioLatency}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            </DockPanel>
                             <DockPanel>
                                 <Label Content="Sound Driver"/>
                                 <ComboBox SelectedItem="{Binding AudioOutputDriver}" ItemsSource="{Binding AudioOutputDriverValues}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
@@ -268,5 +273,12 @@
             </TabControl>
             <!--#endregion-->
         </Grid>
+        <!--#region Status Bar-->
+        <Grid x:Name="StatusBar" Grid.Row="2" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
+            <Label x:Name="StatusBarText" Margin="4,2,4,2" Padding="0" VerticalAlignment="Center" MouseDoubleClick="StatusBarText_MouseDoubleClick">
+                <TextBlock Text="{Binding StatusText}" Foreground="{Binding StatusTextColour}"/>
+            </Label>
+        </Grid>
+        <!--#endregion-->
     </Grid>
 </Window>

@@ -1,4 +1,5 @@
-﻿using QPlayer.ViewModels;
+﻿using QPlayer.Audio;
+using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -25,6 +26,7 @@ public record ShowMetadata
     public string author = "";
     public DateTime date = DateTime.Today;
 
+    public int audioLatency = 100;
     public AudioOutputDriver audioOutputDriver;
     public string audioOutputDevice = "";
 

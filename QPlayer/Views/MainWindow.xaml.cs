@@ -181,4 +181,10 @@ public partial class MainWindow : Window
         if (vm.DraggingCues.Count == 0 && DraggingItemsPanel.Visibility == Visibility.Visible)
             DraggingItemsPanel.Visibility = Visibility.Hidden;
     }
+
+    private void StatusBarText_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        vm.OpenLogExecute();
+    }
 }
