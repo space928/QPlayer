@@ -5,8 +5,9 @@
 		<Nullable>enable</Nullable>
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 		<UseWPF>true</UseWPF>
+		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 
-		<Title>QPlayer OSC Cue Plugin</Title>
+		<Title>QPlayer Video Plugin</Title>
 		<Version>0.1.0</Version>
 		<Authors>Thomas Mathieson</Authors>
 		<Company>Thomas Mathieson</Company>
@@ -21,16 +22,22 @@
 		<!--<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>-->
 	</PropertyGroup>
 	<Target Name="AfterBuild">
-		<Copy SourceFiles="$(OutDir)" DestinationFiles="..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\" />
+		<Copy SourceFiles="$(OutDir)" DestinationFiles="..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\"/>
 	</Target>
+	<ItemGroup>
+		<PackageReference Include="FFmpeg.AutoGen" Version="8.0.0" />
+		<PackageReference Include="Silk.NET.OpenGL" Version="2.23.0" />
+		<PackageReference Include="Silk.NET.OpenGL.Extensions.ImGui" Version="2.23.0" />
+		<PackageReference Include="Silk.NET.Windowing" Version="2.23.0" />
+	</ItemGroup>
 	<ItemGroup>
 		<ProjectReference Include="..\QPlayer\QPlayer.csproj">
 			<Private>false</Private>
 			<ExcludeAssets>runtime</ExcludeAssets>
 		</ProjectReference>
 		<ProjectReference Include="..\QPlayer.SourceGenerator\QPlayer.SourceGenerator.csproj">
-		  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
-		  <OutputItemType>Analyzer</OutputItemType>
-	  </ProjectReference>
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+			<OutputItemType>Analyzer</OutputItemType>
+		</ProjectReference>
 	</ItemGroup>
 </Project>

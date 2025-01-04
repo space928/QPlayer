@@ -42,7 +42,7 @@ public static class PluginLoader
             if (baseAssembly == null || !Directory.Exists(pluginsPath))
                 return;
 
-            foreach (var fname in Directory.EnumerateFiles(pluginsPath))
+            foreach (var fname in Directory.EnumerateFiles(pluginsPath, "*", SearchOption.AllDirectories))
             {
                 if (!fname.EndsWith(".dll"))
                     continue;

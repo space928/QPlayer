@@ -147,7 +147,6 @@ public partial class MainViewModel : ObservableObject
     }
     public string Clock => $"{DateTime.Now:HH:mm:ss}";
     public ObservableCollection<RecentFile> RecentFiles => persistantDataManager.RecentFiles;
-    public event Action? OnRegisterCueTypes;
     #endregion
 
     /// <summary>
@@ -218,8 +217,6 @@ public partial class MainViewModel : ObservableObject
         Log("Loading plugins...");
         PluginLoader.LoadPlugins(this);
         Log($"{PluginLoader.LoadedPlugins.Count} plugins loaded");
-
-        OnRegisterCueTypes?.Invoke();
 
         // Configure the json serializer, make sure that the polymorphic type resolver is resolved after the plugins (and cue types) have been loaded.
         jsonSerializerOptions = new()

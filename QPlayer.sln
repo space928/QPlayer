@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.5.33516.290
+# Visual Studio Version 18
+VisualStudioVersion = 18.3.11505.172 d18.3
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "QPlayer", "QPlayer\QPlayer.csproj", "{AC3A2BB3-F46C-45D0-986F-D28AC74A8649}"
 EndProject
@@ -18,6 +18,8 @@ EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.OSCCuePlugin", "QPlayer.OSCCuePlugin\QPlayer.OSCCuePlugin.csproj", "{A25C5F5B-1110-4B50-82EC-634A10359835}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.SourceGenerator", "QPlayer.SourceGenerator\QPlayer.SourceGenerator.csproj", "{14595F73-7F5B-75E8-8CC0-72EDE6963639}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.VideoPlugin", "QPlayer.VideoPlugin\QPlayer.VideoPlugin.csproj", "{BE4353D7-8CDC-4B23-BD4B-020BB276D933}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -123,6 +125,26 @@ Global
 		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x64.Build.0 = Release|Any CPU
 		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x86.ActiveCfg = Release|Any CPU
 		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x86.Build.0 = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|ARM.Build.0 = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|x64.Build.0 = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Debug|x86.Build.0 = Debug|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|ARM.ActiveCfg = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|ARM.Build.0 = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|ARM64.Build.0 = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|x64.ActiveCfg = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|x64.Build.0 = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|x86.ActiveCfg = Release|Any CPU
+		{BE4353D7-8CDC-4B23-BD4B-020BB276D933}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
