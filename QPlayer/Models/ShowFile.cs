@@ -10,7 +10,7 @@ namespace QPlayer.Models;
 [Serializable]
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 2;
+    public const int FILE_FORMAT_VERSION = 3;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
     public ShowMetadata showMetadata = new();
@@ -43,7 +43,8 @@ public enum CueType
     SoundCue,
     TimeCodeCue,
     StopCue,
-    VolumeCue
+    VolumeCue,
+    VideoCue
 }
 
 public enum LoopMode
@@ -68,6 +69,7 @@ public enum StopMode
 [JsonDerivedType(typeof(TimeCodeCue), typeDiscriminator: nameof(TimeCodeCue))]
 [JsonDerivedType(typeof(StopCue), typeDiscriminator: nameof(StopCue))]
 [JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
+[JsonDerivedType(typeof(VideoCue), typeDiscriminator: nameof(VideoCue))]
 public record Cue
 {
     public CueType type;
@@ -81,6 +83,7 @@ public record Cue
     public TimeSpan delay;
     public LoopMode loopMode;
     public int loopCount;
+    public string remoteNode = string.Empty;
 }
 
 [Serializable]
@@ -161,5 +164,23 @@ public record VolumeCue : Cue
     public VolumeCue() : base()
     {
         type = CueType.VolumeCue;
+    }
+}
+
+[Serializable]
+[JsonDerivedType(typeof(VideoCue), typeDiscriminator: nameof(VideoCue))]
+public record VideoCue : Cue
+{
+    public string path = string.Empty;
+    public TimeSpan startTime;
+    public TimeSpan duration;
+    public float volume = 1;
+    public float fadeIn;
+    public float fadeOut;
+    public FadeType fadeType;
+
+    public VideoCue() : base()
+    {
+        type = CueType.VideoCue;
     }
 }
