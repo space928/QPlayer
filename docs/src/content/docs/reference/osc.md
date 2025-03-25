@@ -1,5 +1,6 @@
 ﻿---
 title: OSC Reference
+order: 30
 ---
 
 QPlayer can be controlled from external applications over the network using 
@@ -18,12 +19,12 @@ The following OSC messages can be received by QPlayer:
 #### Anatomy of an OSC message:
 
 ```
-    qplayer/test,param1,[param2]
-    ↓            |      |
-    OSC Address  ↓      |
-                 First argument
-                        ↓
-                        Second argument (optional)
+    /qplayer/test,(param1),[param2]
+    ↓             |        |
+    OSC Address   ↓        |
+                  First argument
+                           ↓
+                           Second argument (optional)
 ```
 
 An OSC message is comprised of an *address*, which may be made up of multiple parts 
@@ -36,7 +37,7 @@ for more information on implementing OSC yourself.
 
 ### Go
 ```
-qplayer/go,[qid],[select]
+/qplayer/go,[qid],[select]
 ```
 
 Triggers the specified cue, or the currently selected cue if no cue is specified. 
@@ -50,7 +51,7 @@ is selected before pressing GO.
 
 ### Pause
 ```
-qplayer/pause,[qid]
+/qplayer/pause,[qid]
 ```
 
 Pauses the playback of the specified cue, or the currently selected cue if no cue 
@@ -61,7 +62,7 @@ is specified. Has no effect if the cue is not currently active.
 
 ### Unpause
 ```
-qplayer/unpause,[qid]
+/qplayer/unpause,[qid]
 ```
 
 Unpauses the specified cue, or the currently selected cue if no cue is specified. 
@@ -72,7 +73,7 @@ Has no effect if the cue is not currently paused or preloaded.
 
 ### Stop
 ```
-qplayer/stop,[qid]
+/qplayer/stop,[qid]
 ```
 
 Stops the playback of the specified cue, or all active cues if no cue is specified.
@@ -82,7 +83,7 @@ Stops the playback of the specified cue, or all active cues if no cue is specifi
 
 ### Preload
 ```
-qplayer/preload,[qid],[time]
+/qplayer/preload,[qid],[time]
 ```
 
 Preloads the specified cue to the given time, or the currently selected cue if no 
@@ -95,31 +96,31 @@ UI.
 
 ### Select Cue
 ```
-qplayer/select,[qid]
+/qplayer/select,[qid]
 ```
 
-Selects the specified cue in the cue stack by it's cue ID.
+Selects the specified cue in the cue stack by its cue ID.
 
 #### Arguments:
 `[qid]` *(string or float)* the cue ID to select.  
 
 ### Select Previous Cue
 ```
-qplayer/up
+/qplayer/up
 ```
 
 Selects the previous cue in the cue stack.
 
 ### Select Next Cue
 ```
-qplayer/down
+/qplayer/down
 ```
 
 Selects the next cue in the cue stack.
 
 ### Save Project File
 ```
-qplayer/save
+/qplayer/save
 ```
 
 Saves current QPlayer project under the same name.
@@ -137,7 +138,7 @@ sections on the [Project Setup](../project-setup) and
 [Common Cue Properties](../cues/cue) pages.
 :::
 
-A given cue in a cue stack can be designated as a remote cue by setting it's 
+A given cue in a cue stack can be designated as a remote cue by setting its 
 "Remote Target" property (see: [Common Cue Properties](../cues/cue) for more 
 details). When a cue is designated as a remote cue, triggering it results in
 an OSC message being sent to the specified remote client. The remote client is 
@@ -148,7 +149,7 @@ viewed and configured from the [Project Setup](../project-setup) tab.
 
 ### Go
 ```
-qplayer/remote/go,(target),(qid)
+/qplayer/remote/go,(target),(qid)
 ```
 
 #### Arguments:
@@ -157,7 +158,7 @@ qplayer/remote/go,(target),(qid)
 
 ### Pause
 ```
-qplayer/remote/pause,(target),(qid)
+/qplayer/remote/pause,(target),(qid)
 ```
 
 #### Arguments:
@@ -166,7 +167,7 @@ qplayer/remote/pause,(target),(qid)
 
 ### Unpause
 ```
-qplayer/remote/unpause,(target),(qid)
+/qplayer/remote/unpause,(target),(qid)
 ```
 
 #### Arguments:
@@ -175,7 +176,7 @@ qplayer/remote/unpause,(target),(qid)
 
 ### Stop
 ```
-qplayer/remote/stop,(target),(qid)
+/qplayer/remote/stop,(target),(qid)
 ```
 
 #### Arguments:
@@ -184,7 +185,7 @@ qplayer/remote/stop,(target),(qid)
 
 ### Preload
 ```
-qplayer/remote/preload,(target),(qid),(time)
+/qplayer/remote/preload,(target),(qid),(time)
 ```
 
 #### Arguments:
@@ -194,7 +195,7 @@ qplayer/remote/preload,(target),(qid),(time)
 
 ### Update Showfile
 ```
-qplayer/remote/update-show,(target),(showfile)
+/qplayer/remote/update-show,(target),(showfile)
 ```
 
 This command can be used to resynchronise the show file between the host and 
@@ -206,7 +207,7 @@ the client. This action may cause an interruption in playback on the client.
 
 ### Ping
 ```
-qplayer/remote/ping,(target)
+/qplayer/remote/ping,(target)
 ```
 
 Sends a ping to a remote client, which should reply with a `pong` message.
@@ -218,7 +219,7 @@ Sends a ping to a remote client, which should reply with a `pong` message.
 
 ### Discovery
 ```
-qplayer/remote/discovery,(name)
+/qplayer/remote/discovery,(name)
 ```
 
 This message should be sent roughly once per second by remote clients to allow them
@@ -231,7 +232,7 @@ sent a discovery message in the last 5 seconds.
 
 ### Pong
 ```
-qplayer/remote/pong,(name)
+/qplayer/remote/pong,(name)
 ```
 
 A reply to a `ping` message.
@@ -241,7 +242,7 @@ A reply to a `ping` message.
 
 ### Cue Status
 ```
-qplayer/remote/fb/cue-status,(name),(qid),(state),[time]
+/qplayer/remote/fb/cue-status,(name),(qid),(state),[time]
 ```
 
 The remote client is expected to send a cue status message any time the state of a
