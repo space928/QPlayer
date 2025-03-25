@@ -6,6 +6,7 @@
 [![Build Status](https://github.com/space928/QPlayer/actions/workflows/dotnet-desktop.yml/badge.svg?branch=main)](https://github.com/space928/QPlayer/actions/workflows/dotnet-desktop.yml)
 [![GitHub License](https://img.shields.io/github/license/space928/QPlayer)](https://github.com/space928/QPlayer/blob/main/LICENSE)
 [![GitHub Downloads (all assets, all releases)](https://img.shields.io/github/downloads/space928/QPlayer/total)](https://github.com/space928/QPlayer/releases)
+[![Documentation](https://img.shields.io/badge/Documentation-darkgreen?color=%2324aa2a&link=https%3A%2F%2Fspace928.github.io%2FQPlayer)](https://space928.github.io/QPlayer)
 
 
 QPlayer is a simple media player for theatre. It allows cue lists of sound tracks to be created and 

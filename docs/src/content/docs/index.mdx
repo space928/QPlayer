@@ -1,0 +1,49 @@
+---
+title: QPlayer
+description: A powerful media player for theatre.
+template: splash
+hero:
+  tagline: A powerful media player for theatre.
+  image:
+    file: ../../assets/Logo.svg
+  actions:
+    - text: Download Now
+      link: https://github.com/space928/QPlayer/releases/latest
+      icon: external
+    - text: Getting Started
+      link: guides/getting-started/
+      icon: right-arrow
+      variant: secondary
+---
+
+import { Card, CardGrid } from '@astrojs/starlight/components';
+
+## Features
+
+<CardGrid stagger>
+	<Card title="Free and open source" icon="heart">
+		QPlayer is free now and forever, thanks to it's permissive MIT license, 
+		you are free to use and adapt QPlayer however you like!
+	</Card>
+	<Card title="Many formats supported" icon="puzzle">
+		Supports playback of many common file formats, including: WAV, MP3, etc...
+	</Card>
+	<Card title="Intuitive cue stack" icon="list-format">
+		Cues containing media files, stop cues, fade cues, and more, are all added to one cue stack 
+		controlled by a single GO button. Multiple cues can be fired at once, cues can be paused, 
+		preloaded, and more.
+	</Card>
+	<Card title="Fades & delays" icon="setting">
+		Cues can have fade in and out times, start delays, and more to precisly craft your sound scape.
+	</Card>
+	<Card title="OSC integration" icon="external">
+		Control QPlayer from your favourite software, with simple to integrate OSC messages.
+	</Card>
+	<Card title="Show tested" icon="approve-check">
+		Reliability is extremely important to a good show! QPlayer, has been used and abused in 
+		a real theatre setting to ensure it's reliability.
+	</Card>
+	<Card title="And much more" icon="sun">
+		QPlayer is in active development, with many exciting features on the horizon.
+	</Card>
+</CardGrid>

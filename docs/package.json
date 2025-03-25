@@ -1,0 +1,20 @@
+{
+  "name": "qplayer-docs",
+  "type": "module",
+  "version": "0.0.1",
+  "scripts": {
+    "dev": "astro dev",
+    "start": "astro dev",
+    "build": "astro build",
+    "preview": "astro preview",
+    "astro": "astro"
+  },
+  "dependencies": {
+    "@astrojs/starlight": "^0.32.4",
+    "astro": "^5.5.3",
+    "sharp": "^0.32.5",
+    "starlight-auto-sidebar": "^0.1.0",
+    "starlight-giscus": "^0.5.1",
+    "starlight-kbd": "^0.2.0"
+  }
+}
