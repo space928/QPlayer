@@ -145,6 +145,10 @@ an OSC message being sent to the specified remote client. The remote client is
 in turn expected to reply with playback status messages. Remote clients can be
 viewed and configured from the [Project Setup](../project-setup) tab.
 
+:::note
+When a client 
+:::
+
 ## Messages Sent To Remote Clients
 
 ### Go
@@ -195,14 +199,24 @@ viewed and configured from the [Project Setup](../project-setup) tab.
 
 ### Update Showfile
 ```
-/qplayer/remote/update-show,(target),(showfile)
+/qplayer/remote/update-show,(target),(block-num),(total-blocks),(showfile)
 ```
 
 This command can be used to resynchronise the show file between the host and 
-the client. This action may cause an interruption in playback on the client.
+the client. This action may cause an interruption in playback on the client. 
+Showfiles should be transmitted in blocks of no more than 1KB each. The client
+should send `update-show-ack` or `update-show-nack` packets as it receives show
+update packets from the host. An `update-show` command times out after 5 seconds
+if the client doesn't reply with an `update-show-ack` to each packet.
+
+Clients receiving the show file may choose to interrupt playback to apply the 
+changes. Changes to properties in the [Remote Setup](../project-setup#remote-nodes)
+category should *not* be applied when received via this command.
 
 #### Arguments:
 `(target)` *(string)* the name of the remote client.  
+`(block-num)` *(int)* the index of the block being transmitted.  
+`(total-blocks)` *(int)* the name of the remote client.  
 `(showfile)` *(blob)* the contents of the showfile as a utf-8 encoded json file.  
 
 ### Ping
@@ -271,5 +285,30 @@ public enum CueState
 `(state)` *(int)* the current state of the cue as defined in the `CueState` 
 enumeration.  
 `[time]` *(optional, float)* the current playback time in seconds of the cue.
+
+### Update Showfile Acknowledge
+```
+/qplayer/remote/update-show-ack,(target),(block-num)
+```
+
+Acknowledges the receipt of an `update-show` packet. The host may choose to 
+retry sending a block if it doesn't receive an ack or receives a nack.
+
+#### Arguments:
+`(target)` *(string)* the name of the remote client.  
+`(block-num)` *(int)* the index of the block being received.  
+
+### Update Showfile Fail
+```
+/qplayer/remote/update-show-nack,(target),(block-num)
+```
+
+Notfies the host of a failure to receive a given `update-show` packet. 
+The host may choose to retry sending a block if it doesn't receive an 
+ack or receives a nack.
+
+#### Arguments:
+`(target)` *(string)* the name of the remote client.  
+`(block-num)` *(int)* the index of the block being received.  
 
 <!--![Cue Stack](../../../assets/hints.png)-->

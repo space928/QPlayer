@@ -5,11 +5,12 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views" 
              xmlns:vm="clr-namespace:QPlayer.ViewModels" 
+             xmlns:util="clr-namespace:QPlayer.Utilities" 
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="800">
     <UserControl.Resources>
-        <vm:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
+        <util:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
     </UserControl.Resources>
     <Grid Background="{DynamicResource Button.Static.Background}">
         <Grid.ColumnDefinitions>

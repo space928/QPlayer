@@ -1,8 +1,9 @@
 ﻿using QPlayer.Audio;
-using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace QPlayer.Models;
@@ -13,13 +14,13 @@ public record ShowFile
     public const int FILE_FORMAT_VERSION = 3;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
-    public ShowMetadata showMetadata = new();
+    public ShowSettings showSettings = new();
     public List<float> columnWidths = [];
     public List<Cue> cues = [new SoundCue()];
 }
 
 [Serializable]
-public record ShowMetadata
+public record ShowSettings
 {
     public string title = "Untitled";
     public string description = "";
@@ -33,6 +34,19 @@ public record ShowMetadata
     public string oscNIC = "";
     public int oscRXPort = 9000;
     public int oscTXPort = 8000;
+
+    public bool enableRemoteControl = false;
+    public bool isRemoteHost = true;
+    public bool syncShowFileOnSave = true;
+    public string nodeName = "QPlayer";
+    public List<RemoteNode> remoteNodes = [];
+}
+
+[Serializable]
+public record struct RemoteNode(string name, string address)
+{
+    public string name = name;
+    public string address = address;
 }
 
 public enum CueType
@@ -60,6 +74,13 @@ public enum StopMode
     LoopEnd
 }
 
+public enum AlphaMode
+{
+    None,
+    Blend,
+    BlendPremultiply
+}
+
 [Serializable]
 [JsonPolymorphic(IgnoreUnrecognizedTypeDiscriminators = true, UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
 [JsonDerivedType(typeof(Cue), typeDiscriminator: nameof(Cue))]
@@ -75,7 +96,7 @@ public record Cue
     public CueType type;
     public decimal qid;
     public decimal? parent;
-    public Color colour = Color.Black;
+    public SerializedColour colour = SerializedColour.Black;
     public string name = string.Empty;
     public string description = string.Empty;
     public bool halt = true;
@@ -116,7 +137,7 @@ public record SoundCue : Cue
     public float volume = 1;
     public float fadeIn;
     public float fadeOut;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public SoundCue() : base()
     {
@@ -144,7 +165,7 @@ public record StopCue : Cue
     public decimal stopQid;
     public StopMode stopMode;
     public float fadeOutTime;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public StopCue() : base()
     {
@@ -159,7 +180,7 @@ public record VolumeCue : Cue
     public decimal soundQid;
     public float fadeTime;
     public float volume;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public VolumeCue() : base()
     {
@@ -172,12 +193,25 @@ public record VolumeCue : Cue
 public record VideoCue : Cue
 {
     public string path = string.Empty;
+    public string shader = string.Empty;
+    public int zIndex;
+    public string? alphaPath;
+    public AlphaMode alphaMode = AlphaMode.Blend;
     public TimeSpan startTime;
     public TimeSpan duration;
+    public float dimmer = 1;
     public float volume = 1;
-    public float fadeIn;
-    public float fadeOut;
-    public FadeType fadeType;
+    public float fadeIn = 1;
+    public float fadeOut = 1;
+    public FadeType fadeType = FadeType.SCurve;
+
+    public float brightness = 1;
+    public float contrast = 1;
+    public float gamma = 1;
+
+    public float scale = 1;
+    public float rotation = 0;
+    public Vector2 offset = Vector2.Zero;
 
     public VideoCue() : base()
     {

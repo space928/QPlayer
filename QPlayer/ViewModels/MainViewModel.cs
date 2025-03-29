@@ -5,8 +5,8 @@ using Microsoft.Win32;
 using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.Views;
+using QPlayer.Utilities;
 using ReactiveUI.Fody.Helpers;
-using Rug.Osc;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -18,6 +18,7 @@ using System.Reflection;
 using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
+using System.Threading.Tasks;
 using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
@@ -73,16 +74,12 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand PackProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenLogCommand { get; private set; }
         [Reactive] public RelayCommand OpenSetttingsCommand { get; private set; }
+        [Reactive] public RelayCommand OpenOnlineManualCommand { get; private set; }
         [Reactive] public RelayCommand OpenAboutCommand { get; private set; }
 
-        [Reactive] public RelayCommand CreateCueCommand { get; private set; }
+        [Reactive] public RelayCommand CreateCueMenuCommand { get; private set; }
 
-        [Reactive] public RelayCommand CreateGroupCueCommand { get; private set; }
-        [Reactive] public RelayCommand CreateDummyCueCommand { get; private set; }
-        [Reactive] public RelayCommand CreateSoundCueCommand { get; private set; }
-        [Reactive] public RelayCommand CreateTimeCodeCueCommand { get; private set; }
-        [Reactive] public RelayCommand CreateStopCueCommand { get; private set; }
-        [Reactive] public RelayCommand CreateVolumeCueCommand { get; private set; }
+        [Reactive] public RelayCommand<string> CreateCueCommand { get; private set; }
 
         [Reactive] public RelayCommand MoveCueUpCommand { get; private set; }
         [Reactive] public RelayCommand MoveCueDownCommand { get; private set; }
@@ -140,7 +137,15 @@ namespace QPlayer.ViewModels
         [Reactive] public string Clock => $"{DateTime.Now:HH:mm:ss}";
         #endregion
 
+        /// <summary>
+        /// The global instance of the audio playback manager.
+        /// </summary>
         public AudioPlaybackManager AudioPlaybackManager => audioPlaybackManager;
+        /// <summary>
+        /// An event which is fired every 250ms on the main thread.
+        /// </summary>
+        public event Action? OnSlowUpdate;
+        public OSCManager OSCManager => oscManager;
 
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
 
@@ -159,15 +164,15 @@ namespace QPlayer.ViewModels
         };
         private readonly Timer slowUpdateTimer;
         private readonly AudioPlaybackManager audioPlaybackManager;
-        private readonly OSCDriver oscDriver;
         private readonly SynchronizationContext syncContext;
         private readonly Dictionary<decimal, CueViewModel> cuesDict;
-        private static readonly SolidColorBrush StatusInfoBrush = new (Color.FromArgb(255, 220, 220, 220));
-        private static readonly SolidColorBrush StatusWarningBrush = new (Color.FromArgb(255, 200, 220, 50));
-        private static readonly SolidColorBrush StatusErrorBrush = new (Color.FromArgb(255, 220, 60, 40));
-        private static string lastStatusMessage = "";
-        private static DateTime lastStatusMessageTime = DateTime.MinValue;
-        private static LogLevel lastStatusLevel = LogLevel.Info;
+        private readonly OSCManager oscManager;
+        private static readonly SolidColorBrush StatusInfoBrush = new(Color.FromArgb(255, 220, 220, 220));
+        private static readonly SolidColorBrush StatusWarningBrush = new(Color.FromArgb(255, 200, 220, 50));
+        private static readonly SolidColorBrush StatusErrorBrush = new(Color.FromArgb(255, 220, 60, 40));
+        private static string lastLogStatusMessage = "";
+        private static DateTime lastLogStatusMessageTime = DateTime.MinValue;
+        private static LogLevel lastLogStatusLevel = LogLevel.Info;
 
         //public static DateTime dbg_cueStartTime;
 
@@ -181,29 +186,25 @@ namespace QPlayer.ViewModels
 
             LogList = logList;
             Log("Starting QPlayer...");
-            Log("  Copyright Thomas Mathieson 2024");
+            Log("  Copyright Thomas Mathieson 2025");
 
             syncContext = SynchronizationContext.Current ?? new();
             audioPlaybackManager = new(this);
-            oscDriver = new();
+            oscManager = new(this);
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute);
             NewProjectCommand = new(NewProjectExecute);
             OpenProjectCommand = new(OpenProjectExecute);
-            SaveProjectCommand = new(SaveProjectExecute);
-            SaveProjectAsCommand = new(SaveProjectAsExecute);
-            PackProjectCommand = new(SaveProjectAsExecute);
+            SaveProjectCommand = new(() => SaveProjectExecute());
+            SaveProjectAsCommand = new(() => SaveProjectAsExecute());
+            PackProjectCommand = new(() => SaveProjectAsExecute());
+            OpenOnlineManualCommand = new(OpenOnlineManualExecute);
             OpenAboutCommand = new(OpenAboutExecute);
             OpenSetttingsCommand = new(OpenSettingsExecute);
 
-            CreateCueCommand = new(ShowCreateCueMenuExecute); ;
-            CreateGroupCueCommand = new(() => CreateCue(CueType.GroupCue));
-            CreateDummyCueCommand = new(() => CreateCue(CueType.DummyCue));
-            CreateSoundCueCommand = new(() => CreateCue(CueType.SoundCue));
-            CreateTimeCodeCueCommand = new(() => CreateCue(CueType.TimeCodeCue));
-            CreateStopCueCommand = new(() => CreateCue(CueType.StopCue));
-            CreateVolumeCueCommand = new(() => CreateCue(CueType.VolumeCue));
+            CreateCueMenuCommand = new(ShowCreateCueMenuExecute);
+            CreateCueCommand = new(type => CreateCue(type));
 
             MoveCueUpCommand = new(MoveCueUpExecute);
             MoveCueDownCommand = new(MoveCueDownExecute);
@@ -295,7 +296,7 @@ namespace QPlayer.ViewModels
             // These are redundant, they are done when we load the showfile
             //ConnectOSC();
             //OpenAudioDevice();
-            SubscribeOSC();
+            oscManager.SubscribeOSC();
         }
 
         public void OnExit()
@@ -316,15 +317,17 @@ namespace QPlayer.ViewModels
 
             syncContext.Post(_ =>
             {
-                if (DateTime.Now - lastStatusMessageTime > TimeSpan.FromSeconds(5))
+                OnSlowUpdate?.Invoke();
+
+                if (DateTime.Now - lastLogStatusMessageTime > TimeSpan.FromSeconds(5))
                 {
                     StatusText = $"Ready - {Cues.Count} cues in project";
                     StatusTextColour = StatusInfoBrush;
                 }
                 else
                 {
-                    StatusText = lastStatusMessage;
-                    StatusTextColour = lastStatusLevel switch
+                    StatusText = lastLogStatusMessage;
+                    StatusTextColour = lastLogStatusLevel switch
                     {
                         LogLevel.Info => StatusInfoBrush,
                         LogLevel.Debug => StatusInfoBrush,
@@ -347,15 +350,20 @@ namespace QPlayer.ViewModels
             LoadShowfileModel(new());
         }
 
-        public void SaveProjectExecute()
+        public void SaveProjectExecute(bool async = true)
         {
-            if (ProjectFilePath != null)
-                SaveProject(ProjectFilePath);
+            if (!string.IsNullOrEmpty(ProjectFilePath))
+            {
+                if (async)
+                    Task.Run(() => SaveProjectAsync(ProjectFilePath));
+                else
+                    SaveProject(ProjectFilePath);
+            }
             else
                 SaveProjectAsExecute();
         }
 
-        public void SaveProjectAsExecute()
+        public void SaveProjectAsExecute(bool async = true)
         {
             SaveFileDialog saveFileDialog = new()
             {
@@ -367,7 +375,8 @@ namespace QPlayer.ViewModels
             };
             if (saveFileDialog.ShowDialog() ?? false)
             {
-                SaveProject(saveFileDialog.FileName);
+                ProjectFilePath = saveFileDialog.FileName;
+                SaveProjectExecute(async);
             }
         }
 
@@ -385,7 +394,7 @@ namespace QPlayer.ViewModels
             };
             if (openFileDialog.ShowDialog() ?? false)
             {
-                OpenProject(openFileDialog.FileName);
+                Task.Run(() => OpenProject(openFileDialog.FileName));
             }
         }
 
@@ -421,6 +430,11 @@ namespace QPlayer.ViewModels
         {
             settingsWindow?.Close();
             settingsWindow = null;
+        }
+
+        public void OpenOnlineManualExecute()
+        {
+            Process.Start(new ProcessStartInfo("https://space928.github.io/QPlayer/reference/") { UseShellExecute = true });
         }
 
         public void OpenAboutExecute()
@@ -563,9 +577,9 @@ namespace QPlayer.ViewModels
 
                 if (level != LogLevel.Debug)
                 {
-                    lastStatusLevel = level;
-                    lastStatusMessage = messageString;
-                    lastStatusMessageTime = time;
+                    lastLogStatusLevel = level;
+                    lastLogStatusMessage = messageString;
+                    lastLogStatusMessageTime = time;
                 }
             }
         }
@@ -578,7 +592,7 @@ namespace QPlayer.ViewModels
             Error
         }
 
-        public void OnQIDChanged(decimal oldVal, decimal newVal, CueViewModel src)
+        public void NotifyQIDChanged(decimal oldVal, decimal newVal, CueViewModel src)
         {
             if (cuesDict.TryGetValue(oldVal, out var cue))
             {
@@ -704,6 +718,10 @@ namespace QPlayer.ViewModels
                 return;
             }
 
+            // The cue doesn't need to be moved, don't do anything.
+            if (origIndex == index)
+                return;
+
             // Remove the cue
             Cues.RemoveAt(origIndex);
             var cueModel = showFile.cues[origIndex];
@@ -748,10 +766,7 @@ namespace QPlayer.ViewModels
                 switch (mbRes)
                 {
                     case MessageBoxResult.Yes:
-                        if (string.IsNullOrEmpty(ProjectFilePath))
-                            SaveProjectExecute();
-                        else
-                            SaveProject(ProjectFilePath);
+                        SaveProjectExecute(false);
                         break;
                     case MessageBoxResult.No:
                         return true;
@@ -766,8 +781,8 @@ namespace QPlayer.ViewModels
         private void LoadShowfileModel(ShowFile show)
         {
             showFile = show;
-            ProjectSettings = ProjectSettingsViewModel.FromModel(show.showMetadata, this);
-            ProjectSettings.Bind(show.showMetadata);
+            ProjectSettings = ProjectSettingsViewModel.FromModel(show.showSettings, this);
+            ProjectSettings.Bind(show.showSettings);
             ProjectSettings.PropertyChanged += (o, e) =>
             {
                 if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
@@ -783,7 +798,7 @@ namespace QPlayer.ViewModels
                 Cues.Add(vm);
             }
             OnPropertyChanged(nameof(SelectedCue));
-            ConnectOSC();
+            oscManager.ConnectOSC();
             OpenAudioDevice();
         }
 
@@ -806,21 +821,41 @@ namespace QPlayer.ViewModels
                     vm.ToModel(q);
                 }
             }
-            ProjectSettings.ToModel(showFile.showMetadata);
+            ProjectSettings.ToModel(showFile.showSettings);
             showFile.columnWidths = ColumnWidths.Select(x => x.Value).ToList();
             showFile.fileFormatVersion = ShowFile.FILE_FORMAT_VERSION;
         }
 
-        public void OpenProject(string path)
+        public async Task OpenProject(string path)
         {
+            Log($"Loading project from: {path}");
             try
             {
-                var s = JsonSerializer.Deserialize<ShowFile>(File.ReadAllText(path), jsonSerializerOptions)
-                    ?? throw new FileFormatException("Show file deserialized as null!");
-                if (s.fileFormatVersion != ShowFile.FILE_FORMAT_VERSION)
-                    Log($"Project file version '{s.fileFormatVersion}' does not match QPlayer version '{ShowFile.FILE_FORMAT_VERSION}'!", LogLevel.Warning);
-                ProjectFilePath = path;
-                LoadShowfileModel(s);
+                using var f = File.OpenRead(path);
+                ShowFile showFile;
+                try
+                {
+                    showFile = await JsonSerializer.DeserializeAsync<ShowFile>(f, jsonSerializerOptions)
+                        ?? throw new FileFormatException("Show file deserialized as null!");
+                }
+                catch
+                {
+                    Log($"Show file is corrupt or out of date, attempting to repair...", LogLevel.Warning);
+                    showFile = await ShowFileConverter.LoadShowFileSafeAsync(f);
+                }
+
+                if (showFile.fileFormatVersion != ShowFile.FILE_FORMAT_VERSION)
+                {
+                    //Log($"Project file version '{showFile.fileFormatVersion}' does not match QPlayer version '{ShowFile.FILE_FORMAT_VERSION}'!", LogLevel.Warning);
+                    f.Position = 0;
+                    await ShowFileConverter.UpgradeShowFileAsync(showFile, f);
+                }
+
+                syncContext.Send(_ =>
+                {
+                    ProjectFilePath = path;
+                    LoadShowfileModel(showFile);
+                }, null);
 
                 Log($"Loaded project from disk! {path}");
             }
@@ -830,18 +865,78 @@ namespace QPlayer.ViewModels
             }
         }
 
-        public void SaveProject(string path)
+        public async Task SaveProjectAsync(string path)
         {
             try
             {
-                EnsureShowfileModelSync();
-                File.WriteAllText(path, JsonSerializer.Serialize(showFile, jsonSerializerOptions));
+                Log("Saving project...");
+                // For now, this method can't be trusted on other threads, let run on the main thread.
+                // Chances are this method is being called from the main thread anyway, so it shouldn't
+                // make a difference.
+                syncContext.Send(_ =>
+                {
+                    EnsureShowfileModelSync();
+                }, null);
+
+                using var f = File.OpenWrite(path);
+                using var ms = new MemoryStream();
+                await JsonSerializer.SerializeAsync(ms, showFile, jsonSerializerOptions);
+                ms.Position = 0;
+                ms.CopyTo(f);
+
+                if (ProjectSettings.EnableRemoteControl && ProjectSettings.SyncShowFileOnSave)
+                {
+                    ms.Position = 0;
+                    try
+                    {
+                        await oscManager.SendRemoteUpdateShowFileAsync(ProjectSettings.RemoteNodes.Select(x => x.Name), ms.ToArray());
+                    }
+                    catch (Exception ex)
+                    {
+                        Log($"Error while sending show file to remote client: '{ex.Message}'\n{ex}", LogLevel.Error);
+                    }
+                }
+
                 Log($"Saved project to {path}!");
             }
             catch (Exception e)
             {
                 Log($"Couldn't save project to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
             }
+        }
+
+        public void SaveProject(string path)
+        {
+            try
+            {
+                Log("Saving project...");
+                EnsureShowfileModelSync();
+
+                using var f = File.OpenWrite(path);
+                using var ms = new MemoryStream();
+                JsonSerializer.Serialize(ms, showFile, jsonSerializerOptions);
+                ms.Position = 0;
+                ms.CopyTo(f);
+
+                if (ProjectSettings.EnableRemoteControl && ProjectSettings.SyncShowFileOnSave)
+                {
+                    ms.Position = 0;
+                    oscManager.SendRemoteUpdateShowFile(ProjectSettings.RemoteNodes.Select(x => x.Name), ms.ToArray());
+                }
+
+                Log($"Saved project to {path}!");
+            }
+            catch (Exception e)
+            {
+                Log($"Couldn't save project to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
+            }
+        }
+
+        public CueViewModel? CreateCue(string? type)
+        {
+            if (Enum.TryParse<CueType>(type, true, out var cueType))
+                return CreateCue(cueType);
+            return null;
         }
 
         public CueViewModel CreateCue(CueType type, bool beforeCurrent = false, bool afterLast = false, CueViewModel? src = null)
@@ -861,6 +956,7 @@ namespace QPlayer.ViewModels
                 case CueType.TimeCodeCue: model = new TimeCodeCue(); break;
                 case CueType.StopCue: model = new StopCue(); ; break;
                 case CueType.VolumeCue: model = new VolumeCue(); break;
+                case CueType.VideoCue: model = new VideoCue(); break;
                 default: throw new NotImplementedException();
             }
 
@@ -942,125 +1038,6 @@ namespace QPlayer.ViewModels
                 ProjectSettings.AudioOutputDriver,
                 ProjectSettings.SelectedAudioOutputDeviceKey,
                 ProjectSettings.AudioLatency);
-        }
-
-        public void ConnectOSC()
-        {
-            if (oscDriver.OSCConnect(ProjectSettings.OSCNic, ProjectSettings.OSCRXPort, ProjectSettings.OSCTXPort))
-            {
-
-            }
-        }
-
-        public void MonitorOSC(bool enable)
-        {
-            if (enable)
-            {
-                oscDriver.OnRXMessage += OscDriver_LogRXMessage;
-                oscDriver.OnTXMessage += OscDriver_LogTXMessage;
-            }
-            else
-            {
-                oscDriver.OnRXMessage -= OscDriver_LogRXMessage;
-                oscDriver.OnTXMessage -= OscDriver_LogTXMessage;
-            }
-        }
-
-        private void OscDriver_LogRXMessage(OscPacket obj)
-        {
-            Log($"OSC RX: {obj}", LogLevel.Info);
-        }
-
-        private void OscDriver_LogTXMessage(OscPacket obj)
-        {
-            Log($"OSC TX: {obj}", LogLevel.Info);
-        }
-
-        private void SubscribeOSC()
-        {
-            oscDriver.Subscribe("/qplayer/go", msg =>
-            {
-                if (msg.Count > 0)
-                {
-                    if (FindCue(msg[0], out var cue))
-                    {
-                        if (msg.Count > 1)
-                        {
-                            SelectedCue = cue;
-                            GoExecute();
-                        }
-                        else
-                        {
-                            cue.DelayedGo();
-                        }
-                    }
-                    else
-                    {
-                        Log($"Couldn't find cue with ID {msg[0]}!", LogLevel.Warning);
-                    }
-                }
-                else
-                    GoExecute();
-            }, syncContext);
-            oscDriver.Subscribe("/qplayer/stop", msg =>
-            {
-                if (msg.Count > 0)
-                {
-                    if (FindCue(msg[0], out var cue))
-                        cue.Stop();
-                }
-                else
-                    StopExecute();
-            }, syncContext);
-            oscDriver.Subscribe("/qplayer/pause", msg =>
-            {
-                if (msg.Count > 0)
-                {
-                    if (FindCue(msg[0], out var cue))
-                        cue.Pause();
-                }
-                else
-                    PauseExecute();
-            }, syncContext);
-            oscDriver.Subscribe("/qplayer/unpause", msg =>
-            {
-                if (msg.Count > 0)
-                {
-                    if (FindCue(msg[0], out var cue) && cue.State == CueState.Paused)
-                        cue.Go();
-                }
-                else
-                    UnpauseExecute();
-            }, syncContext);
-            oscDriver.Subscribe("/qplayer/preload", msg =>
-            {
-                if (msg.Count > 0)
-                {
-                    if (FindCue(msg[0], out var cue))
-                    {
-                        if (msg.Count > 1 && msg[1] is float time)
-                            cue.Preload(TimeSpan.FromSeconds(time));
-                        else
-                            cue.Preload(PreloadTime);
-                    }
-                }
-                else
-                {
-                    PreloadExecute();
-                }
-            }, syncContext);
-
-            oscDriver.Subscribe("/qplayer/select", msg =>
-            {
-                if (msg.Count > 0 && FindCue(msg[0], out var cue))
-                {
-                    SelectedCue = cue;
-                }
-            }, syncContext);
-            oscDriver.Subscribe("/qplayer/up", _ => SelectedCueInd--, syncContext);
-            oscDriver.Subscribe("/qplayer/down", _ => SelectedCueInd++, syncContext);
-
-            oscDriver.Subscribe("/qplayer/save", _ => SaveProjectExecute(), syncContext);
         }
 
         /// <summary>

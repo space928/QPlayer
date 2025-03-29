@@ -1,4 +1,5 @@
-﻿using Rug.Osc;
+﻿using Mathieson.Dev;
+using OscCore;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
@@ -8,30 +9,39 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using QPlayer.Utilities;
+using System.Collections;
+using System.Runtime.CompilerServices;
 using static QPlayer.ViewModels.MainViewModel;
+using System.Buffers;
+using System.Runtime.InteropServices;
 
 namespace QPlayer.Models;
 
-internal class OSCDriver : IDisposable
+public class OSCDriver : IDisposable
 {
     //public ConcurrentQueue<OscPacket> RXMessages { get; private set; } = [];
-    public event Action<OscPacket>? OnRXMessage;
-    public event Action<OscPacket>? OnTXMessage;
+    public event Action<OscMessage>? OnRXMessage;
+    public event Action<OscMessage>? OnTXMessage;
 
-    private OscReceiver? oscReceiver;
-    private OscSender? oscSender;
+    private UdpClient? oscReceiver;
+    private UdpClient? oscSender;
 
     private IPEndPoint? rxIP;
     private IPEndPoint? txIP;
+    private IPAddress? broadcastIP;
+
+    private readonly ArrayPool<byte> byteBufferPool = ArrayPool<byte>.Create();
 
     private readonly OSCAddressRouter router = new();
 
-    public bool OSCConnect(IPAddress nicAddress, int rxPort, int txPort)
+    public bool OSCConnect(IPAddress nicAddress, IPAddress subnet, int rxPort, int txPort)
     {
-        //RXMessages.Clear();
+        broadcastIP = MakeBroadcastAddress(nicAddress, subnet);
 
-        rxIP = new IPEndPoint(nicAddress ?? IPAddress.Any, rxPort);
-        txIP = new IPEndPoint(nicAddress ?? IPAddress.Broadcast, txPort);
+        rxIP = new IPEndPoint(nicAddress, rxPort);
+        //txIP = new IPEndPoint(IPAddress.Broadcast, txPort);
+        txIP = new IPEndPoint(broadcastIP, txPort);
 
         Log($"Connecting to OSC... rx={rxIP} tx={txIP}");
 
@@ -39,11 +49,12 @@ internal class OSCDriver : IDisposable
         {
             Dispose();
 
-            oscReceiver = new(rxIP.Address, rxIP.Port);
-            oscReceiver.Connect();
+            oscReceiver = new(new IPEndPoint(rxIP.Address, 0));
+            //oscReceiver
+            //oscReceiver.Connect()
 
-            oscSender = new(txIP.Address, 0, txIP.Port);
-            oscSender.Connect();
+            oscSender = new(new IPEndPoint(nicAddress, 0));
+            //oscSender.Connect(txIP);
 
             Task.Run(OSCRXThread);
         }
@@ -58,14 +69,46 @@ internal class OSCDriver : IDisposable
         return true;
     }
 
+    private static IPAddress MakeBroadcastAddress(IPAddress adapter, IPAddress subnet)
+    {
+        if (adapter.AddressFamily != AddressFamily.InterNetwork)
+            return IPAddress.IPv6Any;
+
+        // TODO: Support IPv6 multicast?
+        var adapterAddrBytes = adapter.GetAddressBytes();
+        var subnetAddrBytes = subnet.GetAddressBytes();
+
+        ref var adapterUInt = ref Unsafe.As<byte, uint>(ref MemoryMarshal.GetArrayDataReference(adapterAddrBytes));
+        ref var subnetUInt = ref Unsafe.As<byte, uint>(ref MemoryMarshal.GetArrayDataReference(subnetAddrBytes));
+
+        adapterUInt |= ~subnetUInt;
+
+        return new(adapterAddrBytes);
+    }
+
     /// <summary>
     /// Asynchronously sends an OSC packet.
     /// </summary>
-    /// <param name="packet"></param>
-    public void SendMessage(OscPacket packet)
+    /// <param name="packet">The message to send.</param>
+    /// <param name="remoteEndPoint">The endpoint to send the message to.</param>
+    public void SendMessage(in OscMessage packet, IPEndPoint? remoteEndPoint = null)
+    {
+        SendMessageAsync(packet, remoteEndPoint)
+            .ContinueWith(x => Log($"Error while sending OSC message: '{x.Exception?.Message}'\n{x.Exception}"),
+            TaskContinuationOptions.OnlyOnFaulted);
+    }
+
+    /// <inheritdoc cref="SendMessage(OscMessage, IPEndPoint?)"/>
+    public async Task SendMessageAsync(OscMessage packet, IPEndPoint? remoteEndPoint = null)
     {
         OnTXMessage?.Invoke(packet);
-        oscSender?.Send(packet);
+
+        var buff = byteBufferPool.Rent(packet.SizeInBytes);
+        int len = packet.Write(buff, 0);
+        var task = oscSender?.SendAsync(buff, len, remoteEndPoint ?? txIP);
+
+        if (task != null) await task;
+        byteBufferPool.Return(buff);
     }
 
     /// <summary>
@@ -85,14 +128,28 @@ internal class OSCDriver : IDisposable
 
     private void OSCRXThread()
     {
-        while (oscReceiver?.State == OscSocketState.Connected)
+        IPEndPoint? remoteEndPoint = null;
+        IPEndPoint? endPointAny = new(IPAddress.Any, rxIP?.Port ?? 0);
+        IPEndPoint? endPointAnyV6 = new(IPAddress.IPv6Any, rxIP?.Port ?? 0);
+        var recvBuff = new byte[0x10000];
+        while (oscReceiver?.Client?.Connected ?? false)
         {
             try
             {
-                var pkt = oscReceiver.Receive();
+                EndPoint tempRemoteEP = oscReceiver.Client.AddressFamily == AddressFamily.InterNetwork ? endPointAny : endPointAnyV6;
+                int received = oscReceiver.Client.ReceiveFrom(recvBuff, recvBuff.Length, SocketFlags.None, ref tempRemoteEP);
+                remoteEndPoint = (IPEndPoint)tempRemoteEP;
+
+                var pkt = OscPacket.Read(recvBuff, 0, received, remoteEndPoint);
+
+                // TODO: Support bundles
+                if (pkt.Kind == OscPacketKind.OscBundle)
+                    continue;
+
+                var msg = pkt.OscMessage;
                 //RXMessages.Enqueue(pkt);
-                OnRXMessage?.Invoke(pkt);
-                if (pkt is OscMessage msg && msg.Address.Length > 0)
+                OnRXMessage?.Invoke(msg);
+                if (!string.IsNullOrEmpty(msg.Address))
                     router.ReceiveMessage(msg, msg.Address.AsSpan(1));
 
                 //Log($"Recv osc msg: {pkt}", LogLevel.Debug);
@@ -122,7 +179,7 @@ internal class OSCDriver : IDisposable
 
 public class OSCAddressRouter
 {
-    public Dictionary<string, OSCAddressRouter>? children;
+    public StringDict<OSCAddressRouter>? children;
     public event Action<OscMessage>? OnRXMessage;
 
     public static void Subscribe(OSCAddressRouter root, string pattern, Action<OscMessage> handler, SynchronizationContext? syncContext = null)
@@ -135,17 +192,17 @@ public class OSCAddressRouter
             if (router.children?.TryGetValue(part, out var child) ?? false)
             {
                 router = child;
-            } 
+            }
             else
             {
                 router.children ??= [];
                 var nRouter = new OSCAddressRouter();
-                router.children.Add(part,  nRouter);
+                router.children.Add(part, nRouter);
                 router = nRouter;
             }
         }
         if (syncContext != null)
-            router.OnRXMessage += msg => syncContext.Post(_=>handler(msg), null);
+            router.OnRXMessage += msg => syncContext.Post(_ => handler(msg), null);
         else
             router.OnRXMessage += handler;
     }
@@ -157,11 +214,11 @@ public class OSCAddressRouter
         if (children != null)
         {
             int slashPos = addressSpan.IndexOf('/');
-            string key;
+            ReadOnlySpan<char> key;
             if (slashPos != -1)
-                key = new(addressSpan[..slashPos]);
+                key = addressSpan[..slashPos];
             else
-                key = new(addressSpan);
+                key = addressSpan;
 
             if (children.TryGetValue(key, out var child))
                 child.ReceiveMessage(message, addressSpan[(slashPos + 1)..]);
@@ -267,3 +324,18 @@ public static class OSCMessageParser
         return val - (val < 58 ? 48 : (val < 97 ? 55 : 87));
     }
 }
+
+/*public class OscSenderTargetted : OscSocket
+{
+    public override OscSocketType OscSocketType => throw new NotImplementedException();
+
+    protected override void OnClosing()
+    {
+        throw new NotImplementedException();
+    }
+
+    protected override void OnConnect()
+    {
+        throw new NotImplementedException();
+    }
+}*/

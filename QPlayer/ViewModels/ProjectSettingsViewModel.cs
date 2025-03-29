@@ -11,10 +11,12 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using QPlayer.Audio;
+using CommunityToolkit.Mvvm.Input;
+using Mathieson.Dev;
 
 namespace QPlayer.ViewModels;
 
-public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<ShowMetadata, ProjectSettingsViewModel>
+public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<ShowSettings, ProjectSettingsViewModel>
 {
     #region Bindable Properties
     [Reactive] public string Title { get; set; } = "Untitled";
@@ -42,9 +44,19 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public int OSCRXPort { get; set; } = 9000;
     [Reactive] public int OSCTXPort { get; set; } = 8000;
     [Reactive] public bool MonitorOSCMessages { get; set; } = false;
+
+    [Reactive] public bool EnableRemoteControl { get; set; }
+    [Reactive] public bool IsRemoteHost { get; set; }
+    [Reactive] public bool SyncShowFileOnSave { get; set; }
+    [Reactive] public string NodeName { get; set; } = string.Empty;
+    [Reactive] public ReadOnlyObservableCollection<RemoteNodeViewModel> RemoteNodes => remoteNodesRO;
+
+    [Reactive] public RelayCommand<RemoteNodeViewModel> RemoveRemoteNodeCommand {  get; private set; }
     #endregion
 
-    public IPAddress OSCNic => (SelectedNIC >= 0 && SelectedNIC < nicAddresses.Count) ? nicAddresses[SelectedNIC] : (nicAddresses.FirstOrDefault() ?? IPAddress.Any);
+    public IPAddress OSCNic => (SelectedNIC >= 0 && SelectedNIC < nicAddresses.Count) ? nicAddresses[SelectedNIC].addr : (nicAddresses.FirstOrDefault().addr ?? IPAddress.Any);
+    public IPAddress OSCSubnet => nicAddresses.ElementAtOrDefault(SelectedNIC).subnet ?? IPAddress.Broadcast;
+
     internal object? SelectedAudioOutputDeviceKey
     {
         get
@@ -58,12 +70,17 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
 
     private (object key, string identifier)[] audioOutputDevices = [];
     private readonly MainViewModel mainViewModel;
-    private ShowMetadata? projectSettings;
+    private ShowSettings? projectSettings;
     private readonly ObservableCollection<string> nics = [];
-    private readonly List<IPAddress> nicAddresses = [];
+    private readonly List<(IPAddress addr, IPAddress subnet)> nicAddresses = [];
+
+    private readonly StringDict<RemoteNodeViewModel> remoteNodesDict = [];
+    private readonly ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodesRO;
+    private readonly ObservableCollection<RemoteNodeViewModel> remoteNodes = [];
 
     public ProjectSettingsViewModel(MainViewModel mainViewModel)
     {
+        remoteNodesRO = new(remoteNodes);
         this.mainViewModel = mainViewModel;
         AudioOutputDriverValues ??= new(Enum.GetValues<AudioOutputDriver>());
         PropertyChanged += (o, e) =>
@@ -78,11 +95,15 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                 case nameof(SelectedNIC):
                 case nameof(OSCRXPort):
                 case nameof(OSCTXPort):
-                    mainViewModel.ConnectOSC();
+                case nameof(IsRemoteHost):
+                case nameof(EnableRemoteControl):
+                    mainViewModel.OSCManager.ConnectOSC();
                     break;
                 case nameof(MonitorOSCMessages):
-                    mainViewModel.MonitorOSC(MonitorOSCMessages);
+                    mainViewModel.OSCManager.MonitorOSC(MonitorOSCMessages);
                     break;
+                //case nameof(EnableRemoteControl):
+                //    break;
             }
         };
 
@@ -90,10 +111,15 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         //if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
         //    mainViewModel.OpenAudioDevice();
 
+        RemoveRemoteNodeCommand = new(item => { 
+            if (item != null)
+                RemoveRemoteNode(item.Name);
+        });
+
         QueryNICs();
     }
 
-    public static ProjectSettingsViewModel FromModel(ShowMetadata model, MainViewModel mainViewModel)
+    public static ProjectSettingsViewModel FromModel(ShowSettings model, MainViewModel mainViewModel)
     {
         ProjectSettingsViewModel ret = new(mainViewModel);
         ret.Title = model.title;
@@ -108,12 +134,19 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         ret.OSCRXPort = model.oscRXPort;
         ret.OSCTXPort = model.oscTXPort;
         if (IPAddress.TryParse(model.oscNIC, out var oscIP))
-            ret.SelectedNIC = ret.nicAddresses.IndexOf(oscIP);
+            ret.SelectedNIC = ret.nicAddresses.FindIndex(x=> x.addr.Equals(oscIP));//.IndexOf(oscIP);
+
+        ret.EnableRemoteControl = model.enableRemoteControl;
+        ret.SyncShowFileOnSave = model.syncShowFileOnSave;
+        ret.IsRemoteHost = model.isRemoteHost;
+        ret.NodeName = model.nodeName;
+        foreach (var node in model.remoteNodes)
+            ret.remoteNodes.Add(new(node, ret));
 
         return ret;
     }
 
-    public void Bind(ShowMetadata model)
+    public void Bind(ShowSettings model)
     {
         projectSettings = model;
         PropertyChanged += (o, e) =>
@@ -124,7 +157,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         };
     }
 
-    public void ToModel(ShowMetadata model)
+    public void ToModel(ShowSettings model)
     {
         model.title = Title;
         model.description = Description;
@@ -139,6 +172,12 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         model.oscRXPort = OSCRXPort;
         model.oscTXPort = OSCTXPort;
         model.oscNIC = OSCNic.ToString();
+
+        model.enableRemoteControl = EnableRemoteControl;
+        model.isRemoteHost = IsRemoteHost;
+        model.syncShowFileOnSave = SyncShowFileOnSave;
+        model.nodeName = NodeName;
+        model.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).ToList();
     }
 
     public void ToModel(string propertyName)
@@ -181,13 +220,82 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             case nameof(SelectedNIC):
                 projectSettings.oscNIC = OSCNic.ToString();
                 break;
+            case nameof(EnableRemoteControl):
+                projectSettings.enableRemoteControl = EnableRemoteControl;
+                break;
+            case nameof(IsRemoteHost):
+                projectSettings.isRemoteHost = IsRemoteHost;
+                break;
+            case nameof(SyncShowFileOnSave):
+                projectSettings.syncShowFileOnSave = SyncShowFileOnSave;
+                break;
+            case nameof(NodeName):
+                projectSettings.nodeName = NodeName;
+                break;
+            case nameof(RemoteNodes):
+                projectSettings.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).ToList();
+                break;
+
             case nameof(NICs):
             case nameof(MonitorOSCMessages):
             case nameof(OSCNic):
             case nameof(SelectedAudioOutputDeviceKey):
+            case nameof(OSCSubnet):
                 break;
             default:
                 throw new ArgumentException($"Couldn't convert property {propertyName} to model!", nameof(propertyName));
+        }
+    }
+
+    /// <summary>
+    /// Removes a remote node from the collection of remote nodes.
+    /// </summary>
+    /// <param name="name">The name of the name to remove</param>
+    /// <returns><see langword="true"/> if the node was removed successfully.</returns>
+    public bool RemoveRemoteNode(string name)
+    {
+        var ret = false;
+        lock (remoteNodesDict)
+        {
+            if (remoteNodesDict.Remove(name, out var node))
+                ret = remoteNodes.Remove(node);
+        }
+        return ret;
+    }
+
+    /// <summary>
+    /// Gets a remote node by name, returning a new node and adding it, if it doesn't already 
+    /// exist in the collection.
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns>true if the returned node was newly added.</returns>
+    public bool GetOrAddRemoteNode(ReadOnlySpan<char> name, out RemoteNodeViewModel node)
+    {
+        lock (remoteNodesDict)
+        {
+            if (remoteNodesDict.TryGetValue(name, out node!))
+            return false;
+
+            var nameStr = new string(name);
+            node = new RemoteNodeViewModel(nameStr, this);
+            remoteNodesDict.Add(nameStr, node);
+            remoteNodes.Add(node);
+            return true;
+        }
+    }
+
+    /// <inheritdoc cref="GetOrAddRemoteNode(ReadOnlySpan{char}, out RemoteNodeViewModel)"/>
+    public bool GetOrAddRemoteNode(string name, out RemoteNodeViewModel node)
+    {
+        lock (remoteNodesDict)
+        {
+            if (remoteNodesDict.TryGetValue(name, out node!))
+                return false;
+
+            node = new RemoteNodeViewModel(name, this);
+            remoteNodesDict.Add(name, node);
+            remoteNodes.Add(node);
+            return true;
         }
     }
 
@@ -198,8 +306,10 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         foreach (var nic in NetworkInterface.GetAllNetworkInterfaces())
         {
             var ipProps = nic.GetIPProperties();
-            var nicAddr = ipProps.UnicastAddresses.Select(x => x.Address);
-            if (nicAddr.FirstOrDefault(x => x.AddressFamily == AddressFamily.InterNetwork) is IPAddress naddr
+            var nicAddr = ipProps.UnicastAddresses
+                .Where(x => x.Address.AddressFamily == AddressFamily.InterNetwork)
+                .Select(x => (x.Address, x.IPv4Mask));
+            if (nicAddr.FirstOrDefault() is (IPAddress naddr, IPAddress mask)
                 && ipProps.GatewayAddresses.Count >= 0)
             {
                 nicAddresses.AddRange(nicAddr);

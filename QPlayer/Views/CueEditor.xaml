@@ -5,12 +5,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views"
              xmlns:vm="clr-namespace:QPlayer.ViewModels"
+             xmlns:util="clr-namespace:QPlayer.Utilities"
              xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="500" d:DataContext="{d:DesignInstance Type=vm:SoundCueViewModel}">
     <UserControl.Resources>
-        <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
-        <vm:MultiplyByConverter x:Key="MultiplyByConverter"/>
+        <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        <util:MultiplyByConverter x:Key="MultiplyByConverter"/>
     </UserControl.Resources>
     <StackPanel>
         <Label Content="Cue Information" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
@@ -29,6 +30,14 @@
         <DockPanel>
             <Label Content="Colour"/>
             <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Remote Node"/>
+            <local:TextField Text="{Binding RemoteNode, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <!--<ComboBox ItemsSource="{Binding MainViewModel.ProjectSettings.RemoteNodes}" 
+                      SelectedValue="{Binding RemoteNode}"
+                      DisplayMemberPath="Name" SelectedValuePath="Name" 
+                      IsEditable="True" IsReadOnly="False" IsSynchronizedWithCurrentItem="True"/>-->
         </DockPanel>
         <DockPanel>
             <Label Content="Enabled"/>
@@ -102,7 +111,7 @@
                             <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
                                 Minimum="0" Maximum="2" 
                                 AutoToolTipPlacement="TopLeft" 
-                                IsSnapToTickEnabled="True" 
+                                IsSnapToTickEnabled="False" 
                                 TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
                                 LargeChange="0.1" SmallChange="0.01"/>
                         </DockPanel>
@@ -175,6 +184,125 @@
                         <DockPanel ToolTip="The type of curve to use when fading the volume">
                             <Label Content="Fade Type"/>
                             <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:VideoCueViewModel}">
+                    <StackPanel>
+                        <TextBlock Text="Note that video playback within QPlayer is currently unsupported. 
+                               These settings are only relevant to remote clients at the moment."
+                               FontStyle="Italic" Foreground="{DynamicResource Button.Disabled.Foreground}" TextWrapping="Wrap" Margin="4"/>
+                        <TextBlock Text="Media Files:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
+                        <DockPanel>
+                            <Label Content="Media File"/>
+                            <Button Content="..." Width="30" Command="{Binding OpenMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+                            <local:TextField Text="{Binding Path}" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel 
+                            ToolTip="The shader determines how the video is rendered and composited in the scene. 
+                            Different shaders may expose different parameters which can be controlled in the 
+                            shader parameters section.">
+                            <Label Content="Shader"/>
+                            <Button Content="..." Width="30" Command="{Binding OpenShaderFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+                            <local:TextField Text="{Binding Shader}" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The alpha (or transparency) channel of the video can come from a separate video 
+                                   file, specified here.">
+                            <Label Content="Alpha Video Path"/>
+                            <Button Content="..." Width="30" Command="{Binding OpenAlphaMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+                            <local:TextField Text="{Binding AlphaPath}" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <TextBlock Text="Timing:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
+                        <!--TODO: Video thumbnail
+                        <Image Height="80"/>-->
+                        <DockPanel>
+                            <Label Content="Start Time" ToolTip="The time in the sound file to start playing from."/>
+                            <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding StartTime, 
+                                             Converter={StaticResource TimeSpanStringConverter}, 
+                                             ConverterParameter=False,
+                                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Limits the playback duration of the sound. Set to 00:00 to play the full sound.">
+                            <Label Content="Duration"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding PlaybackDuration, 
+                                             Converter={StaticResource TimeSpanStringConverter}, 
+                                             ConverterParameter=False,
+                                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Fade in time in seconds">
+                            <Label Content="Fade In Time"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeIn, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="Fade out time in seconds">
+                            <Label Content="Fade Out Time"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeOut, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                            <Label Content="Fade Type"/>
+                            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+
+                        <TextBlock Text="Appearance:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
+                        <DockPanel ToolTip="How the video should be blended with other videos in the scene.">
+                            <Label Content="Alpha Mode"/>
+                            <ComboBox SelectedItem="{Binding AlphaMode, UpdateSourceTrigger=Default}" ItemsSource="{Binding AlphaModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="A simple brightness adjustement for the video">
+                            <Label Content="Brightness"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.02" ClampValue="True" MinValue="0" MaxValue="4" 
+                                             Text="{Binding Brightness, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="A simple contrast adjustement for the video">
+                            <Label Content="Contrast"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.02" ClampValue="True" MinValue="0" MaxValue="4" 
+                                             Text="{Binding Contrast, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="A simple gamma adjustement for the video">
+                            <Label Content="Gamma"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.02" ClampValue="True" MinValue="0" MaxValue="4" 
+                                             Text="{Binding Gamma, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+
+                        <TextBlock Text="Position:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
+                        <DockPanel ToolTip="Determines how videos are layered on top of each other. 
+                                            Higher numbers layer on top of videos with lower numbers.">
+                            <Label Content="Z Index"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.1" ClampValue="True" MinValue="-9999" MaxValue="9999" 
+                                             Text="{Binding ZIndex, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The uniform scaling factor applied to the video.">
+                            <Label Content="Scale"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.02" ClampValue="True" MinValue="0" MaxValue="10" 
+                                             Text="{Binding Scale, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The rotation of the video.">
+                            <Label Content="Rotation"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-9999" MaxValue="9999" 
+                                             Text="{Binding Rotation, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The position of the video on screen.">
+                            <Label Content="Position"/>
+                            <Grid HorizontalAlignment="Stretch" Margin="8,2,2,2" DockPanel.Dock="Right">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                 Text="{Binding XPos, UpdateSourceTrigger=Default}" Grid.Column="0"/>
+                                <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                 Text="{Binding YPos, UpdateSourceTrigger=Default}" Grid.Column="1"/>
+                            </Grid>
+                        </DockPanel>
+
+                        <TextBlock Text="Audio:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
+                        <DockPanel>
+                            <Label Content="Volume"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.05" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding Volume, UpdateSourceTrigger=Default}" Width="50" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                            <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
+                                    Minimum="0" Maximum="2" 
+                                    AutoToolTipPlacement="TopLeft" 
+                                    TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
+                                    LargeChange="0.1" SmallChange="0.01"/>
                         </DockPanel>
                     </StackPanel>
                 </DataTemplate>

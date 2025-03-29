@@ -39,6 +39,18 @@
                         <Hyperlink NavigateUri="https://github.com/PixiEditor/ColorPicker" RequestNavigate="Hyperlink_RequestNavigate">
                             https://github.com/PixiEditor/ColorPicker
                         </Hyperlink><LineBreak/>
+                        <Run>Uses CommunityToolkit.Mvvm, MIT License</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://github.com/CommunityToolkit/dotnet" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://github.com/CommunityToolkit/dotnet
+                        </Hyperlink><LineBreak/>
+                        <Run>Uses StarDust.RugOsc.netstandard, MIT License</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://github.com/dust63/StarDust.RugOsc.netstandard" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://github.com/dust63/StarDust.RugOsc.netstandard
+                        </Hyperlink><LineBreak/>
+                        <Run>Full list of used packages is available on GitHub.</Run><LineBreak/>
+                        <Hyperlink NavigateUri="https://github.com/space928/QPlayer/blob/main/QPlayer/QPlayer.csproj" RequestNavigate="Hyperlink_RequestNavigate">
+                            https://github.com/space928/QPlayer
+                        </Hyperlink><LineBreak/>
                     </TextBlock>
                 </StackPanel>
             </ScrollViewer>

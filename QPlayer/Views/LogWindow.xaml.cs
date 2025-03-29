@@ -13,6 +13,7 @@ namespace QPlayer.Views;
 public partial class LogWindow : Window
 {
     public MainViewModel ViewModel { get; init; }
+    private bool autoScrollToBottom;
 
     public LogWindow(MainViewModel viewModel)
     {
@@ -57,5 +58,12 @@ public partial class LogWindow : Window
             }
             catch { }
         }
+    }
+
+    private void CheckBox_Checked(object sender, RoutedEventArgs e)
+    {
+        autoScrollToBottom = ScrollToBottomCheckbox.IsChecked ?? true;
+        if (autoScrollToBottom && LogListBox.Items.Count > 0)
+            LogListBox.ScrollIntoView(LogListBox.Items[^1]);
     }
 }

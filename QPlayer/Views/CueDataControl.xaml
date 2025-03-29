@@ -5,6 +5,7 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views" 
              xmlns:vm="clr-namespace:QPlayer.ViewModels" 
+             xmlns:util="clr-namespace:QPlayer.Utilities" 
              d:DataContext="{d:DesignInstance Type=vm:DummyCueViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded">
@@ -13,8 +14,8 @@
           MouseMove="Grid_MouseMove" GiveFeedback="Grid_GiveFeedback" Drop="Grid_Drop" 
           DragEnter="Grid_DragEnter" DragLeave="Grid_DragLeave">
         <Grid.Resources>
-            <vm:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
-            <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+            <util:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
+            <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
         </Grid.Resources>
         <Grid.Style>
             <Style TargetType="{x:Type Grid}">
