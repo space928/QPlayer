@@ -254,8 +254,10 @@ public class ShowFileConverter
                             nameof(GroupCue) => new GroupCue(),
                             nameof(SoundCue) => new SoundCue(),
                             nameof(StopCue) => new StopCue(),
+                            nameof(ShaderParamsCue) => new ShaderParamsCue(),
                             nameof(TimeCodeCue) => new TimeCodeCue(),
                             nameof(VideoCue) => new VideoCue(),
+                            nameof(VideoFramingCue) => new VideoFramingCue(),
                             nameof(VolumeCue) => new VolumeCue(),
                             _ => cue,
                         };

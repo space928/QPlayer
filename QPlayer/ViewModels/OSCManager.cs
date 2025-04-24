@@ -22,12 +22,16 @@ public class OSCManager
     private readonly OSCDriver oscDriver;
     private readonly SynchronizationContext syncContext;
     private readonly Timer discoveryTimer;
+    private CancellationTokenSource cancelOSCRestart;
     private ShowFileSender? showFileSender;
+    private int restartOSCDelay;
 
     public OSCManager(MainViewModel mainViewModel)
     {
         this.mainViewModel = mainViewModel;
         this.oscDriver = new();
+        restartOSCDelay = 10;
+        cancelOSCRestart = new();
         syncContext = SynchronizationContext.Current ?? new();
         discoveryTimer = new(1000);
         discoveryTimer.AutoReset = true;
@@ -35,6 +39,23 @@ public class OSCManager
         discoveryTimer.Start();
 
         //SubscribeOSC();
+
+        oscDriver.OnRXFailure += OscDriver_OnRXFailure;
+    }
+
+    private void OscDriver_OnRXFailure()
+    {
+        restartOSCDelay *= 2;
+        restartOSCDelay = Math.Min(restartOSCDelay, 60 * 1000);
+        cancelOSCRestart = new();
+        Task.Delay(restartOSCDelay, cancelOSCRestart.Token).ContinueWith(_ =>
+        {
+            syncContext?.Send(_ =>
+            {
+                Log($"Automatically restarting OSC driver...");
+                ConnectOSC();
+            }, null);
+        });
     }
 
     private ProjectSettingsViewModel ProjectSettings => mainViewModel.ProjectSettings;
@@ -92,6 +113,12 @@ public class OSCManager
         oscDriver.SendMessage(msg);
     }
 
+    public void SendRemotePing(string target)
+    {
+        OscMessage msg = new("/qplayer/remote/ping", [target]);
+        oscDriver.SendMessage(msg);
+    }
+
     public void SendRemoteUpdateShowFile(IEnumerable<string> targets, byte[] showFile)
     {
         SendRemoteUpdateShowFileAsync(targets, showFile)
@@ -107,10 +134,18 @@ public class OSCManager
             return;
         }
 
-        foreach (var target in targets)
+        try
         {
-            showFileSender = new(target, showFile, oscDriver);
-            await showFileSender.SendShowFileAsync();
+            foreach (var target in targets)
+            {
+                showFileSender = new(target, showFile, oscDriver);
+                await showFileSender.SendShowFileAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Log($"Error while sending show file to remote client: '{ex.Message}'\n{ex}", LogLevel.Error);
+            showFileSender = null;
         }
     }
 
@@ -292,19 +327,19 @@ public class OSCManager
             OscMessage pong = new("/qplayer/remote/pong");
             oscDriver.SendMessage(pong);
         }, syncContext);
-        oscDriver.Subscribe("/qplayer/remote/update-showfile", msg =>
+        oscDriver.Subscribe("/qplayer/remote/update-show", msg =>
         {
             // TODO: Update showfile OSC command
             Log($"Show file updates over OSC are not yet supported", LogLevel.Warning);
         }, syncContext);
-        oscDriver.Subscribe("/qplayer/remote/update-showfile-ack", msg =>
+        oscDriver.Subscribe("/qplayer/remote/update-show-ack", msg =>
         {
             if (msg.Count == 2
                 && msg[0] is string name
                 && msg[1] is int block)
                 showFileSender?.ReceiveAck(name, block);
         });
-        oscDriver.Subscribe("/qplayer/remote/update-showfile-nack", msg =>
+        oscDriver.Subscribe("/qplayer/remote/update-show-nack", msg =>
         {
             if (msg.Count == 2
                 && msg[0] is string name
@@ -362,6 +397,7 @@ internal class ShowFileSender(string target, byte[] showFile, OSCDriver oscDrive
         SendShowFileAsync()
             .ContinueWith(x => Log($"Error while sending show file to remote client: '{x.Exception?.Message}'\n{x.Exception}", LogLevel.Error),
             TaskContinuationOptions.OnlyOnFaulted);
+        isComplete = true;
     }
 
     public async Task SendShowFileAsync()
@@ -398,7 +434,7 @@ internal class ShowFileSender(string target, byte[] showFile, OSCDriver oscDrive
                 sentBlocks.TryAdd(block.ind, block);
 
                 await oscDriver.SendMessageAsync(
-                    new("/qplayer/remote/update-show", target, block.ind, blocksToSend, block.buff.ToArray()));
+                    new("/qplayer/remote/update-show", target, block.ind, totalBlocks, block.buff.ToArray()));
             }
             else
             {

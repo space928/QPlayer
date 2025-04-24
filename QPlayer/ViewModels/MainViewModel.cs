@@ -73,6 +73,7 @@ namespace QPlayer.ViewModels
         [Reactive] public RelayCommand SaveProjectAsCommand { get; private set; }
         [Reactive] public RelayCommand PackProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenLogCommand { get; private set; }
+        [Reactive] public RelayCommand OpenRemoteNodesCommand { get; private set; }
         [Reactive] public RelayCommand OpenSetttingsCommand { get; private set; }
         [Reactive] public RelayCommand OpenOnlineManualCommand { get; private set; }
         [Reactive] public RelayCommand OpenAboutCommand { get; private set; }
@@ -153,6 +154,7 @@ namespace QPlayer.ViewModels
         private ShowFile showFile;
         private static ObservableCollection<string> logList = [];
         private static LogWindow? logWindow;
+        private static RemoteNodesWindow? remoteNodesWindow;
         private static SettingsWindow? settingsWindow;
         private static AboutWindow? aboutWindow;
         private static readonly object logListLock = new();
@@ -194,6 +196,7 @@ namespace QPlayer.ViewModels
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute);
+            OpenRemoteNodesCommand = new(OpenRemoteNodesExecute);
             NewProjectCommand = new(NewProjectExecute);
             OpenProjectCommand = new(OpenProjectExecute);
             SaveProjectCommand = new(() => SaveProjectExecute());
@@ -306,6 +309,7 @@ namespace QPlayer.ViewModels
             CloseAboutExecute();
             CloseSettingsExecute();
             CloseLogExecute();
+            CloseRemoteNodesExecute();
             audioPlaybackManager.Stop();
             audioPlaybackManager.Dispose();
             Log("Goodbye!");
@@ -419,6 +423,27 @@ namespace QPlayer.ViewModels
             logWindow = null;
         }
 
+        public void OpenRemoteNodesExecute()
+        {
+            if (remoteNodesWindow != null)
+            {
+                remoteNodesWindow.Activate();
+                return;
+            }
+
+            remoteNodesWindow = new(new(this));
+            //logWindow.Owner = ((Window)e.Source);
+            //Log("Opening log...");
+            remoteNodesWindow.Closed += (e, x) => { remoteNodesWindow = null; };
+            remoteNodesWindow.Show();
+        }
+
+        public void CloseRemoteNodesExecute()
+        {
+            remoteNodesWindow?.Close();
+            remoteNodesWindow = null;
+        }
+
         public void OpenSettingsExecute()
         {
             settingsWindow = new(this);
@@ -479,8 +504,10 @@ namespace QPlayer.ViewModels
 
         public void StopExecute()
         {
-            for (int i = ActiveCues.Count - 1; i >= 0; i--)
-                ActiveCues[i].Stop();
+            //for (int i = ActiveCues.Count - 1; i >= 0; i--)
+            //    ActiveCues[i].Stop();
+            for (int i = 0; i < Cues.Count; i++)
+                Cues[i].Stop();
 
             AudioPlaybackManager.StopAllSounds();
         }
@@ -807,18 +834,40 @@ namespace QPlayer.ViewModels
         /// </summary>
         private void EnsureShowfileModelSync()
         {
-            Dictionary<decimal, Cue> cueModels = new(showFile.cues.Select((x) => new KeyValuePair<decimal, Cue>(x.qid, x)));
-            foreach (CueViewModel vm in Cues)
+            bool resync = false;
+            Dictionary<decimal, Cue> cueModels = [];
+            foreach (var cue in showFile.cues)
+                if (!cueModels.TryAdd(cue.qid, cue))
+                    resync = true;
+
+            if (!resync)
             {
-                if (!cueModels.TryGetValue(vm.QID, out Cue? value))
+                foreach (CueViewModel vm in Cues)
                 {
-                    Log($"Cue with id {vm.QID} exists in the editor but not in the internal model! Potential corruption detected!", LogLevel.Warning);
-                    // TODO: If we want to be nice we could just create the model here...
+                    if (!cueModels.TryGetValue(vm.QID, out Cue? value))
+                    {
+                        Log($"Cue with id {vm.QID} exists in the editor but not in the internal model! Potential corruption detected!", LogLevel.Warning);
+                        // TODO: If we want to be nice we could just create the model here...
+                        resync = true;
+                    }
+                    else
+                    {
+                        var q = value;
+                        vm.ToModel(q);
+                    }
                 }
-                else
+            }
+            if (resync)
+            {
+                Log($"Rebuilding internal cue database...", LogLevel.Info);
+                showFile.cues.Clear();
+                foreach (var vm in Cues)
                 {
-                    var q = value;
-                    vm.ToModel(q);
+                    vm.UnBind();
+                    var cue = Cue.CreateCue(vm.Type);
+                    vm.Bind(cue);
+                    vm.ToModel(cue);
+                    showFile.cues.Add(cue);
                 }
             }
             ProjectSettings.ToModel(showFile.showSettings);
@@ -879,6 +928,7 @@ namespace QPlayer.ViewModels
                 }, null);
 
                 using var f = File.OpenWrite(path);
+                f.SetLength(0);
                 using var ms = new MemoryStream();
                 await JsonSerializer.SerializeAsync(ms, showFile, jsonSerializerOptions);
                 ms.Position = 0;
@@ -913,6 +963,7 @@ namespace QPlayer.ViewModels
                 EnsureShowfileModelSync();
 
                 using var f = File.OpenWrite(path);
+                f.SetLength(0);
                 using var ms = new MemoryStream();
                 JsonSerializer.Serialize(ms, showFile, jsonSerializerOptions);
                 ms.Position = 0;
@@ -947,18 +998,7 @@ namespace QPlayer.ViewModels
             if (afterLast)
                 insertAfterInd = Cues.Count - 1;
 
-            Cue model;
-            switch (type)
-            {
-                case CueType.GroupCue: model = new GroupCue(); break;
-                case CueType.DummyCue: model = new DummyCue(); break;
-                case CueType.SoundCue: model = new SoundCue(); break;
-                case CueType.TimeCodeCue: model = new TimeCodeCue(); break;
-                case CueType.StopCue: model = new StopCue(); ; break;
-                case CueType.VolumeCue: model = new VolumeCue(); break;
-                case CueType.VideoCue: model = new VideoCue(); break;
-                default: throw new NotImplementedException();
-            }
+            var model = Cue.CreateCue(type);
 
             src?.ToModel(model);
 

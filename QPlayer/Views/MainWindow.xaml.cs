@@ -146,10 +146,27 @@ public partial class MainWindow : Window
                         case ".flac":
                         case ".ogg":
                         case ".wma":
-                            var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
-                            cue.Path = file;
-                            cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                            vm.MoveCue(cue, dstIndex++);
+                            {
+                                var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
+                                cue.Path = file;
+                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                                vm.MoveCue(cue, dstIndex++);
+                            }
+                            break;
+                        //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov
+                        case ".mp4":
+                        case ".mkv":
+                        case ".avi":
+                        case ".webm":
+                        case ".flv":
+                        case ".wmv":
+                        case ".mov":
+                            {
+                                var cue = (VideoCueViewModel)vm.CreateCue(Models.CueType.VideoCue, afterLast: true);
+                                cue.Path = file;
+                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                                vm.MoveCue(cue, dstIndex++);
+                            }
                             break;
                         default:
                             break;

@@ -6,18 +6,11 @@ using QPlayer.Models;
 using QPlayer.Utilities;
 using ReactiveUI.Fody.Helpers;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Drawing;
-using System.Globalization;
+using System.ComponentModel;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
-using System.Windows;
-using System.Windows.Data;
+using System.Windows.Media;
 using Cue = QPlayer.Models.Cue;
 using Timer = System.Timers.Timer;
 
@@ -124,6 +117,15 @@ namespace QPlayer.ViewModels
             CueState.Playing or CueState.PlayingLooped or CueState.Paused => $"-{PlaybackTime - Duration:mm\\:ss}",
             _ => $"{Duration:mm\\:ss}",
         };
+        [Reactive, ReactiveDependency(nameof(Colour))]
+        public SolidColorBrush ColourBrush
+        {
+            get
+            {
+                colourBrush.Color = Colour.ToMediaColor(127);
+                return colourBrush;
+            }
+        }
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
@@ -135,7 +137,7 @@ namespace QPlayer.ViewModels
         [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
         [Reactive] public static ObservableCollection<FadeType>? FadeTypeVals { get; private set; }
 
-        [Reactive] public bool IsRemoteControlled => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
+        [Reactive] public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
             && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
         #endregion
 
@@ -147,10 +149,12 @@ namespace QPlayer.ViewModels
         protected Cue? cueModel;
         protected MainViewModel? mainViewModel;
         protected Timer goTimer;
+        private SolidColorBrush colourBrush;
 
         public CueViewModel(MainViewModel mainViewModel)
         {
             this.mainViewModel = mainViewModel;
+            colourBrush = new(Colour.ToMediaColor(127));
             synchronizationContext = SynchronizationContext.Current;
             mainViewModel.PropertyChanged += MainViewModel_PropertyChanged;
             goTimer = new()
@@ -215,7 +219,7 @@ namespace QPlayer.ViewModels
         /// </summary>
         public virtual void Go()
         {
-            if (IsRemoteControlled)
+            if (IsRemoteControlling)
                 mainViewModel?.OSCManager.SendRemoteGo(RemoteNode, QID);
 
             if (Duration == TimeSpan.Zero)
@@ -238,7 +242,7 @@ namespace QPlayer.ViewModels
             goTimer.Stop();
             State = CueState.Paused;
 
-            if (IsRemoteControlled)
+            if (IsRemoteControlling)
                 mainViewModel?.OSCManager.SendRemotePause(RemoteNode, qid);
         }
 
@@ -252,7 +256,7 @@ namespace QPlayer.ViewModels
             mainViewModel?.ActiveCues.Remove(this);
             OnCompleted?.Invoke(this, EventArgs.Empty);
 
-            if (IsRemoteControlled)
+            if (IsRemoteControlling)
                 mainViewModel?.OSCManager.SendRemoteStop(RemoteNode, qid);
         }
 
@@ -269,7 +273,7 @@ namespace QPlayer.ViewModels
                 OnPropertyChanged(nameof(PlaybackTimeString));
                 OnPropertyChanged(nameof(PlaybackTimeStringShort));
 
-                if (IsRemoteControlled)
+                if (IsRemoteControlling)
                     mainViewModel?.OSCManager.SendRemotePreload(RemoteNode, qid, (float)startTime.TotalSeconds);
             }
         }
@@ -289,12 +293,20 @@ namespace QPlayer.ViewModels
         public void Bind(Cue cue)
         {
             cueModel = cue;
-            PropertyChanged += (o, e) =>
-            {
-                CueViewModel vm = (CueViewModel)(o ?? throw new NullReferenceException(nameof(CueViewModel)));
-                if (e.PropertyName != null)
-                    vm.ToModel(e.PropertyName);
-            };
+            PropertyChanged += PropertyChangedHandler;
+        }
+
+        public void UnBind()
+        {
+            cueModel = null;
+            PropertyChanged -= PropertyChangedHandler;
+        }
+
+        private void PropertyChangedHandler(object? o, PropertyChangedEventArgs e)
+        {
+            CueViewModel vm = (CueViewModel)(o ?? throw new NullReferenceException(nameof(CueViewModel)));
+            if (e.PropertyName != null)
+                vm.ToModel(e.PropertyName);
         }
 
         /// <summary>
@@ -356,6 +368,8 @@ namespace QPlayer.ViewModels
                 CueType.StopCue => StopCueViewModel.FromModel(cue, mainViewModel),
                 CueType.VolumeCue => VolumeCueViewModel.FromModel(cue, mainViewModel),
                 CueType.VideoCue => VideoCueViewModel.FromModel(cue, mainViewModel),
+                CueType.VideoFramingCue => VideoFramingCueViewModel.FromModel(cue, mainViewModel),
+                CueType.ShaderParamsCue => ShaderParamsCueViewModel.FromModel(cue, mainViewModel),
                 _ => throw new ArgumentException(null, nameof(cue.type)),
             };
             viewModel.mainViewModel = mainViewModel;

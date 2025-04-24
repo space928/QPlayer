@@ -25,7 +25,7 @@ public partial class LogWindow : Window
     //https://stackoverflow.com/a/46548292
     private void ScrollViewer_OnScrollChanged(object sender, ScrollChangedEventArgs e)
     {
-        if (e.OriginalSource is ScrollViewer scrollViewer &&
+        if (autoScrollToBottom && e.OriginalSource is ScrollViewer scrollViewer &&
             Math.Abs(e.ExtentHeightChange) > 0.0)
         {
             scrollViewer.ScrollToBottom();
@@ -63,7 +63,7 @@ public partial class LogWindow : Window
     private void CheckBox_Checked(object sender, RoutedEventArgs e)
     {
         autoScrollToBottom = ScrollToBottomCheckbox.IsChecked ?? true;
-        if (autoScrollToBottom && LogListBox.Items.Count > 0)
+        if (autoScrollToBottom && LogListBox != null && LogListBox.Items.Count > 0)
             LogListBox.ScrollIntoView(LogListBox.Items[^1]);
     }
 }

@@ -66,6 +66,15 @@
             <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.VolumeCue}">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconVolumeCue}"/>
             </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.VideoCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconVideoCue}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.VideoFramingCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconVideoFramingCue}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.ShaderParamsCue}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconShaderParamsCue}"/>
+            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 

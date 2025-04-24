@@ -14,6 +14,8 @@ using System.Threading.Tasks;
 using System.Timers;
 using Microsoft.Win32;
 using static QPlayer.ViewModels.MainViewModel;
+using CommunityToolkit.Mvvm.ComponentModel;
+using QPlayer.Utilities;
 
 namespace QPlayer.ViewModels;
 
@@ -28,7 +30,6 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
     [Reactive] public TimeSpan StartTime { get; set; }
     [Reactive] public TimeSpan PlaybackDuration { get; set; }
     [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (videoFile?.Duration ?? TimeSpan.Zero) - StartTime : PlaybackDuration;
-    [Reactive]
     public override TimeSpan PlaybackTime
     {
         get => (videoFile?.IsReady ?? false) ? videoFile.CurrentTime - StartTime : TimeSpan.Zero;
@@ -36,26 +37,33 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         {
             if (videoFile?.IsReady ?? false)
                 videoFile.CurrentTime = value + StartTime;
+            OnPropertyChanged(nameof(PlaybackTime));
+            OnPropertyChanged(nameof(PlaybackTimeString));
+            OnPropertyChanged(nameof(PlaybackTimeStringShort));
         }
     }
-    [Reactive] public float Dimmer { get; set; }
-    [Reactive] public float Volume { get; set; }
+    [Reactive] public float Dimmer { get; set; } = 1;
+    [Reactive] public float Volume { get; set; } = 1;
     [Reactive] public float FadeIn { get; set; }
     [Reactive] public float FadeOut { get; set; }
     [Reactive] public FadeType FadeType { get; set; }
 
-    [Reactive] public float Brightness { get; set; }
-    [Reactive] public float Contrast { get; set; }
-    [Reactive] public float Gamma { get; set; }
+    [Reactive] public float Brightness { get; set; } = 1;
+    [Reactive] public float Contrast { get; set; } = 1;
+    [Reactive] public float Gamma { get; set; } = 1;
 
-    [Reactive] public float Scale { get; set; }
+    [Reactive] public float Scale { get; set; } = 1;
     [Reactive] public float Rotation { get; set; }
     [Reactive] public float XPos { get; set; }
     [Reactive] public float YPos { get; set; }
 
+    [Reactive] public ReactiveCollection<ShaderParameterViewModel> ShaderParameters { get; private set; }
+
     [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
     [Reactive] public RelayCommand OpenAlphaMediaFileCommand { get; private set; }
     [Reactive] public RelayCommand OpenShaderFileCommand { get; private set; }
+    [Reactive] public RelayCommand AddShaderParameterCommand { get; private set; }
+    [Reactive] public RelayCommand<ShaderParameterViewModel> RemoveShaderParameterCommand { get; private set; }
 
     //[Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
 
@@ -75,12 +83,13 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         OpenAlphaMediaFileCommand = new(OpenAlphaMediaFileExecute);
         OpenShaderFileCommand = new(OpenShaderFileExecute);
         playbackProgressUpdater = new Timer(50);
-        playbackProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;
+        playbackProgressUpdater.Elapsed += PlaybackProgressUpdater_Elapsed;
         fadeOutTimer = new Timer
         {
             AutoReset = false
         };
         fadeOutTimer.Elapsed += FadeOutTimer_Elapsed;
+        ShaderParameters = [];
 
         PropertyChanged += (o, e) =>
         {
@@ -100,6 +109,22 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         };
 
         AlphaModeVals = new(Enum.GetValues<AlphaMode>());
+
+        // Propagate changes back to the model
+        ShaderParameters.SyncList(() => (cueModel as ShaderParamsCue)?.uniforms, ShaderParameterViewModel.ToModel);
+        ShaderParameters.ItemChanged += (i, o, e) =>
+        {
+            if (cueModel is ShaderParamsCue cue)
+                cue.uniforms[i] = o.ToModel();
+        };
+
+        AddShaderParameterCommand = new(() => ShaderParameters.Add(new()));
+        RemoveShaderParameterCommand = new(param =>
+        {
+            if (param == null)
+                return;
+            ShaderParameters.Remove(param);
+        });
     }
 
     public void Dispose()
@@ -164,7 +189,8 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
     {
         var oldState = State; // We need to capture the old state here since the base function writes to it
         base.Go();
-        if (IsRemoteControlled)
+        //playbackProgressUpdater.Start();
+        if (IsRemoteControlling)
             return;
         if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
             StopVideo();
@@ -201,10 +227,15 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
     public override void Pause()
     {
         base.Pause();
-        if (IsRemoteControlled || mainViewModel == null)
+        //playbackProgressUpdater.Stop();
+        if (IsRemoteControlling || mainViewModel == null)
+        {
+            /*OnPropertyChanged(nameof(PlaybackTime));
+            OnPropertyChanged(nameof(PlaybackTimeString));
+            OnPropertyChanged(nameof(PlaybackTimeStringShort));*/
             return;
+        }
         //mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
-        playbackProgressUpdater.Stop();
         fadeOutTimer.Stop();
         OnPropertyChanged(nameof(PlaybackTime));
         OnPropertyChanged(nameof(PlaybackTimeString));
@@ -214,8 +245,15 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
     public override void Stop()
     {
         base.Stop();
-        if (IsRemoteControlled)
+        if (IsRemoteControlling)
+        {
+            /*PlaybackTime = TimeSpan.Zero;
+            playbackProgressUpdater?.Stop();
+            OnPropertyChanged(nameof(PlaybackTime));
+            OnPropertyChanged(nameof(PlaybackTimeString));
+            OnPropertyChanged(nameof(PlaybackTimeStringShort));*/
             return;
+        }
         if (shouldSendRemoteStatus)
             mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);
         StopVideo();
@@ -305,7 +343,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         }, null);
     }
 
-    private void AudioProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
+    private void PlaybackProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
     {
         synchronizationContext?.Post((x) =>
         {
@@ -315,7 +353,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
 
             // When not using a fadeout, there's nothing to stop the sound early if it's been trimmed.
             // This won't be very accurate, but should work for now...
-            if (PlaybackTime >= Duration)
+            if (shouldSendRemoteStatus && PlaybackTime >= Duration)
                 Stop();
 
             if (shouldSendRemoteStatus)
@@ -386,6 +424,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
                 case nameof(Rotation): vcue.rotation = Rotation; break;
                 case nameof(XPos): vcue.offset = new(XPos, vcue.offset.Y); break;
                 case nameof(YPos): vcue.offset = new(vcue.offset.X, YPos); break;
+                case nameof(ShaderParameters): /*vfcue.corners = Corners;*/ break;
             }
         }
     }
@@ -414,6 +453,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
             vcue.rotation = Rotation;
             vcue.offset = new(XPos, vcue.offset.Y);
             vcue.offset = new(vcue.offset.X, YPos);
+            vcue.uniforms = ShaderParameters.Select(ShaderParameterViewModel.ToModel).ToList();
         }
     }
 
@@ -440,8 +480,35 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
             vm.Rotation = vcue.rotation;
             vm.XPos = vcue.offset.X;
             vm.YPos = vcue.offset.Y;
+            vm.ShaderParameters.Clear();
+            for (int i = 0; i < vcue.uniforms.Count; i++)
+            {
+                ShaderParameterViewModel param = new(vcue.uniforms[i]);
+                vm.ShaderParameters.Add(param);
+            }
         }
         return vm;
     }
     #endregion
+}
+
+public class ShaderParameterViewModel : ObservableObject
+{
+    [Reactive] public string Name { get; set; } = string.Empty;
+    [Reactive] public float Value { get; set; }
+
+    public ShaderParameterViewModel() { }
+
+    public ShaderParameterViewModel(KeyValuePair<string, float> model) : this(model.Key, model.Value) { }
+    public ShaderParameterViewModel(ShaderParameter model) : this(model.name, model.value) { }
+
+    public ShaderParameterViewModel(string name, float value)
+    {
+        Name = name;
+        Value = value;
+    }
+
+    public ShaderParameter ToModel() => new(Name, Value);
+
+    public static ShaderParameter ToModel(ShaderParameterViewModel vm) => vm.ToModel();
 }

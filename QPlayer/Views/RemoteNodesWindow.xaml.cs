@@ -11,18 +11,18 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
 
 namespace QPlayer.Views;
 
 /// <summary>
-/// Interaction logic for ProjectSettingsEditor.xaml
+/// Interaction logic for RemoteNodesWindow.xaml
 /// </summary>
-public partial class ProjectSettingsEditor : UserControl
+public partial class RemoteNodesWindow : Window
 {
-    public ProjectSettingsEditor()
+    public RemoteNodesWindow(RemoteNodesWindowViewModel viewModel)
     {
+        this.DataContext = viewModel;
         InitializeComponent();
     }
 }

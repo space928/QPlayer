@@ -49,6 +49,9 @@ public record struct RemoteNode(string name, string address)
     public string address = address;
 }
 
+[Serializable]
+public record struct ShaderParameter(string name, float value);
+
 public enum CueType
 {
     None,
@@ -58,7 +61,9 @@ public enum CueType
     TimeCodeCue,
     StopCue,
     VolumeCue,
-    VideoCue
+    VideoCue,
+    VideoFramingCue,
+    ShaderParamsCue
 }
 
 public enum LoopMode
@@ -76,9 +81,17 @@ public enum StopMode
 
 public enum AlphaMode
 {
-    None,
-    Blend,
-    BlendPremultiply
+    Opaque,
+    Video,
+    Alpha,
+    GradientWipe
+}
+
+public struct FramingShutter
+{
+    public float rotation;
+    public float maskStart;
+    public float softness;
 }
 
 [Serializable]
@@ -91,6 +104,8 @@ public enum AlphaMode
 [JsonDerivedType(typeof(StopCue), typeDiscriminator: nameof(StopCue))]
 [JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
 [JsonDerivedType(typeof(VideoCue), typeDiscriminator: nameof(VideoCue))]
+[JsonDerivedType(typeof(VideoFramingCue), typeDiscriminator: nameof(VideoFramingCue))]
+[JsonDerivedType(typeof(ShaderParamsCue), typeDiscriminator: nameof(ShaderParamsCue))]
 public record Cue
 {
     public CueType type;
@@ -105,6 +120,21 @@ public record Cue
     public LoopMode loopMode;
     public int loopCount;
     public string remoteNode = string.Empty;
+
+    public static Cue CreateCue(CueType type) => type switch
+    {
+        CueType.GroupCue => new GroupCue(),
+        CueType.DummyCue => new DummyCue(),
+        CueType.SoundCue => new SoundCue(),
+        CueType.TimeCodeCue => new TimeCodeCue(),
+        CueType.StopCue => new StopCue(),
+        CueType.VolumeCue => new VolumeCue(),
+        CueType.VideoCue => new VideoCue(),
+        CueType.VideoFramingCue => new VideoFramingCue(),
+        CueType.ShaderParamsCue => new ShaderParamsCue(),
+        CueType.None => new Cue(),
+        _ => throw new NotImplementedException(),
+    };
 }
 
 [Serializable]
@@ -196,7 +226,7 @@ public record VideoCue : Cue
     public string shader = string.Empty;
     public int zIndex;
     public string? alphaPath;
-    public AlphaMode alphaMode = AlphaMode.Blend;
+    public AlphaMode alphaMode = AlphaMode.Video;
     public TimeSpan startTime;
     public TimeSpan duration;
     public float dimmer = 1;
@@ -213,8 +243,40 @@ public record VideoCue : Cue
     public float rotation = 0;
     public Vector2 offset = Vector2.Zero;
 
+    public List<ShaderParameter> uniforms = [];
+
     public VideoCue() : base()
     {
         type = CueType.VideoCue;
+    }
+}
+
+[Serializable]
+[JsonDerivedType(typeof(VideoFramingCue), typeDiscriminator: nameof(VideoFramingCue))]
+public record VideoFramingCue : Cue
+{
+    public List<Vector2> corners = [];
+    public List<FramingShutter> framing = [];
+    public float fadeTime = 0;
+    public FadeType fadeType = FadeType.SCurve;
+
+    public VideoFramingCue() : base()
+    {
+        type = CueType.VideoFramingCue;
+    }
+}
+
+[Serializable]
+[JsonDerivedType(typeof(ShaderParamsCue), typeDiscriminator: nameof(ShaderParamsCue))]
+public record ShaderParamsCue : Cue
+{
+    public decimal targetQid;
+    public List<ShaderParameter> uniforms = [];
+    public float fadeTime = 0;
+    public FadeType fadeType = FadeType.SCurve;
+
+    public ShaderParamsCue() : base()
+    {
+        type = CueType.ShaderParamsCue;
     }
 }

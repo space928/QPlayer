@@ -29,7 +29,7 @@
         </DockPanel>
         <DockPanel>
             <Label Content="Colour"/>
-            <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
+            <colorpicker:PortableColorPicker ColorState="{Binding Colour, Mode=TwoWay}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
         </DockPanel>
         <DockPanel>
             <Label Content="Remote Node"/>
@@ -189,8 +189,7 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:VideoCueViewModel}">
                     <StackPanel>
-                        <TextBlock Text="Note that video playback within QPlayer is currently unsupported. 
-                               These settings are only relevant to remote clients at the moment."
+                        <TextBlock Text="Note that video playback within QPlayer is currently unsupported. These settings are only relevant to remote clients at the moment."
                                FontStyle="Italic" Foreground="{DynamicResource Button.Disabled.Foreground}" TextWrapping="Wrap" Margin="4"/>
                         <TextBlock Text="Media Files:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
                         <DockPanel>
@@ -199,15 +198,12 @@
                             <local:TextField Text="{Binding Path}" Margin="8,2,2,2"/>
                         </DockPanel>
                         <DockPanel 
-                            ToolTip="The shader determines how the video is rendered and composited in the scene. 
-                            Different shaders may expose different parameters which can be controlled in the 
-                            shader parameters section.">
+                            ToolTip="The shader determines how the video is rendered and composited in the scene. Different shaders may expose different parameters which can be controlled in the shader parameters section.">
                             <Label Content="Shader"/>
                             <Button Content="..." Width="30" Command="{Binding OpenShaderFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
                             <local:TextField Text="{Binding Shader}" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The alpha (or transparency) channel of the video can come from a separate video 
-                                   file, specified here.">
+                        <DockPanel ToolTip="The alpha (or transparency) channel of the video can come from a separate video file, specified here.">
                             <Label Content="Alpha Video Path"/>
                             <Button Content="..." Width="30" Command="{Binding OpenAlphaMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
                             <local:TextField Text="{Binding AlphaPath}" Margin="8,2,2,2"/>
@@ -243,7 +239,7 @@
                         </DockPanel>
 
                         <TextBlock Text="Appearance:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
-                        <DockPanel ToolTip="How the video should be blended with other videos in the scene.">
+                        <DockPanel ToolTip="Where this video layer gets it's transparency from">
                             <Label Content="Alpha Mode"/>
                             <ComboBox SelectedItem="{Binding AlphaMode, UpdateSourceTrigger=Default}" ItemsSource="{Binding AlphaModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
@@ -262,10 +258,45 @@
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.02" ClampValue="True" MinValue="0" MaxValue="4" 
                                              Text="{Binding Gamma, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
+                        <StackPanel ToolTip="A list of custom video shader parameters.">
+                            <Label Content="Shader Parameters"/>
+                            <ScrollViewer Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                  BorderBrush="{DynamicResource Button.Static.Border}" BorderThickness="1"
+                  Margin="2" MaxHeight="200">
+                                <HeaderedItemsControl ItemsSource="{Binding ShaderParameters}" MinHeight="20">
+                                    <HeaderedItemsControl.Header>
+                                        <DockPanel>
+                                            <Label Content="Uniform Name"/>
+                                            <Label Content="Value" DockPanel.Dock="Right"/>
+                                        </DockPanel>
+                                    </HeaderedItemsControl.Header>
+                                    <HeaderedItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel>
+                                                <Button Content="❌" Command="{Binding DataContext.RemoveShaderParameterCommand, 
+                                Mode=OneWay, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
+                                CommandParameter="{Binding}"
+                                DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"/>
+                                                <Grid HorizontalAlignment="Stretch">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <local:TextField ToolTip="The shader uniform name." Text="{Binding Name, UpdateSourceTrigger=Default}" Margin="8,2,2,2"/>
+                                                    <local:TextField Grid.Column="1" ToolTip="The value of this uniform." ShowSpinner="True" SpinnerType="Double" SpinRate="0.1"
+                                             Text="{Binding Value, UpdateSourceTrigger=Default}" Margin="2,2,8,2"/>
+                                                </Grid>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </HeaderedItemsControl.ItemTemplate>
+                                </HeaderedItemsControl>
+                            </ScrollViewer>
+                            <Button Command="{Binding AddShaderParameterCommand}" Content="Add Parameter" Margin="2,0,2,2"/>
+                        </StackPanel>
 
                         <TextBlock Text="Position:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
-                        <DockPanel ToolTip="Determines how videos are layered on top of each other. 
-                                            Higher numbers layer on top of videos with lower numbers.">
+                        <DockPanel ToolTip="Determines how videos are layered on top of each other. Higher numbers layer on top of videos with lower numbers.">
                             <Label Content="Z Index"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.1" ClampValue="True" MinValue="-9999" MaxValue="9999" 
                                              Text="{Binding ZIndex, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
@@ -303,6 +334,167 @@
                                     AutoToolTipPlacement="TopLeft" 
                                     TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
                                     LargeChange="0.1" SmallChange="0.01"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:VideoFramingCueViewModel}">
+                    <StackPanel>
+                        <!--<DockPanel>
+                            <Label Content="Target Q ID"/>
+                            <local:TextField Text="{Binding Target, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>-->
+                        <DockPanel ToolTip="The position of the corners which frame the video. Used for perspective/keystone correction.">
+                            <Label Content="Corners" DockPanel.Dock="Top"/>
+                            <Grid HorizontalAlignment="Stretch" Margin="2,2,2,2">
+                                <Grid.ColumnDefinitions>
+                                    <ColumnDefinition/>
+                                    <ColumnDefinition/>
+                                </Grid.ColumnDefinitions>
+                                <Grid.RowDefinitions>
+                                    <RowDefinition/>
+                                    <RowDefinition/>
+                                </Grid.RowDefinitions>
+                                <Grid Grid.Column="0" Grid.Row="0" Margin="0,0,3,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.TL_X, UpdateSourceTrigger=Default}" Grid.Column="0"/>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.TL_Y, UpdateSourceTrigger=Default}" Grid.Column="1"/>
+                                </Grid>
+                                <Grid Grid.Column="1" Grid.Row="0" Margin="3,0,0,3">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.TR_X, UpdateSourceTrigger=Default}" Grid.Column="0"/>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.TR_Y, UpdateSourceTrigger=Default}" Grid.Column="1"/>
+                                </Grid>
+                                <Grid Grid.Column="0" Grid.Row="1" Margin="0,3,3,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.BL_X, UpdateSourceTrigger=Default}" Grid.Column="0"/>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.BL_Y, UpdateSourceTrigger=Default}" Grid.Column="1"/>
+                                </Grid>
+                                <Grid Grid.Column="1" Grid.Row="1" Margin="3,3,0,0">
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.BR_X, UpdateSourceTrigger=Default}" Grid.Column="0"/>
+                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-99999" MaxValue="99999" 
+                                                     Text="{Binding Corners.BR_Y, UpdateSourceTrigger=Default}" Grid.Column="1"/>
+                                </Grid>
+                            </Grid>
+                        </DockPanel>
+                        <StackPanel ToolTip="A list of framing shutter positions which can be used to frame and crop the video">
+                            <Label Content="Framing Shutters"/>
+                            <ScrollViewer Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                                          BorderBrush="{DynamicResource Button.Static.Border}" BorderThickness="1"
+                                          Margin="2" MaxHeight="280">
+                                <ItemsControl ItemsSource="{Binding Framing}" MinHeight="20">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <StackPanel>
+                                                <DockPanel>
+                                                    <Label Content="Framing Shutter"/>
+                                                    <Button Content="❌" Command="{Binding DataContext.RemoveFramingShutterCommand, 
+                                                            Mode=OneWay, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
+                                                            CommandParameter="{Binding}"
+                                                            DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                                            Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"/>
+                                                </DockPanel>
+                                                <DockPanel ToolTip="The rotation of the framing shutter.">
+                                                    <Label Content="Rotation"/>
+                                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="-9999" MaxValue="9999" 
+                                                                     Text="{Binding Rotation, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                </DockPanel>
+                                                <DockPanel ToolTip="How far in the framing shutter is inserted.">
+                                                    <Label Content="Mask Start"/>
+                                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" 
+                                                                     Text="{Binding MaskStart, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                </DockPanel>
+                                                <DockPanel ToolTip="The softness of the edge of the framing shutter.">
+                                                    <Label Content="Softness"/>
+                                                    <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.01" ClampValue="True" MinValue="0" MaxValue="1" 
+                                                                     Text="{Binding Softness, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                                                </DockPanel>
+                                                <Separator/>
+                                            </StackPanel>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+                            </ScrollViewer>
+                            <Button Command="{Binding AddFramingShutterCommand}" Content="Add Shutter" Margin="2,0,2,2"/>
+                        </StackPanel>
+                        <DockPanel ToolTip="Fade time in seconds">
+                            <Label Content="Fade Time"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                            <Label Content="Fade Type"/>
+                            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
+                </DataTemplate>
+                <DataTemplate DataType="{x:Type vm:ShaderParamsCueViewModel}">
+                    <StackPanel>
+                        <DockPanel>
+                            <Label Content="Target Q ID"/>
+                            <local:TextField Text="{Binding Target, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <StackPanel ToolTip="A list of custom video shader parameters.">
+                            <Label Content="Shader Parameters"/>
+                            <ScrollViewer Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                                          BorderBrush="{DynamicResource Button.Static.Border}" BorderThickness="1"
+                                          Margin="2" MaxHeight="200">
+                                <HeaderedItemsControl ItemsSource="{Binding ShaderParameters}" MinHeight="20">
+                                    <HeaderedItemsControl.Header>
+                                        <DockPanel>
+                                            <Label Content="Uniform Name"/>
+                                            <Label Content="Value" DockPanel.Dock="Right"/>
+                                        </DockPanel>
+                                    </HeaderedItemsControl.Header>
+                                    <HeaderedItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <DockPanel>
+                                                <Button Content="❌" Command="{Binding DataContext.RemoveShaderParameterCommand, 
+                                                        Mode=OneWay, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
+                                                        CommandParameter="{Binding}"
+                                                        DockPanel.Dock="Right" HorizontalAlignment="Right"
+                                                        Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"/>
+                                                <Grid HorizontalAlignment="Stretch">
+                                                    <Grid.ColumnDefinitions>
+                                                        <ColumnDefinition/>
+                                                        <ColumnDefinition/>
+                                                    </Grid.ColumnDefinitions>
+                                                    <local:TextField ToolTip="The shader uniform name." Text="{Binding Name, UpdateSourceTrigger=Default}" Margin="8,2,2,2"/>
+                                                    <local:TextField Grid.Column="1" ToolTip="The value of this uniform." ShowSpinner="True" SpinnerType="Double" SpinRate="0.1"
+                                                                     Text="{Binding Value, UpdateSourceTrigger=Default}" Margin="2,2,8,2"/>
+                                                </Grid>
+                                            </DockPanel>
+                                        </DataTemplate>
+                                    </HeaderedItemsControl.ItemTemplate>
+                                </HeaderedItemsControl>
+                            </ScrollViewer>
+                            <Button Command="{Binding AddShaderParameterCommand}" Content="Add Parameter" Margin="2,0,2,2"/>
+                        </StackPanel>
+                        <DockPanel ToolTip="Fade time in seconds">
+                            <Label Content="Fade Time"/>
+                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                            <Label Content="Fade Type"/>
+                            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
                     </StackPanel>
                 </DataTemplate>

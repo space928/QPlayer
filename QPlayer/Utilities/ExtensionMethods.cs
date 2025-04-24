@@ -1,6 +1,10 @@
 ﻿using ColorPicker.Models;
+using QPlayer.Models;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Collections.Specialized;
+using System.ComponentModel;
 using System.Drawing;
 using System.Linq;
 using System.Net;
@@ -15,6 +19,16 @@ public static partial class ExtensionMethods
     public static Color ToColor(this ColorState x)
     {
         return Color.FromArgb(255, (byte)(x.RGB_R * 255), (byte)(x.RGB_G * 255), (byte)(x.RGB_B * 255));
+    }
+
+    public static System.Windows.Media.Color ToMediaColor(this ColorState x)
+    {
+        return System.Windows.Media.Color.FromRgb((byte)(x.RGB_R * 255), (byte)(x.RGB_G * 255), (byte)(x.RGB_B * 255));
+    }
+
+    public static System.Windows.Media.Color ToMediaColor(this ColorState x, byte alpha)
+    {
+        return System.Windows.Media.Color.FromArgb(alpha, (byte)(x.RGB_R * 255), (byte)(x.RGB_G * 255), (byte)(x.RGB_B * 255));
     }
 
     public static ColorState ToColorState(this Color x)
@@ -80,4 +94,63 @@ public static partial class ExtensionMethods
     public static Vector4 YXZW(this Vector4 value) => new(value.Y, value.X, value.Z, value.W);
     public static Vector4 ZYXW(this Vector4 value) => new(value.Z, value.Y, value.X, value.W);
     public static Vector4 WZYX(this Vector4 value) => new(value.W, value.Z, value.Y, value.X);
+
+    /// <summary>
+    /// Synchronises a list with this collection. Note that this synchronisation only works in one direction, if the list is 
+    /// modified, then the behaviour is undefined.
+    /// </summary>
+    /// <typeparam name="TCollection"></typeparam>
+    /// <typeparam name="TList"></typeparam>
+    /// <param name="collection"></param>
+    /// <param name="listGetter"></param>
+    /// <param name="converter"></param>
+    public static void SyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter, 
+        Func<TCollection, TList> converter)
+    {
+        collection.CollectionChanged += (o, e) => ObservableCollectionChangedHandler(o, e, listGetter, converter);
+    }
+
+    public static void UnSyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter, 
+        Func<TCollection, TList> converter)
+    {
+        collection.CollectionChanged -= (o, e) => ObservableCollectionChangedHandler(o, e, listGetter, converter);
+    }
+
+    private static void ObservableCollectionChangedHandler<TCollection, TList>(object? o, NotifyCollectionChangedEventArgs e, 
+        Func<IList<TList>?> listGetter, Func<TCollection, TList> converter)
+    {
+        var list = listGetter();
+        if (list == null)
+            return;
+
+        switch (e.Action)
+        {
+            case NotifyCollectionChangedAction.Add:
+                list.Insert(e.NewStartingIndex, converter((TCollection)e.NewItems![0]!));
+                break;
+            case NotifyCollectionChangedAction.Remove:
+                list.RemoveAt(e.OldStartingIndex);
+                break;
+            case NotifyCollectionChangedAction.Replace:
+                list[e.OldStartingIndex] = converter((TCollection)e.NewItems![0]!);
+                break;
+            case NotifyCollectionChangedAction.Move:
+                list.RemoveAt(e.OldStartingIndex);
+                list.Insert(e.NewStartingIndex, converter((TCollection)e.NewItems![0]!));
+                break;
+            case NotifyCollectionChangedAction.Reset:
+                list.Clear();
+                /*vfModel.corners.RemoveRange(e.OldStartingIndex, )
+                vfModel.corners.AddRange(e.NewItems);*/
+                break;
+        }
+    }
+
+    public static void HandleCollectionValueChange<T>(ObservableCollection<T> collection, T obj)
+    {
+        // This should trigger a Replace collection changed notification
+        // TODO: This is a hopelessly stupid way of doing this
+        int ind = collection.IndexOf(obj);
+        collection[ind] = collection[ind];
+    }
 }

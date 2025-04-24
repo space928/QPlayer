@@ -58,6 +58,7 @@ public class RemoteNodeViewModel : ObservableObject
         {
             wasActive = nowActive;
             OnPropertyChanged(nameof(IsActive));
+            projectSettings.OnRemoteNodeStatusChanged(this);
 
             return !nowActive;
         }

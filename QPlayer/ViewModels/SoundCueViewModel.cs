@@ -122,7 +122,7 @@ namespace QPlayer.ViewModels
         {
             var oldState = State; // We need to capture the old state here since the base function writes to it
             base.Go();
-            if (IsRemoteControlled)
+            if (IsRemoteControlling)
                 return;
             if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
                 StopAudio();
@@ -157,7 +157,7 @@ namespace QPlayer.ViewModels
         public override void Pause()
         {
             base.Pause();
-            if (IsRemoteControlled || fadeInOutProvider == null || mainViewModel == null)
+            if (IsRemoteControlling || fadeInOutProvider == null || mainViewModel == null)
                 return;
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
             audioProgressUpdater.Stop();
@@ -170,7 +170,7 @@ namespace QPlayer.ViewModels
         public override void Stop()
         {
             base.Stop();
-            if (IsRemoteControlled)
+            if (IsRemoteControlling)
                 return;
             if (shouldSendRemoteStatus)
                 mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);

@@ -23,6 +23,7 @@ public class OSCDriver : IDisposable
     //public ConcurrentQueue<OscPacket> RXMessages { get; private set; } = [];
     public event Action<OscMessage>? OnRXMessage;
     public event Action<OscMessage>? OnTXMessage;
+    public event Action? OnRXFailure;
 
     private UdpClient? oscReceiver;
     private UdpClient? oscSender;
@@ -49,9 +50,9 @@ public class OSCDriver : IDisposable
         {
             Dispose();
 
-            oscReceiver = new(new IPEndPoint(rxIP.Address, 0));
+            oscReceiver = new(new IPEndPoint(rxIP.Address, rxPort));
             //oscReceiver
-            //oscReceiver.Connect()
+            //oscReceiver.Connect(rxIP.Address, rxPort);
 
             oscSender = new(new IPEndPoint(nicAddress, 0));
             //oscSender.Connect(txIP);
@@ -132,7 +133,7 @@ public class OSCDriver : IDisposable
         IPEndPoint? endPointAny = new(IPAddress.Any, rxIP?.Port ?? 0);
         IPEndPoint? endPointAnyV6 = new(IPAddress.IPv6Any, rxIP?.Port ?? 0);
         var recvBuff = new byte[0x10000];
-        while (oscReceiver?.Client?.Connected ?? false)
+        while (oscReceiver?.Client?.IsBound ?? false)
         {
             try
             {
@@ -154,8 +155,17 @@ public class OSCDriver : IDisposable
 
                 //Log($"Recv osc msg: {pkt}", LogLevel.Debug);
             }
+            catch (SocketException e)
+            {
+                if (e.SocketErrorCode == SocketError.Interrupted)
+                    continue;
+
+                OnRXFailure?.Invoke();
+                Log($"OSC Network connection lost: {e}", LogLevel.Warning);
+            }
             catch (Exception e)
             {
+                OnRXFailure?.Invoke();
                 Log($"OSC Network connection lost: {e}", LogLevel.Warning);
             }
         }

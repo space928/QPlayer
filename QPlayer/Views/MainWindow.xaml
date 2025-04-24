@@ -84,6 +84,8 @@
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                         <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
                         <MenuItem Header="Add Video Cue" Command="{Binding CreateCueCommand}" CommandParameter="VideoCue"/>
+                        <MenuItem Header="Add Video Framing Cue" Command="{Binding CreateCueCommand}" CommandParameter="VideoFramingCue"/>
+                        <MenuItem Header="Add Shader Parameters Cue" Command="{Binding CreateCueCommand}" CommandParameter="ShaderParamsCue"/>
                         <MenuItem Header="Add Time Code Cue" Command="{Binding CreateCueCommand}" CommandParameter="TimeCodeCue"/>
                         <MenuItem Header="Add Group Cue" Command="{Binding CreateCueCommand}" CommandParameter="GroupCue"/>
                         <MenuItem Header="Add Dummy Cue" Command="{Binding CreateCueCommand}" CommandParameter="DummyCue"/>
@@ -91,6 +93,7 @@
                 </MenuItem>
                 <MenuItem Header="Window" Height="30">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
+                    <MenuItem Header="Remote Nodes" Command="{Binding OpenRemoteNodesCommand}"/>
                     <MenuItem Header="Settings" Command="{Binding OpenSetttingsCommand}"/>
                 </MenuItem>
                 <MenuItem Header="Help" Height="30">
@@ -183,6 +186,8 @@
                             <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                             <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
                             <MenuItem Header="Add Video Cue" Command="{Binding CreateCueCommand}" CommandParameter="VideoCue"/>
+                            <MenuItem Header="Add Video Framing Cue" Command="{Binding CreateCueCommand}" CommandParameter="VideoFramingCue"/>
+                            <MenuItem Header="Add Shader Parameters Cue" Command="{Binding CreateCueCommand}" CommandParameter="ShaderParamsCue"/>
                             <MenuItem Header="Add Time Code Cue" Command="{Binding CreateCueCommand}" CommandParameter="TimeCodeCue"/>
                             <MenuItem Header="Add Group Cue" Command="{Binding CreateCueCommand}" CommandParameter="GroupCue"/>
                             <MenuItem Header="Add Dummy Cue" Command="{Binding CreateCueCommand}" CommandParameter="DummyCue"/>

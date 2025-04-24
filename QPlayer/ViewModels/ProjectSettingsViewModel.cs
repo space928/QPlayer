@@ -13,6 +13,7 @@ using System.Threading.Tasks;
 using QPlayer.Audio;
 using CommunityToolkit.Mvvm.Input;
 using Mathieson.Dev;
+using PropertyChanged;
 
 namespace QPlayer.ViewModels;
 
@@ -52,10 +53,12 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public ReadOnlyObservableCollection<RemoteNodeViewModel> RemoteNodes => remoteNodesRO;
 
     [Reactive] public RelayCommand<RemoteNodeViewModel> RemoveRemoteNodeCommand {  get; private set; }
+    [Reactive] public MainViewModel MainViewModel => mainViewModel;
     #endregion
 
     public IPAddress OSCNic => (SelectedNIC >= 0 && SelectedNIC < nicAddresses.Count) ? nicAddresses[SelectedNIC].addr : (nicAddresses.FirstOrDefault().addr ?? IPAddress.Any);
     public IPAddress OSCSubnet => nicAddresses.ElementAtOrDefault(SelectedNIC).subnet ?? IPAddress.Broadcast;
+    public event Action<RemoteNodeViewModel>? RemoteNodeStatusChanged;
 
     internal object? SelectedAudioOutputDeviceKey
     {
@@ -141,7 +144,11 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         ret.IsRemoteHost = model.isRemoteHost;
         ret.NodeName = model.nodeName;
         foreach (var node in model.remoteNodes)
-            ret.remoteNodes.Add(new(node, ret));
+        {
+            RemoteNodeViewModel remote = new(node, ret);
+            if (ret.remoteNodesDict.TryAdd(remote.Name, remote))
+                ret.remoteNodes.Add(remote);
+        }
 
         return ret;
     }
@@ -233,7 +240,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                 projectSettings.nodeName = NodeName;
                 break;
             case nameof(RemoteNodes):
-                projectSettings.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).ToList();
+                projectSettings.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).Distinct().ToList();
                 break;
 
             case nameof(NICs):
@@ -297,6 +304,27 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             remoteNodes.Add(node);
             return true;
         }
+    }
+
+    /// <summary>
+    /// Gets whether a given remote node is currently active.
+    /// </summary>
+    /// <param name="name"></param>
+    /// <returns></returns>
+    public bool IsRemoteNodeActive(string name)
+    {
+        lock (remoteNodesDict)
+        {
+            if (remoteNodesDict.TryGetValue(name, out var node))
+                return node.IsActive;
+        }
+        return false;
+    }
+
+    [SuppressPropertyChangedWarnings]
+    internal void OnRemoteNodeStatusChanged(RemoteNodeViewModel remoteNode)
+    {
+        RemoteNodeStatusChanged?.Invoke(remoteNode);
     }
 
     private void QueryNICs()

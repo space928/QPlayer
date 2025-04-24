@@ -17,12 +17,19 @@ using System.Windows.Shapes;
 namespace QPlayer.Views;
 
 /// <summary>
-/// Interaction logic for ProjectSettingsEditor.xaml
+/// Interaction logic for RemoteSetupControl.xaml
 /// </summary>
-public partial class ProjectSettingsEditor : UserControl
+public partial class RemoteSetupControl : UserControl
 {
-    public ProjectSettingsEditor()
+    public RemoteSetupControl()
     {
         InitializeComponent();
+    }
+
+    private void RemoteNode_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        var remoteNode = (RemoteNodeViewModel)((DockPanel)sender).DataContext;
+        var projectSettings = (ProjectSettingsViewModel)DataContext;
+        projectSettings.MainViewModel.OSCManager.SendRemotePing(remoteNode.Name);
     }
 }
