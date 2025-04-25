@@ -1,4 +1,5 @@
-﻿using QPlayer.ViewModels;
+﻿using QPlayer.Utilities;
+using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;

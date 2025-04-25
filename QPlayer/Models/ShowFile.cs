@@ -1,8 +1,9 @@
 ﻿using QPlayer.Audio;
-using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace QPlayer.Models;
@@ -10,16 +11,16 @@ namespace QPlayer.Models;
 [Serializable]
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 2;
+    public const int FILE_FORMAT_VERSION = 3;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
-    public ShowMetadata showMetadata = new();
+    public ShowSettings showSettings = new();
     public List<float> columnWidths = [];
     public List<Cue> cues = [new SoundCue()];
 }
 
 [Serializable]
-public record ShowMetadata
+public record ShowSettings
 {
     public string title = "Untitled";
     public string description = "";
@@ -33,7 +34,23 @@ public record ShowMetadata
     public string oscNIC = "";
     public int oscRXPort = 9000;
     public int oscTXPort = 8000;
+
+    public bool enableRemoteControl = false;
+    public bool isRemoteHost = true;
+    public bool syncShowFileOnSave = true;
+    public string nodeName = "QPlayer";
+    public List<RemoteNode> remoteNodes = [];
 }
+
+[Serializable]
+public record struct RemoteNode(string name, string address)
+{
+    public string name = name;
+    public string address = address;
+}
+
+[Serializable]
+public record struct ShaderParameter(string name, float value);
 
 public enum CueType
 {
@@ -43,7 +60,10 @@ public enum CueType
     SoundCue,
     TimeCodeCue,
     StopCue,
-    VolumeCue
+    VolumeCue,
+    VideoCue,
+    VideoFramingCue,
+    ShaderParamsCue
 }
 
 public enum LoopMode
@@ -59,6 +79,21 @@ public enum StopMode
     LoopEnd
 }
 
+public enum AlphaMode
+{
+    Opaque,
+    Video,
+    Alpha,
+    GradientWipe
+}
+
+public struct FramingShutter
+{
+    public float rotation;
+    public float maskStart;
+    public float softness;
+}
+
 [Serializable]
 [JsonPolymorphic(IgnoreUnrecognizedTypeDiscriminators = true, UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
 [JsonDerivedType(typeof(Cue), typeDiscriminator: nameof(Cue))]
@@ -68,12 +103,15 @@ public enum StopMode
 [JsonDerivedType(typeof(TimeCodeCue), typeDiscriminator: nameof(TimeCodeCue))]
 [JsonDerivedType(typeof(StopCue), typeDiscriminator: nameof(StopCue))]
 [JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
+[JsonDerivedType(typeof(VideoCue), typeDiscriminator: nameof(VideoCue))]
+[JsonDerivedType(typeof(VideoFramingCue), typeDiscriminator: nameof(VideoFramingCue))]
+[JsonDerivedType(typeof(ShaderParamsCue), typeDiscriminator: nameof(ShaderParamsCue))]
 public record Cue
 {
     public CueType type;
     public decimal qid;
     public decimal? parent;
-    public Color colour = Color.Black;
+    public SerializedColour colour = SerializedColour.Black;
     public string name = string.Empty;
     public string description = string.Empty;
     public bool halt = true;
@@ -81,6 +119,22 @@ public record Cue
     public TimeSpan delay;
     public LoopMode loopMode;
     public int loopCount;
+    public string remoteNode = string.Empty;
+
+    public static Cue CreateCue(CueType type) => type switch
+    {
+        CueType.GroupCue => new GroupCue(),
+        CueType.DummyCue => new DummyCue(),
+        CueType.SoundCue => new SoundCue(),
+        CueType.TimeCodeCue => new TimeCodeCue(),
+        CueType.StopCue => new StopCue(),
+        CueType.VolumeCue => new VolumeCue(),
+        CueType.VideoCue => new VideoCue(),
+        CueType.VideoFramingCue => new VideoFramingCue(),
+        CueType.ShaderParamsCue => new ShaderParamsCue(),
+        CueType.None => new Cue(),
+        _ => throw new NotImplementedException(),
+    };
 }
 
 [Serializable]
@@ -113,7 +167,7 @@ public record SoundCue : Cue
     public float volume = 1;
     public float fadeIn;
     public float fadeOut;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public SoundCue() : base()
     {
@@ -141,7 +195,7 @@ public record StopCue : Cue
     public decimal stopQid;
     public StopMode stopMode;
     public float fadeOutTime;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public StopCue() : base()
     {
@@ -156,10 +210,73 @@ public record VolumeCue : Cue
     public decimal soundQid;
     public float fadeTime;
     public float volume;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public VolumeCue() : base()
     {
         type = CueType.VolumeCue;
+    }
+}
+
+[Serializable]
+[JsonDerivedType(typeof(VideoCue), typeDiscriminator: nameof(VideoCue))]
+public record VideoCue : Cue
+{
+    public string path = string.Empty;
+    public string shader = string.Empty;
+    public int zIndex;
+    public string? alphaPath;
+    public AlphaMode alphaMode = AlphaMode.Video;
+    public TimeSpan startTime;
+    public TimeSpan duration;
+    public float dimmer = 1;
+    public float volume = 1;
+    public float fadeIn = 1;
+    public float fadeOut = 1;
+    public FadeType fadeType = FadeType.SCurve;
+
+    public float brightness = 1;
+    public float contrast = 1;
+    public float gamma = 1;
+
+    public float scale = 1;
+    public float rotation = 0;
+    public Vector2 offset = Vector2.Zero;
+
+    public List<ShaderParameter> uniforms = [];
+
+    public VideoCue() : base()
+    {
+        type = CueType.VideoCue;
+    }
+}
+
+[Serializable]
+[JsonDerivedType(typeof(VideoFramingCue), typeDiscriminator: nameof(VideoFramingCue))]
+public record VideoFramingCue : Cue
+{
+    public List<Vector2> corners = [];
+    public List<FramingShutter> framing = [];
+    public float fadeTime = 0;
+    public FadeType fadeType = FadeType.SCurve;
+
+    public VideoFramingCue() : base()
+    {
+        type = CueType.VideoFramingCue;
+    }
+}
+
+[Serializable]
+[JsonDerivedType(typeof(ShaderParamsCue), typeDiscriminator: nameof(ShaderParamsCue))]
+public record ShaderParamsCue : Cue
+{
+    public decimal targetQid;
+    public List<ShaderParameter> uniforms = [];
+    public float fadeTime = 0;
+    public FadeType fadeType = FadeType.SCurve;
+
+    public ShaderParamsCue() : base()
+    {
+        type = CueType.ShaderParamsCue;
     }
 }
