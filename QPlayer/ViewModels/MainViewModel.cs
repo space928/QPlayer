@@ -175,6 +175,16 @@ namespace QPlayer.ViewModels
         private static string lastLogStatusMessage = "";
         private static DateTime lastLogStatusMessageTime = DateTime.MinValue;
         private static LogLevel lastLogStatusLevel = LogLevel.Info;
+        private static readonly EnumerationOptions fileSearchEnumerationOptions = new()
+        {
+            AttributesToSkip = FileAttributes.Hidden | FileAttributes.System,
+            IgnoreInaccessible = true,
+            MatchCasing = MatchCasing.PlatformDefault,
+            MatchType = MatchType.Simple,
+            RecurseSubdirectories = true,
+            ReturnSpecialDirectories = false,
+            MaxRecursionDepth = 5
+        };
 
         //public static DateTime dbg_cueStartTime;
 
@@ -687,9 +697,15 @@ namespace QPlayer.ViewModels
                 string fileName = Path.GetFileName(path);
                 if (string.IsNullOrEmpty(fileName) || fileName == ".")
                     return path;
-                foreach (string file in Directory.EnumerateFiles(projDir, fileName, SearchOption.AllDirectories))
-                    if (Path.GetFileName(file) == fileName)
-                        return file;
+                try
+                {
+                    foreach (string file in Directory.EnumerateFiles(projDir, fileName, fileSearchEnumerationOptions))
+                        if (Path.GetFileName(file) == fileName)
+                            return file;
+                } catch (Exception ex)
+                {
+                    Log($"Unexpected failure while attempting to resolve relative file path. {ex.Message}", LogLevel.Warning);
+                }
 
                 // The file couldn't be found, let it fail normally.
                 return path;
