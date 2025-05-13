@@ -229,6 +229,7 @@ public record VideoCue : Cue
     public AlphaMode alphaMode = AlphaMode.Video;
     public TimeSpan startTime;
     public TimeSpan duration;
+    public bool stompsOthers;
     public float dimmer = 1;
     public float volume = 1;
     public float fadeIn = 1;

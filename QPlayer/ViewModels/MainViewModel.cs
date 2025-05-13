@@ -110,7 +110,7 @@ namespace QPlayer.ViewModels
                 BindingOperations.EnableCollectionSynchronization(logList, logListLock);
             }
         }
-        [Reactive] public string WindowTitle => $"QPlayer - {ProjectSettings.Title}";
+        [Reactive] public string WindowTitle => $"QPlayer – {ProjectSettings.Title}";
         [Reactive]
         public string VersionString
         {
@@ -165,6 +165,7 @@ namespace QPlayer.ViewModels
             WriteIndented = true,
         };
         private readonly Timer slowUpdateTimer;
+        private readonly Timer autosaveTimer;
         private readonly AudioPlaybackManager audioPlaybackManager;
         private readonly SynchronizationContext syncContext;
         private readonly Dictionary<decimal, CueViewModel> cuesDict;
@@ -185,6 +186,7 @@ namespace QPlayer.ViewModels
             ReturnSpecialDirectories = false,
             MaxRecursionDepth = 5
         };
+        private readonly byte[] defaultShowfile; // So that the unsaved changes check works correctly, we compare against the defaullt showfile
 
         //public static DateTime dbg_cueStartTime;
 
@@ -236,6 +238,11 @@ namespace QPlayer.ViewModels
             slowUpdateTimer.AutoReset = true;
             slowUpdateTimer.Elapsed += SlowUpdate;
             slowUpdateTimer.Start();
+
+            autosaveTimer = new(TimeSpan.FromMinutes(5));
+            autosaveTimer.AutoReset = true;
+            autosaveTimer.Elapsed += AutoSave;
+            autosaveTimer.Start();
 
             ColumnWidths = new(Enumerable.Repeat<float>(60, 32).Select(x =>
             {
@@ -306,6 +313,10 @@ namespace QPlayer.ViewModels
             CreateCue(CueType.SoundCue, afterLast: true);
             CreateCue(CueType.TimeCodeCue, afterLast: true);
 
+            using var ms = new MemoryStream();
+            SerializeShowFile(ms).Wait();
+            defaultShowfile = ms.ToArray();
+
             // These are redundant, they are done when we load the showfile
             //ConnectOSC();
             //OpenAudioDevice();
@@ -335,7 +346,7 @@ namespace QPlayer.ViewModels
 
                 if (DateTime.Now - lastLogStatusMessageTime > TimeSpan.FromSeconds(5))
                 {
-                    StatusText = $"Ready - {Cues.Count} cues in project";
+                    StatusText = $"Ready – {Cues.Count} cues in project";
                     StatusTextColour = StatusInfoBrush;
                 }
                 else
@@ -351,6 +362,11 @@ namespace QPlayer.ViewModels
                     };
                 }
             }, null);
+        }
+
+        private void AutoSave(object? sender, ElapsedEventArgs e)
+        {
+            SaveProjectAsync(AUTOBACK_PATH, false, false).ContinueWith((_) => Log($"Autosaved project to '{AUTOBACK_PATH}'."));
         }
 
         #region Commands
@@ -644,6 +660,19 @@ namespace QPlayer.ViewModels
             }
         }
 
+        /// <summary>
+        /// Tries to find a cue view model given a cue ID.
+        /// </summary>
+        /// <remarks>
+        /// The <paramref name="id"/> can be one of the following types:
+        /// <see langword="int"/>,
+        /// <see langword="float"/>,
+        /// <see langword="decimal"/>,
+        /// <see langword="string"/>,
+        /// </remarks>
+        /// <param name="id">The cue ID to search for.</param>
+        /// <param name="cue">The returned cue view model if it was found.</param>
+        /// <returns><see langword="true"/> if the cue was found.</returns>
         public bool FindCue(object id, [NotNullWhen(true)] out CueViewModel? cue)
         {
             switch (id)
@@ -663,6 +692,12 @@ namespace QPlayer.ViewModels
             }
         }
 
+        /// <summary>
+        /// Tries to find a cue view model given a cue ID.
+        /// </summary>
+        /// <param name="id">The cue ID to search for.</param>
+        /// <param name="cue">The returned cue view model if it was found.</param>
+        /// <returns><see langword="true"/> if the cue was found.</returns>
         public bool FindCue(decimal id, [NotNullWhen(true)] out CueViewModel? cue)
         {
             return cuesDict.TryGetValue(id, out cue);
@@ -788,35 +823,43 @@ namespace QPlayer.ViewModels
         /// Checks if the project file has unsaved changes and prompts the user to save if needed.
         /// </summary>
         /// <returns>false if the user decided to cancel the current operation.</returns>
-        private bool UnsavedChangedCheck(bool canCancel = true)
+        public bool UnsavedChangedCheck(bool canCancel = true)
         {
-            SaveProject(AUTOBACK_PATH);
-            string? curr = null;
-            string? prev = null;
+            using var ms = new MemoryStream();
+            SerializeShowFile(ms).Wait();
+            var curr = ms.ToArray();
+
+            byte[]? prev = null;
             try
             {
-                curr = File.ReadAllText(AUTOBACK_PATH);
-                prev = string.IsNullOrEmpty(ProjectFilePath) ? "#" : File.ReadAllText(ProjectFilePath);
+                prev = string.IsNullOrEmpty(ProjectFilePath) ? null : File.ReadAllBytes(ProjectFilePath);
             }
             catch { }
-            if (curr == null || curr != prev)
+
+            // Check it's not the default file
+            if (curr != null && curr.SequenceEqual(defaultShowfile))
+                return true;
+
+            // Compare current file with last saved file.
+            if (curr != null && prev != null && curr.SequenceEqual(prev))
+                return true;
+
+            // There are unsaved changes!
+            var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
+                "Unsaved Changes",
+                canCancel ? MessageBoxButton.YesNoCancel : MessageBoxButton.YesNo,
+                MessageBoxImage.Warning, MessageBoxResult.Yes);
+
+            switch (mbRes)
             {
-                // There are unsaved changes!
-                var mbRes = MessageBox.Show("Current project has unsaved changes! Do you wish to save them now?",
-                    "Unsaved Changes",
-                    canCancel ? MessageBoxButton.YesNoCancel : MessageBoxButton.YesNo,
-                    MessageBoxImage.Warning, MessageBoxResult.Yes);
-                switch (mbRes)
-                {
-                    case MessageBoxResult.Yes:
-                        SaveProjectExecute(false);
-                        break;
-                    case MessageBoxResult.No:
-                        return true;
-                    case MessageBoxResult.Cancel:
-                        Log("   aborted!");
-                        return false;
-                }
+                case MessageBoxResult.Yes:
+                    SaveProjectExecute(false);
+                    break;
+                case MessageBoxResult.No:
+                    return true;
+                case MessageBoxResult.Cancel:
+                    Log("   aborted!");
+                    return false;
             }
             return true;
         }
@@ -906,6 +949,7 @@ namespace QPlayer.ViewModels
                 catch
                 {
                     Log($"Show file is corrupt or out of date, attempting to repair...", LogLevel.Warning);
+                    f.Position = 0;
                     showFile = await ShowFileConverter.LoadShowFileSafeAsync(f);
                 }
 
@@ -930,7 +974,12 @@ namespace QPlayer.ViewModels
             }
         }
 
-        public async Task SaveProjectAsync(string path)
+        private async Task SerializeShowFile(Stream stream)
+        {
+            await JsonSerializer.SerializeAsync(stream, showFile, jsonSerializerOptions);
+        }
+
+        public async Task SaveProjectAsync(string path, bool allowSynchronisation = true, bool syncModel = true)
         {
             try
             {
@@ -938,19 +987,22 @@ namespace QPlayer.ViewModels
                 // For now, this method can't be trusted on other threads, let run on the main thread.
                 // Chances are this method is being called from the main thread anyway, so it shouldn't
                 // make a difference.
-                syncContext.Send(_ =>
+                if (syncModel)
                 {
-                    EnsureShowfileModelSync();
-                }, null);
+                    syncContext.Send(_ =>
+                    {
+                        EnsureShowfileModelSync();
+                    }, null);
+                }
 
                 using var f = File.OpenWrite(path);
                 f.SetLength(0);
                 using var ms = new MemoryStream();
-                await JsonSerializer.SerializeAsync(ms, showFile, jsonSerializerOptions);
+                await SerializeShowFile(ms);
                 ms.Position = 0;
                 ms.CopyTo(f);
 
-                if (ProjectSettings.EnableRemoteControl && ProjectSettings.SyncShowFileOnSave)
+                if (ProjectSettings.EnableRemoteControl && ProjectSettings.SyncShowFileOnSave && allowSynchronisation)
                 {
                     ms.Position = 0;
                     try
@@ -981,7 +1033,7 @@ namespace QPlayer.ViewModels
                 using var f = File.OpenWrite(path);
                 f.SetLength(0);
                 using var ms = new MemoryStream();
-                JsonSerializer.Serialize(ms, showFile, jsonSerializerOptions);
+                SerializeShowFile(ms).Wait();
                 ms.Position = 0;
                 ms.CopyTo(f);
 

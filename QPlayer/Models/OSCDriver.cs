@@ -160,12 +160,13 @@ public class OSCDriver : IDisposable
                 if (e.SocketErrorCode == SocketError.Interrupted)
                     continue;
 
-                OnRXFailure?.Invoke();
+                // TODO: For now, there are cases where this triggers a feedback loop of reconnecting to OSC
+                //OnRXFailure?.Invoke();
                 Log($"OSC Network connection lost: {e}", LogLevel.Warning);
             }
             catch (Exception e)
             {
-                OnRXFailure?.Invoke();
+                //OnRXFailure?.Invoke();
                 Log($"OSC Network connection lost: {e}", LogLevel.Warning);
             }
         }

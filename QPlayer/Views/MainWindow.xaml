@@ -71,6 +71,7 @@
                     <MenuItem Header="Save As (Ctrl+Shift+S)" Command="{Binding SaveProjectAsCommand}"/>
                     <MenuItem IsEnabled="False" Header="Pack (Ctrl+E)" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" IsEnabled="False"/>
+                    <MenuItem Header="Exit (Alt+F4)" Click="ExitMenuItem_Click"/>
                 </MenuItem>
                 <MenuItem Header="Edit" Height="30">
                     <MenuItem Header="Undo" IsEnabled="False"/>

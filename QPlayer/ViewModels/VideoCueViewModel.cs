@@ -42,6 +42,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
             OnPropertyChanged(nameof(PlaybackTimeStringShort));
         }
     }
+    [Reactive] public bool StompsOthers { get; set; } = false;
     [Reactive] public float Dimmer { get; set; } = 1;
     [Reactive] public float Volume { get; set; } = 1;
     [Reactive] public float FadeIn { get; set; }
@@ -412,6 +413,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
                 case nameof(AlphaMode): vcue.alphaMode = AlphaMode; break;
                 case nameof(StartTime): vcue.startTime = StartTime; break;
                 case nameof(PlaybackDuration): vcue.duration = PlaybackDuration; break;
+                case nameof(StompsOthers): vcue.stompsOthers = StompsOthers; break;
                 case nameof(Dimmer): vcue.dimmer = Dimmer; break;
                 case nameof(Volume): vcue.volume = Volume; break;
                 case nameof(FadeIn): vcue.fadeIn = FadeIn; break;
@@ -441,6 +443,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
             vcue.alphaMode = AlphaMode;
             vcue.startTime = StartTime;
             vcue.duration = PlaybackDuration;
+            vcue.stompsOthers = StompsOthers;
             vcue.dimmer = Dimmer;
             vcue.volume = Volume;
             vcue.fadeIn = FadeIn;
@@ -469,6 +472,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
             vm.AlphaMode = vcue.alphaMode;
             vm.StartTime = vcue.startTime;
             vm.PlaybackDuration = vcue.duration;
+            vm.StompsOthers = vcue.stompsOthers;
             vm.Dimmer = vcue.dimmer;
             vm.Volume = vcue.volume;
             vm.FadeIn = vcue.fadeIn;

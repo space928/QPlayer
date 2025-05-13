@@ -466,6 +466,13 @@ internal class ShowFileSender(string target, byte[] showFile, OSCDriver oscDrive
         if (name != target)
             return;
 
+        // Special case, indicates all blocks have been acknowledged
+        if (block == -1)
+        {
+            isComplete = true;
+            return;
+        }
+
         if (sentBlocks.TryRemove(block, out var b))
         {
             b.acknowledged = true;

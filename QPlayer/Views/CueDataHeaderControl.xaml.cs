@@ -13,16 +13,23 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QPlayer.Views
+namespace QPlayer.Views;
+
+/// <summary>
+/// Interaction logic for CueDataHeaderControl.xaml
+/// </summary>
+public partial class CueDataHeaderControl : UserControl
 {
-    /// <summary>
-    /// Interaction logic for CueDataHeaderControl.xaml
-    /// </summary>
-    public partial class CueDataHeaderControl : UserControl
+    public CueDataHeaderControl()
     {
-        public CueDataHeaderControl()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+    }
+
+    private void GridSplitter_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        var splitter = (GridSplitter)sender;
+        int col = Grid.GetColumn(splitter);
+
+
     }
 }

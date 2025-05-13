@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using QPlayer.ViewModels;
+using QPlayer.Views;
 
 namespace QPlayer;
 
@@ -51,6 +52,18 @@ public partial class MainWindow : Window
 
     private void Consume_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Don't consume keys for text fields inside the cue list
+        if (e.OriginalSource is TextBox element)
+        {
+            FrameworkElement? fwElement = element;
+            do
+            {
+                fwElement = fwElement.Parent as FrameworkElement;
+                if (fwElement is CueDataControl)
+                    return;
+            } while (fwElement != null);
+        }
+
         // Override list viewer key bindings
         switch (e.Key)
         {
@@ -203,5 +216,12 @@ public partial class MainWindow : Window
     {
         var vm = (MainViewModel)DataContext;
         vm.OpenLogExecute();
+    }
+
+    private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        if (vm.UnsavedChangedCheck())
+            Close();
     }
 }

@@ -237,6 +237,10 @@
                             <Label Content="Fade Type"/>
                             <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
+                        <DockPanel ToolTip="Whether this cue should, once fully faded in, stop the playback of all other video cues">
+                            <Label Content="Stomps Other Cues"/>
+                            <CheckBox IsChecked="{Binding StompsOthers, UpdateSourceTrigger=Default}" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
+                        </DockPanel>
 
                         <TextBlock Text="Appearance:" FontSize="11" FontStyle="Italic" Margin="12,8,2,4"/>
                         <DockPanel ToolTip="Where this video layer gets it's transparency from">
