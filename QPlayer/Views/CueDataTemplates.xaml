@@ -94,6 +94,9 @@
             <DataTrigger Binding="{Binding}" Value="{x:Static model:LoopMode.OneShot}">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconOneShot}"/>
             </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:LoopMode.HoldLast}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconHoldLast}"/>
+            </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>
 </ResourceDictionary>

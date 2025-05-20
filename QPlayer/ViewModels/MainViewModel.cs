@@ -147,6 +147,7 @@ namespace QPlayer.ViewModels
         /// </summary>
         public event Action? OnSlowUpdate;
         public OSCManager OSCManager => oscManager;
+        public MSCManager MSCManager => mscManager;
 
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
 
@@ -170,6 +171,7 @@ namespace QPlayer.ViewModels
         private readonly SynchronizationContext syncContext;
         private readonly Dictionary<decimal, CueViewModel> cuesDict;
         private readonly OSCManager oscManager;
+        private readonly MSCManager mscManager;
         private static readonly SolidColorBrush StatusInfoBrush = new(Color.FromArgb(255, 220, 220, 220));
         private static readonly SolidColorBrush StatusWarningBrush = new(Color.FromArgb(255, 200, 220, 50));
         private static readonly SolidColorBrush StatusErrorBrush = new(Color.FromArgb(255, 220, 60, 40));
@@ -205,6 +207,7 @@ namespace QPlayer.ViewModels
             syncContext = SynchronizationContext.Current ?? new();
             audioPlaybackManager = new(this);
             oscManager = new(this);
+            mscManager = new(this);
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute);
@@ -321,6 +324,7 @@ namespace QPlayer.ViewModels
             //ConnectOSC();
             //OpenAudioDevice();
             oscManager.SubscribeOSC();
+            mscManager.SubscribeMSC();
         }
 
         public void OnExit()

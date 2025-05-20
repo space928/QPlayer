@@ -22,4 +22,5 @@
 
     <DrawingImage x:Key="IconOneShot" Drawing="{StaticResource Icon_arrow_right_long_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconLoop" Drawing="{StaticResource Icon_rotate_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconHoldLast" Drawing="{StaticResource Icon_arrow_right_to_bracket_solidDrawingGroup}"/>
 </ResourceDictionary>

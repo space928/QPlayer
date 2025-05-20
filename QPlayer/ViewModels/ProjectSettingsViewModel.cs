@@ -52,6 +52,14 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public string NodeName { get; set; } = string.Empty;
     [Reactive] public ReadOnlyObservableCollection<RemoteNodeViewModel> RemoteNodes => remoteNodesRO;
 
+    [Reactive] public int MAMSCRXPort { get; set; } = 9000;
+    [Reactive] public int MAMSCTXPort { get; set; } = 8000;
+    [Reactive] public int MAMSCRXDevice { get; set; } = 0x70;
+    [Reactive] public int MAMSCTXDevice { get; set; } = 0x71;
+    [Reactive] public int MAMSCPage { get; set; } = -1;
+    [Reactive] public int MAMSCExecutor { get; set; } = -1;
+    [Reactive] public bool MonitorMSCMessages { get; set; } = false;
+
     [Reactive] public RelayCommand<RemoteNodeViewModel> RemoveRemoteNodeCommand {  get; private set; }
     [Reactive] public MainViewModel MainViewModel => mainViewModel;
     #endregion
@@ -100,10 +108,16 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                 case nameof(OSCTXPort):
                 case nameof(IsRemoteHost):
                 case nameof(EnableRemoteControl):
+                case nameof(MAMSCRXPort):
+                case nameof(MAMSCTXPort):
                     mainViewModel.OSCManager.ConnectOSC();
+                    mainViewModel.MSCManager.ConnectMSC();
                     break;
                 case nameof(MonitorOSCMessages):
                     mainViewModel.OSCManager.MonitorOSC(MonitorOSCMessages);
+                    break;
+                case nameof(MonitorMSCMessages):
+                    mainViewModel.MSCManager.MonitorMSC(MonitorMSCMessages);
                     break;
                 //case nameof(EnableRemoteControl):
                 //    break;
@@ -150,6 +164,13 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                 ret.remoteNodes.Add(remote);
         }
 
+        ret.MAMSCRXPort = model.mscRXPort;
+        ret.MAMSCTXPort = model.mscTXPort;
+        ret.MAMSCRXDevice = model.mscRXDevice;
+        ret.MAMSCTXDevice = model.mscTXDevice;
+        ret.MAMSCPage = model.mscPage;
+        ret.MAMSCExecutor = model.mscExecutor;
+
         return ret;
     }
 
@@ -185,6 +206,13 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         model.syncShowFileOnSave = SyncShowFileOnSave;
         model.nodeName = NodeName;
         model.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).ToList();
+
+        model.mscRXPort = MAMSCRXPort;
+        model.mscTXPort = MAMSCTXPort;
+        model.mscRXDevice = MAMSCRXDevice;
+        model.mscTXDevice = MAMSCTXDevice;
+        model.mscPage = MAMSCPage;
+        model.mscExecutor = MAMSCExecutor;
     }
 
     public void ToModel(string propertyName)
@@ -242,9 +270,28 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             case nameof(RemoteNodes):
                 projectSettings.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).Distinct().ToList();
                 break;
+            case nameof(MAMSCRXPort):
+                projectSettings.mscRXPort = MAMSCRXPort;
+                break;
+            case nameof(MAMSCTXPort):
+                projectSettings.mscTXPort = MAMSCTXPort;
+                break;
+            case nameof(MAMSCRXDevice):
+                projectSettings.mscRXDevice = MAMSCRXDevice;
+                break;
+            case nameof(MAMSCTXDevice):
+                projectSettings.mscTXDevice = MAMSCTXDevice;
+                break;
+            case nameof(MAMSCPage):
+                projectSettings.mscPage = MAMSCPage;
+                break;
+            case nameof(MAMSCExecutor):
+                projectSettings.mscExecutor = MAMSCExecutor;
+                break;
 
             case nameof(NICs):
             case nameof(MonitorOSCMessages):
+            case nameof(MonitorMSCMessages):
             case nameof(OSCNic):
             case nameof(SelectedAudioOutputDeviceKey):
             case nameof(OSCSubnet):

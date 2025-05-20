@@ -40,6 +40,13 @@ public record ShowSettings
     public bool syncShowFileOnSave = true;
     public string nodeName = "QPlayer";
     public List<RemoteNode> remoteNodes = [];
+
+    public int mscRXPort = 6004;
+    public int mscTXPort = 6004;
+    public int mscRXDevice = 0x70;
+    public int mscTXDevice = 0x71;
+    public int mscExecutor = -1;
+    public int mscPage = -1;
 }
 
 [Serializable]
@@ -71,6 +78,7 @@ public enum LoopMode
     OneShot,
     Looped,
     LoopedInfinite,
+    HoldLast
 }
 
 public enum StopMode

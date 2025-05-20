@@ -57,5 +57,34 @@
             <CheckBox IsChecked="{Binding MonitorOSCMessages}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
         </DockPanel>
         <local:RemoteSetupControl/>
+        <Label Content="MA-MSC Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <DockPanel ToolTip="The port to transmit MSC messages on (should be the same as MA's MSC RX port).">
+            <Label Content="MSC TX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+            <local:TextField Text="{Binding MAMSCTXPort}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <DockPanel ToolTip="The port to receive MSC messages on (should be the same as MA's MSC TX port).">
+            <Label Content="MSC RX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+            <local:TextField Text="{Binding MAMSCRXPort}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <DockPanel ToolTip="The device to receive MSC messages from (value above 112 are treated as MSC 'groups').">
+            <Label Content="MSC RX Device" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+            <local:TextField Text="{Binding MAMSCRXDevice}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <DockPanel ToolTip="The device to receive MSC messages from (value above 112 are treated as MSC 'groups').">
+            <Label Content="MSC TX Device" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+            <local:TextField Text="{Binding MAMSCTXDevice}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <DockPanel ToolTip="The MA executor number to receive/send go/stop/pause commands from. Set to -1 to accept all executors.">
+            <Label Content="MSC Executor" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+            <local:TextField Text="{Binding MAMSCExecutor}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <DockPanel ToolTip="The MA executor page to receive/send go/stop/pause commands from. Set to -1 to accept all pages.">
+            <Label Content="MSC Executor Page" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+            <local:TextField Text="{Binding MAMSCPage}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        </DockPanel>
+        <DockPanel ToolTip="When checked, all OSC messages are logged to the log window.">
+            <Label Content="Monitor MSC Messages" HorizontalAlignment="Left"/>
+            <CheckBox IsChecked="{Binding MonitorMSCMessages}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
+        </DockPanel>
     </StackPanel>
 </UserControl>
