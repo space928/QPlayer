@@ -35,6 +35,7 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         {
             if (videoFile != null)
                 videoFile.Duration = value;
+            OnPropertyChanged();
         }
     }
     [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (videoFile?.Duration ?? TimeSpan.Zero) - StartTime : PlaybackDuration;

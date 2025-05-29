@@ -191,6 +191,9 @@ namespace QPlayer.ViewModels
                 case nameof(MainViewModel.SelectedCue):
                     OnPropertyChanged(nameof(IsSelected));
                     break;
+                case nameof(RemoteDuration):
+                    OnPropertyChanged(nameof(Duration));
+                    break;
                 case nameof(State):
                 case nameof(Duration):
                     OnPropertyChanged(nameof(PlaybackTimeString));
