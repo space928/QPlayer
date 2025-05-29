@@ -135,6 +135,8 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
                 return;
             ShaderParameters.Remove(param);
         });
+
+        LoadVideoFile();
     }
 
     public void Dispose()
