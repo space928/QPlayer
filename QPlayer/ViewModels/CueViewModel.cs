@@ -139,6 +139,11 @@ namespace QPlayer.ViewModels
 
         [Reactive] public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
             && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
+
+        /// <summary>
+        /// The duration of this cue, as received from a remote node.
+        /// </summary>
+        public virtual TimeSpan RemoteDuration { set { } }
         #endregion
 
         public event EventHandler? OnCompleted;
@@ -251,13 +256,22 @@ namespace QPlayer.ViewModels
         /// </summary>
         public virtual void Stop()
         {
+            StopInternal();
+
+            if (IsRemoteControlling)
+                mainViewModel?.OSCManager.SendRemoteStop(RemoteNode, qid);
+        }
+
+        /// <summary>
+        /// Stops this cue without informing remote clients or executing cue specific stopping code.
+        /// This is called when a remote node needs to tell us that a cue has finished playing.
+        /// </summary>
+        internal void StopInternal()
+        {
             goTimer.Stop();
             State = CueState.Ready;
             mainViewModel?.ActiveCues.Remove(this);
             OnCompleted?.Invoke(this, EventArgs.Empty);
-
-            if (IsRemoteControlling)
-                mainViewModel?.OSCManager.SendRemoteStop(RemoteNode, qid);
         }
 
         /// <summary>

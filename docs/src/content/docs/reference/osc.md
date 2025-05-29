@@ -256,7 +256,7 @@ A reply to a `ping` message.
 
 ### Cue Status
 ```
-/qplayer/remote/fb/cue-status,(name),(qid),(state),[time]
+/qplayer/remote/fb/cue-status,(name),(qid),(state),[time],[duration]
 ```
 
 The remote client is expected to send a cue status message any time the state of a
@@ -285,6 +285,7 @@ public enum CueState
 `(state)` *(int)* the current state of the cue as defined in the `CueState` 
 enumeration.  
 `[time]` *(optional, float)* the current playback time in seconds of the cue.
+`[duration]` *(optional, float)* the total duration in seconds of the cue.
 
 ### Update Showfile Acknowledge
 ```
@@ -292,7 +293,9 @@ enumeration.
 ```
 
 Acknowledges the receipt of an `update-show` packet. The host may choose to 
-retry sending a block if it doesn't receive an ack or receives a nack.
+retry sending a block if it doesn't receive an ack or receives a nack. A
+block number of `-1` indicates that all blocks have been received and the
+transfer has terminated successfully.
 
 #### Arguments:
 `(target)` *(string)* the name of the remote client.  

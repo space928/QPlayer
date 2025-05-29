@@ -29,6 +29,14 @@ public class VideoCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
     [Reactive] public AlphaMode AlphaMode { get; set; }
     [Reactive] public TimeSpan StartTime { get; set; }
     [Reactive] public TimeSpan PlaybackDuration { get; set; }
+    public override TimeSpan RemoteDuration
+    {
+        set
+        {
+            if (videoFile != null)
+                videoFile.Duration = value;
+        }
+    }
     [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (videoFile?.Duration ?? TimeSpan.Zero) - StartTime : PlaybackDuration;
     public override TimeSpan PlaybackTime
     {

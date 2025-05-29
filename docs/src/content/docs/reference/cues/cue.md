@@ -41,9 +41,10 @@ cue.
 
 An accent colour to give the cue in the cue stack to make it easier to identify.
 
-:::note
-This feature is currently unimplemented.
-:::
+### Remote Node
+
+When remote control is set up (see [remote nodes](../../project-setup#remote-nodes))
+this field specifies the name of the remote node this cue controls.
 
 ### Enabled
 

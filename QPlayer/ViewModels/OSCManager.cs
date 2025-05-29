@@ -289,8 +289,12 @@ public class OSCManager
                 if (mainViewModel.FindCue(qid, out var cue))
                 {
                     cue.State = (CueState)state;
+                    if (cue.State == CueState.Ready)
+                        cue.StopInternal();
                     if (msg.Count >= 4 && msg[3] is float time)
                         cue.PlaybackTime = TimeSpan.FromSeconds(time);
+                    if (msg.Count >= 5 && msg[4] is float duration)
+                        cue.RemoteDuration = TimeSpan.FromSeconds(duration);
                 }
             }
         }, syncContext);

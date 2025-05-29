@@ -52,8 +52,8 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public string NodeName { get; set; } = string.Empty;
     [Reactive] public ReadOnlyObservableCollection<RemoteNodeViewModel> RemoteNodes => remoteNodesRO;
 
-    [Reactive] public int MAMSCRXPort { get; set; } = 9000;
-    [Reactive] public int MAMSCTXPort { get; set; } = 8000;
+    [Reactive] public int MAMSCRXPort { get; set; } = 6004;
+    [Reactive] public int MAMSCTXPort { get; set; } = 6004;
     [Reactive] public int MAMSCRXDevice { get; set; } = 0x70;
     [Reactive] public int MAMSCTXDevice { get; set; } = 0x71;
     [Reactive] public int MAMSCPage { get; set; } = -1;

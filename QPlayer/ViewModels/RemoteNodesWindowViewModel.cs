@@ -91,7 +91,6 @@ public class RemoteNodesWindowViewModel : ObservableObject
         cueRemoteNodes.Clear();
 
         var vms = mainViewModel.Cues
-            .Where(x => !string.IsNullOrEmpty(x.RemoteNode))
             .GroupBy(x => x.RemoteNode)
             .Select(x => new RemoteNodeGroupViewModel(mainViewModel, x.Key, x));
 
