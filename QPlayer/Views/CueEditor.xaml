@@ -5,12 +5,13 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views"
              xmlns:vm="clr-namespace:QPlayer.ViewModels"
+             xmlns:util="clr-namespace:QPlayer.Utilities"
              xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
              d:DesignHeight="600" d:DesignWidth="500" d:DataContext="{d:DesignInstance Type=vm:SoundCueViewModel}">
     <UserControl.Resources>
-        <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
-        <vm:MultiplyByConverter x:Key="MultiplyByConverter"/>
+        <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        <util:MultiplyByConverter x:Key="MultiplyByConverter"/>
     </UserControl.Resources>
     <StackPanel>
         <Label Content="Cue Information" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
@@ -28,7 +29,15 @@
         </DockPanel>
         <DockPanel>
             <Label Content="Colour"/>
-            <colorpicker:PortableColorPicker ColorState="{Binding Colour}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
+            <colorpicker:PortableColorPicker ColorState="{Binding Colour, Mode=TwoWay}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
+        </DockPanel>
+        <DockPanel>
+            <Label Content="Remote Node"/>
+            <local:TextField Text="{Binding RemoteNode, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <!--<ComboBox ItemsSource="{Binding MainViewModel.ProjectSettings.RemoteNodes}" 
+                      SelectedValue="{Binding RemoteNode}"
+                      DisplayMemberPath="Name" SelectedValuePath="Name" 
+                      IsEditable="True" IsReadOnly="False" IsSynchronizedWithCurrentItem="True"/>-->
         </DockPanel>
         <DockPanel>
             <Label Content="Enabled"/>
@@ -102,7 +111,7 @@
                             <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
                                 Minimum="0" Maximum="2" 
                                 AutoToolTipPlacement="TopLeft" 
-                                IsSnapToTickEnabled="True" 
+                                IsSnapToTickEnabled="False" 
                                 TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
                                 LargeChange="0.1" SmallChange="0.01"/>
                         </DockPanel>

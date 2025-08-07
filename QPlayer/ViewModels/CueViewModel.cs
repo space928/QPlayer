@@ -3,20 +3,14 @@ using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
 using QPlayer.Audio;
 using QPlayer.Models;
+using QPlayer.Utilities;
 using ReactiveUI.Fody.Helpers;
 using System;
-using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Drawing;
-using System.Globalization;
+using System.ComponentModel;
 using System.Linq;
-using System.Text;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Timers;
-using System.Windows;
-using System.Windows.Data;
+using System.Windows.Media;
 using Cue = QPlayer.Models.Cue;
 using Timer = System.Timers.Timer;
 
@@ -82,7 +76,7 @@ namespace QPlayer.ViewModels
             get => qid;
             set
             {
-                mainViewModel?.OnQIDChanged(qid, value, this);
+                mainViewModel?.NotifyQIDChanged(qid, value, this);
                 qid = value;
             }
         }
@@ -92,6 +86,7 @@ namespace QPlayer.ViewModels
         [Reactive] public ColorState Colour { get; set; }
         [Reactive] public string Name { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
+        [Reactive] public string RemoteNode { get; set; } = string.Empty;
         [Reactive] public bool Halt { get; set; }
         [Reactive] public bool Enabled { get; set; } = true;
         [Reactive] public TimeSpan Delay { get; set; }
@@ -122,6 +117,15 @@ namespace QPlayer.ViewModels
             CueState.Playing or CueState.PlayingLooped or CueState.Paused => $"-{PlaybackTime - Duration:mm\\:ss}",
             _ => $"{Duration:mm\\:ss}",
         };
+        [Reactive, ReactiveDependency(nameof(Colour))]
+        public SolidColorBrush ColourBrush
+        {
+            get
+            {
+                colourBrush.Color = Colour.ToMediaColor(127);
+                return colourBrush;
+            }
+        }
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
@@ -132,6 +136,14 @@ namespace QPlayer.ViewModels
         [Reactive] public static ObservableCollection<LoopMode>? LoopModeVals { get; private set; }
         [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
         [Reactive] public static ObservableCollection<FadeType>? FadeTypeVals { get; private set; }
+
+        [Reactive] public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
+            && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
+
+        /// <summary>
+        /// The duration of this cue, as received from a remote node.
+        /// </summary>
+        public virtual TimeSpan RemoteDuration { set { } }
         #endregion
 
         public event EventHandler? OnCompleted;
@@ -142,10 +154,12 @@ namespace QPlayer.ViewModels
         protected Cue? cueModel;
         protected MainViewModel? mainViewModel;
         protected Timer goTimer;
+        private SolidColorBrush colourBrush;
 
         public CueViewModel(MainViewModel mainViewModel)
         {
             this.mainViewModel = mainViewModel;
+            colourBrush = new(Colour.ToMediaColor(127));
             synchronizationContext = SynchronizationContext.Current;
             mainViewModel.PropertyChanged += MainViewModel_PropertyChanged;
             goTimer = new()
@@ -176,6 +190,9 @@ namespace QPlayer.ViewModels
             {
                 case nameof(MainViewModel.SelectedCue):
                     OnPropertyChanged(nameof(IsSelected));
+                    break;
+                case nameof(RemoteDuration):
+                    OnPropertyChanged(nameof(Duration));
                     break;
                 case nameof(State):
                 case nameof(Duration):
@@ -210,6 +227,9 @@ namespace QPlayer.ViewModels
         /// </summary>
         public virtual void Go()
         {
+            if (IsRemoteControlling)
+                mainViewModel?.OSCManager.SendRemoteGo(RemoteNode, QID);
+
             if (Duration == TimeSpan.Zero)
             {
                 OnCompleted?.Invoke(this, EventArgs.Empty);
@@ -229,12 +249,27 @@ namespace QPlayer.ViewModels
         {
             goTimer.Stop();
             State = CueState.Paused;
+
+            if (IsRemoteControlling)
+                mainViewModel?.OSCManager.SendRemotePause(RemoteNode, qid);
         }
 
         /// <summary>
         /// Stops this cue immediately.
         /// </summary>
         public virtual void Stop()
+        {
+            StopInternal();
+
+            if (IsRemoteControlling)
+                mainViewModel?.OSCManager.SendRemoteStop(RemoteNode, qid);
+        }
+
+        /// <summary>
+        /// Stops this cue without informing remote clients or executing cue specific stopping code.
+        /// This is called when a remote node needs to tell us that a cue has finished playing.
+        /// </summary>
+        internal void StopInternal()
         {
             goTimer.Stop();
             State = CueState.Ready;
@@ -254,6 +289,9 @@ namespace QPlayer.ViewModels
                 State = CueState.Paused;
                 OnPropertyChanged(nameof(PlaybackTimeString));
                 OnPropertyChanged(nameof(PlaybackTimeStringShort));
+
+                if (IsRemoteControlling)
+                    mainViewModel?.OSCManager.SendRemotePreload(RemoteNode, qid, (float)startTime.TotalSeconds);
             }
         }
 
@@ -272,12 +310,20 @@ namespace QPlayer.ViewModels
         public void Bind(Cue cue)
         {
             cueModel = cue;
-            PropertyChanged += (o, e) =>
-            {
-                CueViewModel vm = (CueViewModel)(o ?? throw new NullReferenceException(nameof(CueViewModel)));
-                if (e.PropertyName != null)
-                    vm.ToModel(e.PropertyName);
-            };
+            PropertyChanged += PropertyChangedHandler;
+        }
+
+        public void UnBind()
+        {
+            cueModel = null;
+            PropertyChanged -= PropertyChangedHandler;
+        }
+
+        private void PropertyChangedHandler(object? o, PropertyChangedEventArgs e)
+        {
+            CueViewModel vm = (CueViewModel)(o ?? throw new NullReferenceException(nameof(CueViewModel)));
+            if (e.PropertyName != null)
+                vm.ToModel(e.PropertyName);
         }
 
         /// <summary>
@@ -294,9 +340,10 @@ namespace QPlayer.ViewModels
                 case nameof(QID): cueModel.qid = QID; break;
                 case nameof(Type): cueModel.type = Type; break;
                 case nameof(Parent): cueModel.parent = Parent?.QID; break;
-                case nameof(Colour): cueModel.colour = Colour.ToColor(); break;
+                case nameof(Colour): cueModel.colour = (SerializedColour)Colour; break;
                 case nameof(Name): cueModel.name = Name; break;
                 case nameof(Description): cueModel.description = Description; break;
+                case nameof(RemoteNode): cueModel.remoteNode = RemoteNode; break;
                 case nameof(Halt): cueModel.halt = Halt; break;
                 case nameof(Enabled): cueModel.enabled = Enabled; break;
                 case nameof(Delay): cueModel.delay = Delay; break;
@@ -314,9 +361,10 @@ namespace QPlayer.ViewModels
             cue.qid = QID;
             cue.type = Type;
             cue.parent = Parent?.QID;
-            cue.colour = Colour.ToColor();
+            cue.colour = (SerializedColour)Colour;
             cue.name = Name;
             cue.description = Description;
+            cue.remoteNode = RemoteNode;
             cue.halt = Halt;
             cue.enabled = Enabled;
             cue.delay = Delay;
@@ -343,9 +391,10 @@ namespace QPlayer.ViewModels
             viewModel.QID = cue.qid;
             viewModel.ParentId = cue.parent;
             viewModel.Type = cue.type;
-            viewModel.Colour = cue.colour.ToColorState();
+            viewModel.Colour = (ColorState)cue.colour;
             viewModel.Name = cue.name;
             viewModel.Description = cue.description;
+            viewModel.RemoteNode = cue.remoteNode;
             viewModel.Halt = cue.halt;
             viewModel.Enabled = cue.enabled;
             viewModel.Delay = cue.delay;
@@ -353,102 +402,6 @@ namespace QPlayer.ViewModels
             viewModel.LoopCount = cue.loopCount;
 
             return viewModel;
-        }
-    }
-
-    [ValueConversion(typeof(TimeSpan[]), typeof(double))]
-    public class ElapsedTimeConverter : IMultiValueConverter
-    {
-        public object Convert(object[] value, Type targetType, object parameter, CultureInfo culture)
-        {
-            if (value[0] == DependencyProperty.UnsetValue || value[1] == DependencyProperty.UnsetValue)
-                return 0d;
-            if (((TimeSpan)value[1]).TotalSeconds == 0)
-                return 0d;
-            return ((TimeSpan)value[0]).TotalSeconds / ((TimeSpan)value[1]).TotalSeconds * 100;
-        }
-
-        public object[] ConvertBack(object value, Type[] targetType, object parameter, CultureInfo culture)
-        {
-            throw new NotImplementedException();
-        }
-    }
-
-    [ValueConversion(typeof(float), typeof(GridLength))]
-    public class FloatGridLengthConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return new GridLength((float)value);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            GridLength gridLength = (GridLength)value;
-            return (float)gridLength.Value;
-        }
-    }
-
-    [ValueConversion(typeof(TimeSpan), typeof(string))]
-    public class TimeSpanStringConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            return Convert((TimeSpan)value, parameter is string useHours && useHours == "True");
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
-        {
-            string timeSpan = (string)value;
-
-            if (ConvertBack(timeSpan, out TimeSpan ret, parameter is string useHours && useHours == "True"))
-                return ret;
-
-            return DependencyProperty.UnsetValue;
-        }
-
-        public static string Convert(TimeSpan value, bool useHours = false)
-        {
-            if (useHours)
-                return value.ToString(@"hh\:mm\:ss\.ff");
-            else
-                return value.ToString(@"mm\:ss\.ff");
-        }
-
-        public static bool ConvertBack(string value, out TimeSpan result, bool useHours = false)
-        {
-            if (useHours)
-                return TimeSpan.TryParse(value, out result);
-            else
-                return TimeSpan.TryParse($"00:{value}", out result);
-        }
-    }
-
-    [ValueConversion(typeof(double), typeof(bool))]
-    public class GreaterThanConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return (double)value > double.Parse((string)parameter);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return DependencyProperty.UnsetValue;
-        }
-    }
-
-    [ValueConversion(typeof(double), typeof(double))]
-    public class MultiplyByConverter : IValueConverter
-    {
-        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return (double)value * double.Parse((string)parameter);
-        }
-
-        public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return DependencyProperty.UnsetValue;
         }
     }
 }

@@ -5,6 +5,7 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         xmlns:local="clr-namespace:QPlayer.Views"
         xmlns:vm="clr-namespace:QPlayer.ViewModels"
+        xmlns:util="clr-namespace:QPlayer.Utilities"
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
@@ -30,11 +31,11 @@
         <KeyBinding Gesture="CTRL+Up" Command="{Binding MoveCueUpCommand}"/>
         <KeyBinding Gesture="CTRL+Down" Command="{Binding MoveCueDownCommand}"/>
         <KeyBinding Gesture="CTRL+D" Command="{Binding DuplicateCueCommand}"/>
-        <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueCommand}"/>
+        <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueMenuCommand}"/>
     </Window.InputBindings>
     <Window.Resources>
-        <vm:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
-        <vm:MultiplyByConverter x:Key="MultiplyByConverter"/>
+        <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        <util:MultiplyByConverter x:Key="MultiplyByConverter"/>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -70,6 +71,7 @@
                     <MenuItem Header="Save As (Ctrl+Shift+S)" Command="{Binding SaveProjectAsCommand}"/>
                     <MenuItem IsEnabled="False" Header="Pack (Ctrl+E)" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" IsEnabled="False"/>
+                    <MenuItem Header="Exit (Alt+F4)" Click="ExitMenuItem_Click"/>
                 </MenuItem>
                 <MenuItem Header="Edit" Height="30">
                     <MenuItem Header="Undo" IsEnabled="False"/>
@@ -79,19 +81,21 @@
                     <MenuItem Header="Duplicate Cue (Ctrl+D)" Command="{Binding DuplicateCueCommand}"/>
                     <MenuItem Header="Delete Cue (Del)" Command="{Binding DeleteCueCommand}"/>
                     <MenuItem Header="Create Cue (Ctrl+T)">
-                        <MenuItem Header="Add Sound Cue" Command="{Binding CreateSoundCueCommand}"/>
-                        <MenuItem Header="Add Group Cue" Command="{Binding CreateGroupCueCommand}"/>
-                        <MenuItem Header="Add Dummy Cue" Command="{Binding CreateDummyCueCommand}"/>
-                        <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
-                        <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
-                        <MenuItem Header="Add Volume Cue" Command="{Binding CreateVolumeCueCommand}"/>
+                        <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
+                        <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
+                        <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
+                        <MenuItem Header="Add Time Code Cue" Command="{Binding CreateCueCommand}" CommandParameter="TimeCodeCue"/>
+                        <MenuItem Header="Add Group Cue" Command="{Binding CreateCueCommand}" CommandParameter="GroupCue"/>
+                        <MenuItem Header="Add Dummy Cue" Command="{Binding CreateCueCommand}" CommandParameter="DummyCue"/>
                     </MenuItem>
                 </MenuItem>
                 <MenuItem Header="Window" Height="30">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
+                    <MenuItem Header="Remote Nodes" Command="{Binding OpenRemoteNodesCommand}"/>
                     <MenuItem Header="Settings" Command="{Binding OpenSetttingsCommand}"/>
                 </MenuItem>
                 <MenuItem Header="Help" Height="30">
+                    <MenuItem Header="View Online Manual..." Command="{Binding OpenOnlineManualCommand}"/>
                     <MenuItem Header="About" Command="{Binding OpenAboutCommand}"/>
                 </MenuItem>
             </Menu>
@@ -176,12 +180,12 @@
                               PreviewKeyDown="Consume_PreviewKeyDown" AllowDrop="True" Drop="CueList_Drop" GiveFeedback="CueList_GiveFeedback">
                     <ScrollViewer.ContextMenu>
                         <ContextMenu>
-                            <MenuItem Header="Add Sound Cue" Command="{Binding CreateSoundCueCommand}"/>
-                            <MenuItem Header="Add Group Cue" Command="{Binding CreateGroupCueCommand}"/>
-                            <MenuItem Header="Add Dummy Cue" Command="{Binding CreateDummyCueCommand}"/>
-                            <MenuItem Header="Add Stop Cue" Command="{Binding CreateStopCueCommand}"/>
-                            <MenuItem Header="Add Time Code Cue" Command="{Binding CreateTimeCodeCueCommand}"/>
-                            <MenuItem Header="Add Volume Cue" Command="{Binding CreateVolumeCueCommand}"/>
+                            <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
+                            <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
+                            <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
+                            <MenuItem Header="Add Time Code Cue" Command="{Binding CreateCueCommand}" CommandParameter="TimeCodeCue"/>
+                            <MenuItem Header="Add Group Cue" Command="{Binding CreateCueCommand}" CommandParameter="GroupCue"/>
+                            <MenuItem Header="Add Dummy Cue" Command="{Binding CreateCueCommand}" CommandParameter="DummyCue"/>
                             <Separator/>
                             <MenuItem Header="Move Up" Command="{Binding MoveCueUpCommand}" ToolTip="Moves the selected cue up (Ctrl+Up)"/>
                             <MenuItem Header="Move Down" Command="{Binding MoveCueDownCommand}" ToolTip="Moves the selected cue down (Ctrl+Down)"/>
@@ -216,58 +220,7 @@
                 </TabItem>
                 <TabItem Header="Project Setup">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <StackPanel>
-                            <StackPanel.DataContext>
-                                <Binding Path="ProjectSettings"/>
-                            </StackPanel.DataContext>
-                            <Label Content="Project Metadata" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-                            <DockPanel>
-                                <Label Content="Project Name"/>
-                                <TextBox Text="{Binding Title, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <Label Content="Description"/>
-                                <TextBox Text="{Binding Description, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <Label Content="Author"/>
-                                <TextBox Text="{Binding Author, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <Label Content="Show Date"/>
-                                <DatePicker Text="{Binding Date}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
-                            </DockPanel>
-                            <Label Content="Audio Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-                            <DockPanel ToolTip="Sets the desired latency of the audio driver. Some drivers may ignore or impose limits on this parameter.">
-                                <Label Content="Audio Latency (ms)"/>
-                                <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="1" MaxValue="500" SpinnerType="Int" ClampValue="True" Text="{Binding AudioLatency}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <Label Content="Sound Driver"/>
-                                <ComboBox SelectedItem="{Binding AudioOutputDriver}" ItemsSource="{Binding AudioOutputDriverValues}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                            </DockPanel>
-                            <DockPanel>
-                                <Label Content="Output Device"/>
-                                <ComboBox SelectedIndex="{Binding SelectedAudioOutputDeviceIndex}" ItemsSource="{Binding AudioOutputDevices}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                            </DockPanel>
-                            <Label Content="Network Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-                            <DockPanel ToolTip="The network interface to listen to OSC messages on.">
-                                <Label Content="Network Adaptor" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-                                <ComboBox ItemsSource="{Binding NICs}" SelectedIndex="{Binding SelectedNIC}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-                            </DockPanel>
-                            <DockPanel ToolTip="The port to transmit OSC messages on (should be the same as MagicQ's OSC RX port).">
-                                <Label Content="OSC TX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-                                <TextBox Text="{Binding OSCTXPort}" Margin="8,2,2,2" TextWrapping="Wrap" VerticalContentAlignment="Center"/>
-                            </DockPanel>
-                            <DockPanel ToolTip="The port to receive OSC messages on (should be the same as MagicQ's OSC TX port).">
-                                <Label Content="OSC RX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-                                <TextBox Text="{Binding OSCRXPort}" Margin="8,2,2,2" TextWrapping="Wrap" VerticalContentAlignment="Center"/>
-                            </DockPanel>
-                            <DockPanel ToolTip="When checked, all OSC messages are logged to the log window.">
-                                <Label Content="Monitor OSC Messages" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-                                <CheckBox IsChecked="{Binding MonitorOSCMessages}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-                            </DockPanel>
-                        </StackPanel>
+                        <local:ProjectSettingsEditor DataContext="{Binding ProjectSettings}"/>
                     </ScrollViewer>
                 </TabItem>
             </TabControl>

@@ -7,3 +7,4 @@
 SigningCertificate_Encoded.txt
 **/publish
 *.zip
+/QPlayerOld

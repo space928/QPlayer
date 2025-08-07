@@ -1,4 +1,5 @@
-﻿using System;
+﻿using QPlayer.ViewModels;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -10,26 +11,18 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
 using System.Windows.Shapes;
 
 namespace QPlayer.Views;
 
 /// <summary>
-/// Interaction logic for CueDataHeaderControl.xaml
+/// Interaction logic for RemoteNodesWindow.xaml
 /// </summary>
-public partial class CueDataHeaderControl : UserControl
+public partial class RemoteNodesWindow : Window
 {
-    public CueDataHeaderControl()
+    public RemoteNodesWindow(RemoteNodesWindowViewModel viewModel)
     {
+        this.DataContext = viewModel;
         InitializeComponent();
-    }
-
-    private void GridSplitter_MouseDoubleClick(object sender, MouseButtonEventArgs e)
-    {
-        var splitter = (GridSplitter)sender;
-        int col = Grid.GetColumn(splitter);
-
-        // TODO: Auto resize column
     }
 }

@@ -1,8 +1,9 @@
 ﻿using QPlayer.Audio;
-using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Drawing;
+using System.Numerics;
 using System.Text.Json.Serialization;
 
 namespace QPlayer.Models;
@@ -10,16 +11,16 @@ namespace QPlayer.Models;
 [Serializable]
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 2;
+    public const int FILE_FORMAT_VERSION = 3;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
-    public ShowMetadata showMetadata = new();
+    public ShowSettings showSettings = new();
     public List<float> columnWidths = [];
     public List<Cue> cues = [new SoundCue()];
 }
 
 [Serializable]
-public record ShowMetadata
+public record ShowSettings
 {
     public string title = "Untitled";
     public string description = "";
@@ -33,7 +34,30 @@ public record ShowMetadata
     public string oscNIC = "";
     public int oscRXPort = 9000;
     public int oscTXPort = 8000;
+
+    public bool enableRemoteControl = false;
+    public bool isRemoteHost = true;
+    public bool syncShowFileOnSave = true;
+    public string nodeName = "QPlayer";
+    public List<RemoteNode> remoteNodes = [];
+
+    public int mscRXPort = 6004;
+    public int mscTXPort = 6004;
+    public int mscRXDevice = 0x70;
+    public int mscTXDevice = 0x71;
+    public int mscExecutor = -1;
+    public int mscPage = -1;
 }
+
+[Serializable]
+public record struct RemoteNode(string name, string address)
+{
+    public string name = name;
+    public string address = address;
+}
+
+[Serializable]
+public record struct ShaderParameter(string name, float value);
 
 public enum CueType
 {
@@ -51,6 +75,7 @@ public enum LoopMode
     OneShot,
     Looped,
     LoopedInfinite,
+    HoldLast
 }
 
 public enum StopMode
@@ -73,7 +98,7 @@ public record Cue
     public CueType type;
     public decimal qid;
     public decimal? parent;
-    public Color colour = Color.Black;
+    public SerializedColour colour = SerializedColour.Black;
     public string name = string.Empty;
     public string description = string.Empty;
     public bool halt = true;
@@ -81,6 +106,19 @@ public record Cue
     public TimeSpan delay;
     public LoopMode loopMode;
     public int loopCount;
+    public string remoteNode = string.Empty;
+
+    public static Cue CreateCue(CueType type) => type switch
+    {
+        CueType.GroupCue => new GroupCue(),
+        CueType.DummyCue => new DummyCue(),
+        CueType.SoundCue => new SoundCue(),
+        CueType.TimeCodeCue => new TimeCodeCue(),
+        CueType.StopCue => new StopCue(),
+        CueType.VolumeCue => new VolumeCue(),
+        CueType.None => new Cue(),
+        _ => throw new NotImplementedException(),
+    };
 }
 
 [Serializable]
@@ -113,7 +151,7 @@ public record SoundCue : Cue
     public float volume = 1;
     public float fadeIn;
     public float fadeOut;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public SoundCue() : base()
     {
@@ -141,7 +179,7 @@ public record StopCue : Cue
     public decimal stopQid;
     public StopMode stopMode;
     public float fadeOutTime;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public StopCue() : base()
     {
@@ -156,7 +194,7 @@ public record VolumeCue : Cue
     public decimal soundQid;
     public float fadeTime;
     public float volume;
-    public FadeType fadeType;
+    public FadeType fadeType = FadeType.SCurve;
 
     public VolumeCue() : base()
     {

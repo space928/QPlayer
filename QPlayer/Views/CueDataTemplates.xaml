@@ -5,13 +5,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views"
              xmlns:vm="clr-namespace:QPlayer.ViewModels"
+             xmlns:util="clr-namespace:QPlayer.Utilities"
              xmlns:model="clr-namespace:QPlayer.Models"
              mc:Ignorable="d">
     <ResourceDictionary.MergedDictionaries>
         <ResourceDictionary Source="../ThemesV2/Icons.xaml"/>
     </ResourceDictionary.MergedDictionaries>
-    <vm:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
-    <vm:GreaterThanConverter x:Key="GreaterThanConverter"/>
+    <util:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
+    <util:GreaterThanConverter x:Key="GreaterThanConverter"/>
     <DataTemplate x:Key="GroupIconTemplate" DataType="bool">
         <Rectangle/>
     </DataTemplate>

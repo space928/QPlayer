@@ -38,6 +38,8 @@ namespace QPlayer.ViewModels
 
         [Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
 
+        private bool shouldSendRemoteStatus;
+        private string? thisNodeName;
         private AudioFileReader? audioFile;
         private FadingSampleProvider? fadeInOutProvider;
         private readonly Timer audioProgressUpdater;
@@ -120,6 +122,8 @@ namespace QPlayer.ViewModels
         {
             var oldState = State; // We need to capture the old state here since the base function writes to it
             base.Go();
+            if (IsRemoteControlling)
+                return;
             if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
                 StopAudio();
             
@@ -130,6 +134,9 @@ namespace QPlayer.ViewModels
             if (mainViewModel.AudioPlaybackManager.IsPlaying(fadeInOutProvider))
                 StopAudio();
 
+            shouldSendRemoteStatus = mainViewModel.ProjectSettings.EnableRemoteControl 
+                && (string.IsNullOrEmpty(RemoteNode) || RemoteNode == mainViewModel.ProjectSettings.NodeName);
+            thisNodeName = mainViewModel.ProjectSettings.NodeName;
             audioProgressUpdater.Start();
             if (FadeOut > 0)
             {
@@ -150,7 +157,7 @@ namespace QPlayer.ViewModels
         public override void Pause()
         {
             base.Pause();
-            if (fadeInOutProvider == null || mainViewModel == null)
+            if (IsRemoteControlling || fadeInOutProvider == null || mainViewModel == null)
                 return;
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
             audioProgressUpdater.Stop();
@@ -163,6 +170,10 @@ namespace QPlayer.ViewModels
         public override void Stop()
         {
             base.Stop();
+            if (IsRemoteControlling)
+                return;
+            if (shouldSendRemoteStatus)
+                mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);
             StopAudio();
         }
 
@@ -260,6 +271,10 @@ namespace QPlayer.ViewModels
                 // This won't be very accurate, but should work for now...
                 if (PlaybackTime >= Duration)
                     Stop();
+
+                if (shouldSendRemoteStatus)
+                    mainViewModel?.OSCManager?.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
+                        State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
             }, null);
         }
 

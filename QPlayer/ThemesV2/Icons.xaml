@@ -16,7 +16,11 @@
     <DrawingImage x:Key="IconSoundCue" Drawing="{StaticResource Icon_music_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconTimeCodeCue" Drawing="{StaticResource Icon_clock_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconVolumeCue" Drawing="{StaticResource Icon_volume_low_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconVideoCue" Drawing="{StaticResource Icon_film_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconVideoFramingCue" Drawing="{StaticResource Icon_crop_simple_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconShaderParamsCue" Drawing="{StaticResource Icon_sliders_solidDrawingGroup}"/>
 
     <DrawingImage x:Key="IconOneShot" Drawing="{StaticResource Icon_arrow_right_long_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconLoop" Drawing="{StaticResource Icon_rotate_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconHoldLast" Drawing="{StaticResource Icon_arrow_right_to_bracket_solidDrawingGroup}"/>
 </ResourceDictionary>

@@ -87,6 +87,8 @@ The port to send OSC messages to. This should correspond with the RX port
 of the device receiving OSC; the exception to this rule is with 
 [remote nodes](#remote-nodes), which should have matching TX and RX ports.
 
+When 
+
 ### OSC RX Port
 
 The port to receive OSC messages from. This should correspond with the TX 

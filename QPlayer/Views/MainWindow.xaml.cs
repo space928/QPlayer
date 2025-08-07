@@ -15,6 +15,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 using QPlayer.ViewModels;
+using QPlayer.Views;
 
 namespace QPlayer;
 
@@ -51,6 +52,18 @@ public partial class MainWindow : Window
 
     private void Consume_PreviewKeyDown(object sender, KeyEventArgs e)
     {
+        // Don't consume keys for text fields inside the cue list
+        if (e.OriginalSource is TextBox element)
+        {
+            FrameworkElement? fwElement = element;
+            do
+            {
+                fwElement = fwElement.Parent as FrameworkElement;
+                if (fwElement is CueDataControl)
+                    return;
+            } while (fwElement != null);
+        }
+
         // Override list viewer key bindings
         switch (e.Key)
         {
@@ -146,10 +159,27 @@ public partial class MainWindow : Window
                         case ".flac":
                         case ".ogg":
                         case ".wma":
-                            var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
-                            cue.Path = file;
-                            cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                            vm.MoveCue(cue, dstIndex++);
+                            {
+                                var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
+                                cue.Path = file;
+                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                                vm.MoveCue(cue, dstIndex++);
+                            }
+                            break;
+                        //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov
+                        case ".mp4":
+                        case ".mkv":
+                        case ".avi":
+                        case ".webm":
+                        case ".flv":
+                        case ".wmv":
+                        case ".mov":
+                            /*{
+                                var cue = (VideoCueViewModel)vm.CreateCue(Models.CueType.VideoCue, afterLast: true);
+                                cue.Path = file;
+                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                                vm.MoveCue(cue, dstIndex++);
+                            }*/
                             break;
                         default:
                             break;
@@ -186,5 +216,12 @@ public partial class MainWindow : Window
     {
         var vm = (MainViewModel)DataContext;
         vm.OpenLogExecute();
+    }
+
+    private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        if (vm.UnsavedChangedCheck())
+            Close();
     }
 }

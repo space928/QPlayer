@@ -5,13 +5,14 @@
              xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
              xmlns:local="clr-namespace:QPlayer.Views" 
              xmlns:vm="clr-namespace:QPlayer.ViewModels" 
+             xmlns:util="clr-namespace:QPlayer.Utilities" 
              d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="800">
     <UserControl.Resources>
-        <vm:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
+        <util:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
     </UserControl.Resources>
-    <Grid Background="{DynamicResource Button.Static.Background}">
+    <Grid Background="{DynamicResource Button.Static.Background}" x:Name="headerGrid">
         <Grid.ColumnDefinitions>
             <ColumnDefinition MinWidth="5" Width="{Binding ColumnWidths[0].Value, Mode=TwoWay, Converter={StaticResource FloatGridLengthConverter}}"/>
             <ColumnDefinition MinWidth="5" Width="{Binding ColumnWidths[1].Value, Mode=TwoWay, Converter={StaticResource FloatGridLengthConverter}}"/>
@@ -35,7 +36,7 @@
         <Label Content="Wait" Grid.Column="7"/>
         <Label Content="Duration" Grid.Column="8"/>
         <Label Content="Loop Mode" Grid.Column="9"/>
-        <GridSplitter Grid.Column="0" Width="2" Background="{DynamicResource Button.MouseOver.Border}"/>
+        <GridSplitter Grid.Column="0" Width="2" Background="{DynamicResource Button.MouseOver.Border}" MouseDoubleClick="GridSplitter_MouseDoubleClick"/>
         <GridSplitter Grid.Column="1" Width="2" Background="{DynamicResource Button.MouseOver.Border}"/>
         <GridSplitter Grid.Column="2" Width="2" Background="{DynamicResource Button.MouseOver.Border}"/>
         <GridSplitter Grid.Column="3" Width="2" Background="{DynamicResource Button.MouseOver.Border}"/>
