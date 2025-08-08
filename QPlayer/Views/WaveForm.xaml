@@ -47,9 +47,9 @@
                                   AlignmentY="Bottom" AlignmentX="Left" Stretch="Uniform">
                         <DrawingBrush.Transform>
                             <TransformGroup>
-                                <ScaleTransform x:Name="GraphScale" 
+                                <!--<ScaleTransform x:Name="GraphScale" 
                                                 CenterY="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type Rectangle}}}" 
-                                                ScaleY="{Binding SoundCue.Volume, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"/>
+                                                ScaleY="{Binding SoundCue.Volume, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"/>-->
                             </TransformGroup>
                         </DrawingBrush.Transform>
                     </DrawingBrush>

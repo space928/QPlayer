@@ -12,8 +12,8 @@ using System.Text;
 using System.Threading.Tasks;
 using QPlayer.Audio;
 using CommunityToolkit.Mvvm.Input;
-using Mathieson.Dev;
 using PropertyChanged;
+using QPlayer.Utilities;
 
 namespace QPlayer.ViewModels;
 

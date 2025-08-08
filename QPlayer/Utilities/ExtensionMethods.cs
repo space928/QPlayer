@@ -107,16 +107,16 @@ public static partial class ExtensionMethods
     public static void SyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter, 
         Func<TCollection, TList> converter)
     {
-        collection.CollectionChanged += (o, e) => ObservableCollectionChangedHandler(o, e, listGetter, converter);
+        collection.CollectionChanged += (o, e) => ObservableCollectionChangedHandler(e, listGetter, converter);
     }
 
     public static void UnSyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter, 
         Func<TCollection, TList> converter)
     {
-        collection.CollectionChanged -= (o, e) => ObservableCollectionChangedHandler(o, e, listGetter, converter);
+        collection.CollectionChanged -= (o, e) => ObservableCollectionChangedHandler(e, listGetter, converter);
     }
 
-    private static void ObservableCollectionChangedHandler<TCollection, TList>(object? o, NotifyCollectionChangedEventArgs e, 
+    private static void ObservableCollectionChangedHandler<TCollection, TList>(NotifyCollectionChangedEventArgs e, 
         Func<IList<TList>?> listGetter, Func<TCollection, TList> converter)
     {
         var list = listGetter();

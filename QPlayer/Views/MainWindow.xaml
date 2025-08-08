@@ -65,22 +65,35 @@
             <Image Source="{StaticResource IconImage}" HorizontalAlignment="Left" Grid.Column="0"/>
             <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center">
                 <MenuItem Header="File" Height="30">
-                    <MenuItem Header="New (Ctrl+N)" Command="{Binding NewProjectCommand}"/>
-                    <MenuItem Header="Open (Ctrl+O)" Command="{Binding OpenProjectCommand}"/>
-                    <MenuItem Header="Save (Ctrl+S)" Command="{Binding SaveProjectCommand}"/>
-                    <MenuItem Header="Save As (Ctrl+Shift+S)" Command="{Binding SaveProjectAsCommand}"/>
-                    <MenuItem IsEnabled="False" Header="Pack (Ctrl+E)" Command="{Binding PackProjectCommand}"/>
-                    <MenuItem Header="Recent" IsEnabled="False"/>
-                    <MenuItem Header="Exit (Alt+F4)" Click="ExitMenuItem_Click"/>
+                    <MenuItem.Resources>
+                        <Style x:Key="RecentItemStyle" TargetType="MenuItem">
+                            <Setter Property="Header" Value="{Binding Name}"/>
+                            <Setter Property="CommandParameter" Value="{Binding Path}"/>
+                            <Setter Property="Command" Value="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
+                        </Style>
+                    </MenuItem.Resources>
+                    <MenuItem Header="New" InputGestureText="Ctrl+N"  Command="{Binding NewProjectCommand}"/>
+                    <MenuItem Header="Open" InputGestureText="Ctrl+O" Command="{Binding OpenProjectCommand}"/>
+                    <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding SaveProjectCommand}"/>
+                    <MenuItem Header="Save As" InputGestureText="Ctrl+Shift+S" Command="{Binding SaveProjectAsCommand}"/>
+                    <MenuItem Header="Pack" InputGestureText="Ctrl+E" Command="{Binding PackProjectCommand}"/>
+                    <MenuItem Header="Recent" ItemsSource="{Binding RecentFiles}" ItemContainerStyle="{StaticResource RecentItemStyle}">
+                        <!--<MenuItem.ItemTemplate>
+                            <DataTemplate>
+                                <MenuItem Header="{Binding Name}" CommandParameter="{Binding Path}" Command="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
+                            </DataTemplate>
+                        </MenuItem.ItemTemplate>-->
+                    </MenuItem>
+                    <MenuItem Header="Exit" InputGestureText="Alt+F4" Click="ExitMenuItem_Click"/>
                 </MenuItem>
                 <MenuItem Header="Edit" Height="30">
                     <MenuItem Header="Undo" IsEnabled="False"/>
                     <MenuItem Header="Redo" IsEnabled="False"/>
-                    <MenuItem Header="Move Cue Up (Ctrl+Up)" Command="{Binding MoveCueUpCommand}"/>
-                    <MenuItem Header="Move Cue Down (Ctrl+Down)" Command="{Binding MoveCueDownCommand}"/>
-                    <MenuItem Header="Duplicate Cue (Ctrl+D)" Command="{Binding DuplicateCueCommand}"/>
-                    <MenuItem Header="Delete Cue (Del)" Command="{Binding DeleteCueCommand}"/>
-                    <MenuItem Header="Create Cue (Ctrl+T)">
+                    <MenuItem Header="Move Cue Up" InputGestureText="Ctrl+Up" Command="{Binding MoveCueUpCommand}"/>
+                    <MenuItem Header="Move Cue Down" InputGestureText="Ctrl+Down" Command="{Binding MoveCueDownCommand}"/>
+                    <MenuItem Header="Duplicate Cue" InputGestureText="Ctrl+D" Command="{Binding DuplicateCueCommand}"/>
+                    <MenuItem Header="Delete Cue" InputGestureText="Del" Command="{Binding DeleteCueCommand}"/>
+                    <MenuItem Header="Create Cue" InputGestureText="Ctrl+T">
                         <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                         <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
@@ -233,5 +246,21 @@
             </Label>
         </Grid>
         <!--#endregion-->
+        <Grid Visibility="{Binding ProgressBoxViewModel.Visible}" x:Name="ProgressOverlay" Grid.ColumnSpan="3" Grid.RowSpan="3" Cursor="Wait" Focusable="True" KeyDown="OverlayConsume_KeyDown" PreviewKeyDown="OverlayConsume_KeyDown">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition MaxWidth="500" MinWidth="250"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Rectangle Opacity="0.33" Fill="Black" Grid.ColumnSpan="3"/>
+            <Grid Grid.Column="1" VerticalAlignment="Center" SnapsToDevicePixels="True">
+                <Rectangle Fill="{DynamicResource AREghZyBrush.Deep.2.Background.Static}" Stroke="{DynamicResource AREghZyBrush.Deep.3.Border.Static}"/>
+                <StackPanel Orientation="Vertical" Margin="4">
+                    <TextBlock Text="Please Wait" Padding="3" Margin="0,0,0,16" TextAlignment="Center" FontWeight="Bold" Background="{DynamicResource AREghZyBrush.Deep.2.Border.Static}"/>
+                    <TextBlock Text="{Binding ProgressBoxViewModel.Message}" Margin="2"/>
+                    <ProgressBar Height="20" Margin="2" Value="{Binding ProgressBoxViewModel.Progress}" Maximum="1"/>
+                </StackPanel>
+            </Grid>
+        </Grid>
     </Grid>
 </Window>

@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.8.7</Version>
+    <Version>1.8.8</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
 	<Copyright>©️ Thomas Mathieson 2025</Copyright>
@@ -16,6 +16,7 @@
     <ApplicationIcon>Resources\Icon.ico</ApplicationIcon>
     <Platforms>AnyCPU;x86;x64</Platforms>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<LangVersion>13</LangVersion>
   </PropertyGroup>
 
   <ItemGroup>
@@ -63,13 +64,13 @@
 
   <ItemGroup>
     <PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.8" />
+    <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.10" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="OscCoreNetStd2" Version="1.1.4" />
     <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2" />
     <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
     <PackageReference Include="ReactiveUI.Fody" Version="19.5.41" />
-    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="System.Text.Json" Version="8.0.6" />
   </ItemGroup>
 
   <ItemGroup>

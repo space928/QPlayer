@@ -1,20 +1,20 @@
-﻿using Mathieson.Dev;
+﻿using DynamicData;
 using OscCore;
+using QPlayer.Utilities;
 using System;
+using System.Buffers;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
+using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using QPlayer.Utilities;
-using System.Collections;
-using System.Runtime.CompilerServices;
 using static QPlayer.ViewModels.MainViewModel;
-using System.Buffers;
-using System.Runtime.InteropServices;
 
 namespace QPlayer.Models;
 
@@ -129,7 +129,7 @@ public class OSCDriver : IDisposable
 
     private void OSCRXThread()
     {
-        IPEndPoint? remoteEndPoint = null;
+        IPEndPoint? remoteEndPoint;
         IPEndPoint? endPointAny = new(IPAddress.Any, rxIP?.Port ?? 0);
         IPEndPoint? endPointAnyV6 = new(IPAddress.IPv6Any, rxIP?.Port ?? 0);
         var recvBuff = new byte[0x10000];
@@ -255,52 +255,60 @@ public static class OSCMessageParser
     /// <returns></returns>
     public static (string address, object[] args) ParseOSCMessage(string message)
     {
-        ReadOnlyMemory<char> msg = message.AsMemory();
-        int argsStart = message.IndexOf(' ');
-        var args = new List<object>();
+        ReadOnlySpan<char> msg = message.AsSpan();
+        int argsStart = msg.IndexOf(' ');
+        using var args = new TemporaryList<object>();
         string address = message;
+
         if (argsStart != -1)
         {
             address = message[..argsStart];
-            var strArgs = message[(argsStart + 1)..].Split(' ');
-            for (int i = 0; i < strArgs.Length; i++)
+            Span<Range> splits = stackalloc Range[256];
+            int nSplits = msg[(argsStart + 1)..].Split(splits, ' ');
+
+            for (int i = 0; i < nSplits; i++)
             {
-                if (bool.TryParse(strArgs[i], out var bVal))
+                var split = splits[i];
+                var strArg = msg[split];
+                if (bool.TryParse(strArg, out var bVal))
                     args.Add(bVal);
-                else if (int.TryParse(strArgs[i], out var iVal))
+                else if (int.TryParse(strArg, out var iVal))
                     args.Add(iVal);
-                else if (float.TryParse(strArgs[i], out var fVal))
+                else if (float.TryParse(strArg, out var fVal))
                     args.Add(fVal);
-                else if (strArgs[i].Length > 0 && strArgs[i][0] == '\"')
+                else if (strArg.Length > 0 && strArg[0] == '\"')
                 {
-                    if (strArgs[i].Length > 1 && strArgs[i][^1] == '\"')
+                    if (strArg.Length > 1 && strArg[^1] == '\"')
                     {
-                        args.Add(strArgs[i][1..^1]);
+                        args.Add(strArg[1..^1].ToString());
                     }
                     else
                     {
                         // String must have spaces in it, search for the next arg that ends in a double quote
-                        StringBuilder sb = new(strArgs[i][1..]);
+                        StringBuilder sb = new(strArg.Length - 1);
+                        sb.Append(strArg[1..]);
                         do
                         {
                             i++;
+                            split = splits[i];
+                            strArg = msg[split];
                             sb.Append(' ');
-                            sb.Append(strArgs[i]);
-                        } while (i < strArgs.Length && strArgs[i][^1] != '\"');
+                            sb.Append(strArg);
+                        } while (i < nSplits && strArg[^1] != '\"');
 
-                        if (strArgs[i][^1] != '\"')
-                            throw new ArgumentException($"Unparsable OSC argument, string is not closed: {sb.ToString()}");
+                        if (strArg[^1] != '\"')
+                            throw new ArgumentException($"Unparsable OSC argument, string is not closed: {sb}");
 
                         args.Add(sb.ToString());
                     }
                 }
-                else if (strArgs[i].Length > 3 && strArgs[i][0] == '`' && strArgs[i][^1] == '`')
+                else if (strArg.Length > 3 && strArg[0] == '`' && strArg[^1] == '`')
                 {
-                    args.Add(StringToByteArrayFastest(strArgs[i][1..^1]));
+                    args.Add(StringToByteArrayFastest(strArg[1..^1]));
                 }
                 else
                 {
-                    throw new ArgumentException($"Unparsable OSC argument encountered: {strArgs[i]}");
+                    throw new ArgumentException($"Unparsable OSC argument encountered: {strArg}");
                 }
             }
         }
@@ -309,14 +317,15 @@ public static class OSCMessageParser
     }
 
     // https://stackoverflow.com/a/9995303
-    private static byte[] StringToByteArrayFastest(string hex)
+    private static byte[] StringToByteArrayFastest(ReadOnlySpan<char> hex)
     {
-        if (hex.Length % 2 == 1)
+        int len = hex.Length;
+        if ((len & 1) == 1)
             throw new Exception("The binary key cannot have an odd number of digits");
 
-        byte[] arr = new byte[hex.Length >> 1];
+        byte[] arr = new byte[len >> 1];
 
-        for (int i = 0; i < hex.Length >> 1; ++i)
+        for (int i = 0; i < len >> 1; ++i)
         {
             arr[i] = (byte)((GetHexVal(hex[i << 1]) << 4) + (GetHexVal(hex[(i << 1) + 1])));
         }
@@ -324,6 +333,7 @@ public static class OSCMessageParser
         return arr;
     }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static int GetHexVal(char hex)
     {
         int val = (int)hex;

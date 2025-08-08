@@ -224,4 +224,9 @@ public partial class MainWindow : Window
         if (vm.UnsavedChangedCheck())
             Close();
     }
+
+    private void OverlayConsume_KeyDown(object sender, KeyEventArgs e)
+    {
+        e.Handled = true;
+    }
 }

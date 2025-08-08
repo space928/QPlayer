@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 #endif
 
-namespace Mathieson.Dev;
+namespace QPlayer.Utilities;
 
 /*
  *   A fast string-keyed dictionary. 
@@ -162,7 +162,7 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
 
     public StringDict() : this(0) { }
 
-#pragma warning disable CS8618 // Non-nullable fields are initialised by Initialise();
+#pragma warning disable CS8618 // Non-nullable fields are initialised by Initialise(); Needed when compiling for netstandard 2.1
     public StringDict(int capacity)
 #pragma warning restore CS8618
     {
@@ -912,7 +912,7 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
     private static int FastMod(int hash, int mod)
     {
         // https://lemire.me/blog/2016/06/27/a-fast-alternative-to-the-modulo-reduction/
-        return unchecked((int)(((ulong)(uint)hash * (ulong)mod) >> 32));
+        return unchecked((int)((uint)hash * (ulong)mod >> 32));
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -1057,7 +1057,7 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
         {
             get
             {
-                if (index == 0 || (index == dict.lastSlot + 1))
+                if (index == 0 || index == dict.lastSlot + 1)
                     throw new InvalidOperationException();
 
                 if (getEnumeratorRetType == EnumerationReturnType.DictEntry)
@@ -1082,7 +1082,7 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
         {
             get
             {
-                if (index == 0 || (index == dict.lastSlot + 1))
+                if (index == 0 || index == dict.lastSlot + 1)
                     throw new InvalidOperationException();
 
                 return new(current.Key, current.Value);
@@ -1093,7 +1093,7 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
         {
             get
             {
-                if (index == 0 || (index == dict.lastSlot + 1))
+                if (index == 0 || index == dict.lastSlot + 1)
                     throw new InvalidOperationException();
 
                 return current.Key;
@@ -1104,7 +1104,7 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
         {
             get
             {
-                if (index == 0 || (index == dict.lastSlot + 1))
+                if (index == 0 || index == dict.lastSlot + 1)
                     throw new InvalidOperationException();
 
                 return current.Value;

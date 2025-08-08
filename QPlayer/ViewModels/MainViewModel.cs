@@ -4,8 +4,8 @@ using JetBrains.Profiler.Api;
 using Microsoft.Win32;
 using QPlayer.Audio;
 using QPlayer.Models;
-using QPlayer.Views;
 using QPlayer.Utilities;
+using QPlayer.Views;
 using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
@@ -24,6 +24,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Timer = System.Timers.Timer;
 
 namespace QPlayer.ViewModels
@@ -69,6 +70,7 @@ namespace QPlayer.ViewModels
 
         [Reactive] public RelayCommand NewProjectCommand { get; private set; }
         [Reactive] public RelayCommand OpenProjectCommand { get; private set; }
+        [Reactive] public RelayCommand<string> OpenSpecificProjectCommand { get; private set; }
         [Reactive] public RelayCommand SaveProjectCommand { get; private set; }
         [Reactive] public RelayCommand SaveProjectAsCommand { get; private set; }
         [Reactive] public RelayCommand PackProjectCommand { get; private set; }
@@ -99,6 +101,8 @@ namespace QPlayer.ViewModels
 
         [Reactive] public string StatusText { get; private set; } = "Ready";
         [Reactive] public SolidColorBrush StatusTextColour { get; private set; } = StatusInfoBrush;
+
+        [Reactive] public ProgressBoxViewModel ProgressBoxViewModel { get; private set; }
 
         [Reactive]
         public static ObservableCollection<string> LogList
@@ -136,6 +140,7 @@ namespace QPlayer.ViewModels
             }
         }
         [Reactive] public string Clock => $"{DateTime.Now:HH:mm:ss}";
+        public ObservableCollection<RecentFile> RecentFiles => persistantDataManager.RecentFiles;
         #endregion
 
         /// <summary>
@@ -148,11 +153,14 @@ namespace QPlayer.ViewModels
         public event Action? OnSlowUpdate;
         public OSCManager OSCManager => oscManager;
         public MSCManager MSCManager => mscManager;
+        public PersistantDataManager PersistantDataManager => persistantDataManager;
 
         public static readonly string AUTOBACK_PATH = "autoback.qproj";
 
         private int selectedCueInd = 0;
         private ShowFile showFile;
+        private List<string>? captureResolvedPaths;
+        private Dictionary<string, string>? packedPaths;
         private static ObservableCollection<string> logList = [];
         private static LogWindow? logWindow;
         private static RemoteNodesWindow? remoteNodesWindow;
@@ -172,6 +180,7 @@ namespace QPlayer.ViewModels
         private readonly Dictionary<decimal, CueViewModel> cuesDict;
         private readonly OSCManager oscManager;
         private readonly MSCManager mscManager;
+        private readonly PersistantDataManager persistantDataManager;
         private static readonly SolidColorBrush StatusInfoBrush = new(Color.FromArgb(255, 220, 220, 220));
         private static readonly SolidColorBrush StatusWarningBrush = new(Color.FromArgb(255, 200, 220, 50));
         private static readonly SolidColorBrush StatusErrorBrush = new(Color.FromArgb(255, 220, 60, 40));
@@ -208,15 +217,18 @@ namespace QPlayer.ViewModels
             audioPlaybackManager = new(this);
             oscManager = new(this);
             mscManager = new(this);
+            persistantDataManager = new();
+            ProgressBoxViewModel = new();
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute);
             OpenRemoteNodesCommand = new(OpenRemoteNodesExecute);
             NewProjectCommand = new(NewProjectExecute);
             OpenProjectCommand = new(OpenProjectExecute);
+            OpenSpecificProjectCommand = new(OpenSpecificProjectExecute);
             SaveProjectCommand = new(() => SaveProjectExecute());
             SaveProjectAsCommand = new(() => SaveProjectAsExecute());
-            PackProjectCommand = new(() => SaveProjectAsExecute());
+            PackProjectCommand = new(PackProjectExecute);
             OpenOnlineManualCommand = new(OpenOnlineManualExecute);
             OpenAboutCommand = new(OpenAboutExecute);
             OpenSetttingsCommand = new(OpenSettingsExecute);
@@ -414,11 +426,35 @@ namespace QPlayer.ViewModels
             }
         }
 
+        public void PackProjectExecute()
+        {
+            SaveFileDialog saveFileDialog = new()
+            {
+                AddExtension = true,
+                DereferenceLinks = true,
+                Filter = "QPlayer Projects (*.qproj)|*.qproj|All files (*.*)|*.*",
+                OverwritePrompt = true,
+                Title = "Pack QPlayer Project"
+            };
+            if (saveFileDialog.ShowDialog() ?? false)
+            {
+                Task.Run(() => PackProject(Path.ChangeExtension(saveFileDialog.FileName, null)))
+                    .ContinueWith(_ => syncContext.Post(_ => ProjectFilePath = saveFileDialog.FileName, null));
+            }
+        }
+
         public void OpenProjectExecute()
         {
             Log("Opening project...");
+            ProgressBoxViewModel.Message = "Opening project...";
+            ProgressBoxViewModel.Progress = 0.0f;
+            ProgressBoxViewModel.Visible = Visibility.Visible;
+            Dispatcher.Yield();
             if (!UnsavedChangedCheck())
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
                 return;
+            }
             OpenFileDialog openFileDialog = new()
             {
                 Multiselect = false,
@@ -428,7 +464,35 @@ namespace QPlayer.ViewModels
             };
             if (openFileDialog.ShowDialog() ?? false)
             {
+                Dispatcher.Yield();
                 Task.Run(() => OpenProject(openFileDialog.FileName));
+            } 
+            else
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
+            }
+        }
+
+        public void OpenSpecificProjectExecute(string? path)
+        {
+            Log("Opening project...");
+            ProgressBoxViewModel.Message = "Opening project...";
+            ProgressBoxViewModel.Progress = 0.0f;
+            ProgressBoxViewModel.Visible = Visibility.Visible;
+            Dispatcher.Yield();
+            if (!UnsavedChangedCheck())
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
+                return;
+            }
+            if (!string.IsNullOrEmpty(path))
+            {
+                Dispatcher.Yield();
+                Task.Run(() => OpenProject(path));
+            } 
+            else
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
             }
         }
 
@@ -553,7 +617,7 @@ namespace QPlayer.ViewModels
                 return;
 
             int ind = SelectedCueInd;
-            var prevCue = Cues[ind - 1];
+            //var prevCue = Cues[ind - 1];
             // Swap the cue IDs and then swap the cues
             //(prevCue.QID, SelectedCue.QID) = (SelectedCue.QID, prevCue.QID);
             (Cues[ind], Cues[ind - 1]) = (Cues[ind - 1], Cues[ind]);
@@ -568,7 +632,7 @@ namespace QPlayer.ViewModels
                 return;
 
             int ind = SelectedCueInd;
-            var nextCue = Cues[ind + 1];
+            //var nextCue = Cues[ind + 1];
             // Swap the cue IDs and then swap the cues
             //(nextCue.QID, SelectedCue.QID) = (SelectedCue.QID, nextCue.QID);
             (Cues[ind], Cues[ind + 1]) = (Cues[ind + 1], Cues[ind]);
@@ -649,6 +713,15 @@ namespace QPlayer.ViewModels
             Error
         }
 
+        /// <summary>
+        /// Informs the cue stack that the cue ID of a given cue view model has been changed. This should be called whenever a QID is changed.
+        /// <para/>
+        /// Note that since <see cref="CueViewModel.QID"/>'s setter calls this method, users which change QID's through this 
+        /// setter need not call this method.
+        /// </summary>
+        /// <param name="oldVal"></param>
+        /// <param name="newVal"></param>
+        /// <param name="src"></param>
         public void NotifyQIDChanged(decimal oldVal, decimal newVal, CueViewModel src)
         {
             if (cuesDict.TryGetValue(oldVal, out var cue))
@@ -705,59 +778,6 @@ namespace QPlayer.ViewModels
         public bool FindCue(decimal id, [NotNullWhen(true)] out CueViewModel? cue)
         {
             return cuesDict.TryGetValue(id, out cue);
-        }
-
-        /// <summary>
-        /// Converts a path to/from a project relative path. Only paths which are in subdirectories of the project path are made relative.
-        /// </summary>
-        /// <param name="path">the path to convert</param>
-        /// <param name="expand">whether the path should be expanded to an absolute path or made relative to the project</param>
-        /// <returns></returns>
-        public string ResolvePath(string path, bool expand = true)
-        {
-            string? projPath = ProjectFilePath;
-            if (string.IsNullOrEmpty(projPath))
-                return path;
-
-            string? projDir = Path.GetDirectoryName(projPath);
-            if (string.IsNullOrEmpty(projDir))
-                return path;
-
-            if (expand)
-            {
-                if (File.Exists(path))
-                    return path;
-
-                string ret = Path.Combine(projDir, path);
-                if (File.Exists(ret))
-                    return ret;
-
-                // The file wasn't found, try searching for it in the project directory
-                string fileName = Path.GetFileName(path);
-                if (string.IsNullOrEmpty(fileName) || fileName == ".")
-                    return path;
-                try
-                {
-                    foreach (string file in Directory.EnumerateFiles(projDir, fileName, fileSearchEnumerationOptions))
-                        if (Path.GetFileName(file) == fileName)
-                            return file;
-                } catch (Exception ex)
-                {
-                    Log($"Unexpected failure while attempting to resolve relative file path. {ex.Message}", LogLevel.Warning);
-                }
-
-                // The file couldn't be found, let it fail normally.
-                return path;
-            }
-            else
-            {
-                if (string.IsNullOrEmpty(path))
-                    return path;
-                string absPath = Path.GetFullPath(path);
-                if (absPath.Contains(projDir) && absPath != projDir)
-                    return Path.GetRelativePath(projDir, absPath);
-                return path;
-            }
         }
 
         /// <summary>
@@ -824,11 +844,74 @@ namespace QPlayer.ViewModels
         }
 
         /// <summary>
+        /// Converts a path to/from a project relative path. Only paths which are in subdirectories of the project path are made relative.
+        /// </summary>
+        /// <param name="path">the path to convert</param>
+        /// <param name="expand">whether the path should be expanded to an absolute path or made relative to the project</param>
+        /// <returns></returns>
+        public string ResolvePath(string path, bool expand = true)
+        {
+            // Used by the "Pack Project" command to collect all used external files
+            captureResolvedPaths?.Add(path);
+            if (!expand && (packedPaths?.TryGetValue(path, out var res) ?? false))
+                return res;
+
+            string? projPath = ProjectFilePath;
+            if (string.IsNullOrEmpty(projPath))
+                return path;
+
+            string? projDir = Path.GetDirectoryName(projPath);
+            if (string.IsNullOrEmpty(projDir))
+                return path;
+
+            if (expand)
+            {
+                if (File.Exists(path))
+                    return path;
+
+                string ret = Path.Combine(projDir, path);
+                if (File.Exists(ret))
+                    return ret;
+
+                // The file wasn't found, try searching for it in the project directory
+                string fileName = Path.GetFileName(path);
+                if (string.IsNullOrEmpty(fileName) || fileName == ".")
+                    return path;
+                try
+                {
+                    foreach (string file in Directory.EnumerateFiles(projDir, fileName, fileSearchEnumerationOptions))
+                        if (Path.GetFileName(file) == fileName)
+                            return file;
+                }
+                catch (Exception ex)
+                {
+                    Log($"Unexpected failure while attempting to resolve relative file path. {ex.Message}", LogLevel.Warning);
+                }
+
+                // The file couldn't be found, let it fail normally.
+                return path;
+            }
+            else
+            {
+                if (string.IsNullOrEmpty(path))
+                    return path;
+                string absPath = Path.GetFullPath(path);
+                if (absPath.Contains(projDir) && absPath != projDir)
+                    return Path.GetRelativePath(projDir, absPath);
+                return path;
+            }
+        }
+
+        /// <summary>
         /// Checks if the project file has unsaved changes and prompts the user to save if needed.
         /// </summary>
         /// <returns>false if the user decided to cancel the current operation.</returns>
         public bool UnsavedChangedCheck(bool canCancel = true)
         {
+            ProgressBoxViewModel.Message = "Checking for unsaved changes...";
+            ProgressBoxViewModel.Progress = 0.1f;
+            Dispatcher.Yield();
+
             using var ms = new MemoryStream();
             SerializeShowFile(ms).Wait();
             var curr = ms.ToArray();
@@ -870,6 +953,10 @@ namespace QPlayer.ViewModels
 
         private void LoadShowfileModel(ShowFile show)
         {
+            ProgressBoxViewModel.Progress = 0.3f;
+            ProgressBoxViewModel.Message = $"Initialising devices...";
+            Dispatcher.Yield();
+
             showFile = show;
             ProjectSettings = ProjectSettingsViewModel.FromModel(show.showSettings, this);
             ProjectSettings.Bind(show.showSettings);
@@ -878,15 +965,29 @@ namespace QPlayer.ViewModels
                 if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
                     OnPropertyChanged(nameof(WindowTitle));
             };
+
             for (int i = 0; i < Math.Min(showFile.columnWidths.Count, ColumnWidths.Count); i++)
                 ColumnWidths[i].Value = showFile.columnWidths[i];
+
             Cues.Clear();
-            foreach (Cue c in showFile.cues)
+            for (int i = 0; i < showFile.cues.Count; i++)
             {
-                var vm = CueViewModel.FromModel(c, this);
-                vm.Bind(c);
-                Cues.Add(vm);
+                ProgressBoxViewModel.Progress = (i+1) / (float)showFile.cues.Count;
+                ProgressBoxViewModel.Message = $"Loading cues... ({i+1}/{showFile.cues.Count})";
+                Dispatcher.Yield();
+                Cue c = showFile.cues[i];
+                try
+                {
+                    var vm = CueViewModel.FromModel(c, this);
+                    vm.Bind(c);
+                    Cues.Add(vm);
+                } 
+                catch (Exception ex)
+                {
+                    Log($"Error occurred while trying to create cue from save file! {ex.Message}\n{ex}", LogLevel.Error);
+                }
             }
+
             OnPropertyChanged(nameof(SelectedCue));
             oscManager.ConnectOSC();
             OpenAudioDevice();
@@ -934,7 +1035,7 @@ namespace QPlayer.ViewModels
                 }
             }
             ProjectSettings.ToModel(showFile.showSettings);
-            showFile.columnWidths = ColumnWidths.Select(x => x.Value).ToList();
+            showFile.columnWidths = [.. ColumnWidths.Select(x => x.Value)];
             showFile.fileFormatVersion = ShowFile.FILE_FORMAT_VERSION;
         }
 
@@ -943,6 +1044,13 @@ namespace QPlayer.ViewModels
             Log($"Loading project from: {path}");
             try
             {
+                syncContext.Send(_ =>
+                {
+                    ProgressBoxViewModel.Message = "Loading project... (Deserializing)";
+                    ProgressBoxViewModel.Progress = 0.2f;
+                    Dispatcher.Yield();
+                }, null);
+
                 using var f = File.OpenRead(path);
                 ShowFile showFile;
                 try
@@ -966,7 +1074,9 @@ namespace QPlayer.ViewModels
 
                 syncContext.Send(_ =>
                 {
+                    persistantDataManager.AddRecentFile(path);
                     ProjectFilePath = path;
+                    Dispatcher.Yield();
                     LoadShowfileModel(showFile);
                 }, null);
 
@@ -976,6 +1086,11 @@ namespace QPlayer.ViewModels
             {
                 Log($"Couldn't load project from disk. Trying to load {path} \n  failed with: {e}", LogLevel.Warning);
             }
+
+            syncContext.Send(_ =>
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
+            }, null);
         }
 
         private async Task SerializeShowFile(Stream stream)
@@ -988,6 +1103,12 @@ namespace QPlayer.ViewModels
             try
             {
                 Log("Saving project...");
+                syncContext.Send(_ =>
+                {
+                    ProgressBoxViewModel.Message = "Saving project...";
+                    ProgressBoxViewModel.Progress = 0.1f;
+                    ProgressBoxViewModel.Visible = Visibility.Visible;
+                }, null);
                 // For now, this method can't be trusted on other threads, let run on the main thread.
                 // Chances are this method is being called from the main thread anyway, so it shouldn't
                 // make a difference.
@@ -998,6 +1119,11 @@ namespace QPlayer.ViewModels
                         EnsureShowfileModelSync();
                     }, null);
                 }
+
+                syncContext.Send(_ =>
+                {
+                    ProgressBoxViewModel.Progress = 0.5f;
+                }, null);
 
                 using var f = File.OpenWrite(path);
                 f.SetLength(0);
@@ -1025,6 +1151,11 @@ namespace QPlayer.ViewModels
             {
                 Log($"Couldn't save project to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
             }
+
+            syncContext.Send(_ =>
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
+            }, null);
         }
 
         public void SaveProject(string path)
@@ -1032,7 +1163,13 @@ namespace QPlayer.ViewModels
             try
             {
                 Log("Saving project...");
+                ProgressBoxViewModel.Message = "Saving project...";
+                ProgressBoxViewModel.Progress = 0.1f;
+                ProgressBoxViewModel.Visible = Visibility.Visible;
+
                 EnsureShowfileModelSync();
+
+                ProgressBoxViewModel.Progress = 0.5f;
 
                 using var f = File.OpenWrite(path);
                 f.SetLength(0);
@@ -1053,6 +1190,147 @@ namespace QPlayer.ViewModels
             {
                 Log($"Couldn't save project to disk. Trying to save {path} \n  failed with: {e}", LogLevel.Warning);
             }
+            ProgressBoxViewModel.Visible = Visibility.Hidden;
+        }
+
+        /// <summary>
+        /// Saves the project and copies all of it's referenced files to the given directory.
+        /// </summary>
+        /// <param name="path">The directory to pack the project into.</param>
+        public void PackProject(string path)
+        {
+            try
+            {
+                Log("Packing project...");
+                syncContext.Send(_ =>
+                {
+                    ProgressBoxViewModel.Message = "Packing project...";
+                    ProgressBoxViewModel.Progress = 0.1f;
+                    ProgressBoxViewModel.Visible = Visibility.Visible;
+                }, null);
+
+                if (!Directory.Exists(path))
+                    Directory.CreateDirectory(path);
+                string projPath = Path.Combine(path, $"{Path.GetFileName(path)}.qproj");
+
+                // Saving the project should result in all paths being re-resolved as the ViewModel->Model sync occurs
+                // While this happens, we capture a list of each path being resolved so we can pack them later.
+                captureResolvedPaths = [];
+                //SaveProject(path);
+                syncContext.Send(_ =>
+                {
+                    EnsureShowfileModelSync();
+                }, null);
+
+                string mediaDir = Path.Combine(path, "Media");
+                Directory.CreateDirectory(mediaDir);
+                packedPaths = [];
+
+                var pathsDistinct = captureResolvedPaths.Where(x=>!string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
+                captureResolvedPaths = null;
+                Dictionary<string, List<(string expanded, string captured)>> expandedPaths = [];
+                foreach (var capturedPath in pathsDistinct)
+                {
+                    var expanded = ResolvePath(capturedPath, true);
+                    var fileName = Path.GetFileName(expanded);
+                    if (!expandedPaths.TryGetValue(fileName, out var expandedList))
+                    {
+                        expandedList = [(expanded, capturedPath)];
+                        expandedPaths.Add(fileName, expandedList);
+                    }
+                    else
+                    {
+                        expandedList.Add((expanded, capturedPath));
+                    }
+                }
+
+                Log("Copying media...");
+                int nCaptured = pathsDistinct.Length;
+                var sep = Path.DirectorySeparatorChar;
+                foreach (var (fileName, expandedList) in expandedPaths)
+                {
+                    if (expandedList.Count > 1)
+                    {
+                        // Remove the common sub-path for files with the same name (but in different directories)
+                        var first = expandedList[0].expanded.AsSpan();
+                        int trim;
+                        for (trim = 0; trim < first.Length;)
+                        {
+                            int nextEnd = first[trim..].IndexOf(sep);
+                            if (nextEnd == -1)
+                                goto SubPathFound;
+                            nextEnd += trim;
+                            var compare = first[trim..nextEnd];
+                            for (int i = 1; i < expandedList.Count; i++)
+                            {
+                                if (!expandedList[i].expanded.AsSpan()[trim..nextEnd].SequenceEqual(compare))
+                                    goto SubPathFound;
+                            }
+                            trim = nextEnd + 1;
+                        }
+                    SubPathFound:
+                        foreach (var expanded in expandedList.DistinctBy(x=>x.captured))
+                        {
+                            var dst = Path.Combine(mediaDir, expanded.expanded[trim..]);
+                            Log($"  copying {expanded.expanded}...", LogLevel.Debug);
+                            syncContext.Post(_ =>
+                            {
+                                ProgressBoxViewModel.Message = $"Copying media... ({packedPaths.Count+1}/{nCaptured})";
+                                ProgressBoxViewModel.Progress = packedPaths.Count / (float)nCaptured;
+                                ProgressBoxViewModel.Visible = Visibility.Visible;
+                            }, null);
+                            File.Copy(expanded.expanded, dst, true);
+
+                            // Store the new path in a lookup
+                            packedPaths.TryAdd(expanded.captured, Path.GetRelativePath(path, dst));
+                        }
+                    } 
+                    else
+                    {
+                        // Just a single file with this name, copy it to the root
+                        var dst = Path.Combine(mediaDir, fileName);
+                        Log($"  copying {fileName}...", LogLevel.Debug);
+                        syncContext.Post(_ =>
+                        {
+                            ProgressBoxViewModel.Message = $"Copying media... ({packedPaths.Count+1}/{nCaptured})";
+                            ProgressBoxViewModel.Progress = packedPaths.Count / (float)nCaptured;
+                            ProgressBoxViewModel.Visible = Visibility.Visible;
+                        }, null);
+                        File.Copy(expandedList[0].expanded, dst, true);
+
+                        // Store the new path in a lookup
+                        packedPaths.TryAdd(expandedList[0].captured, Path.GetRelativePath(path, dst));
+                    }
+                }
+
+                syncContext.Send(_ =>
+                {
+                    ProgressBoxViewModel.Message = $"Saving packed project...";
+                    ProgressBoxViewModel.Progress = 1;
+                    ProgressBoxViewModel.Visible = Visibility.Visible;
+                }, null);
+
+                // Resave the project, applying all the modified paths, this will be
+                // done automatically by the path resolver using the packedPaths dict
+                // we just made.
+                SaveProject(projPath);
+
+                Log($"Successfully packed {packedPaths.Count} media files into '{path}'");
+            }
+            catch (Exception e)
+            {
+                Log($"Couldn't pack project to disk. Trying to pack into {path} \n  failed with: {e}", LogLevel.Warning);
+            }
+
+            // Reset these when not packing a project
+            captureResolvedPaths = null;
+            packedPaths = null;
+            syncContext.Send(_ =>
+            {
+                ProgressBoxViewModel.Visible = Visibility.Collapsed;
+                ProgressBoxViewModel.Message = string.Empty;
+                ProgressBoxViewModel.Progress = 0;
+            }, null);
         }
 
         public CueViewModel? CreateCue(string? type)

@@ -1,6 +1,7 @@
 ﻿using ColorPicker.Models;
 using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
+using PropertyChanged;
 using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.Utilities;
@@ -140,10 +141,11 @@ namespace QPlayer.ViewModels
         [Reactive] public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
             && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
 
+        // Suppress warnings, this property will have it's notifications handled by the implementor.
         /// <summary>
         /// The duration of this cue, as received from a remote node.
         /// </summary>
-        public virtual TimeSpan RemoteDuration { set { } }
+        [SuppressPropertyChangedWarnings] public virtual TimeSpan RemoteDuration { set { } }
         #endregion
 
         public event EventHandler? OnCompleted;
@@ -154,7 +156,7 @@ namespace QPlayer.ViewModels
         protected Cue? cueModel;
         protected MainViewModel? mainViewModel;
         protected Timer goTimer;
-        private SolidColorBrush colourBrush;
+        private readonly SolidColorBrush colourBrush;
 
         public CueViewModel(MainViewModel mainViewModel)
         {
@@ -384,7 +386,7 @@ namespace QPlayer.ViewModels
                 CueType.TimeCodeCue => TimeCodeCueViewModel.FromModel(cue, mainViewModel),
                 CueType.StopCue => StopCueViewModel.FromModel(cue, mainViewModel),
                 CueType.VolumeCue => VolumeCueViewModel.FromModel(cue, mainViewModel),
-                _ => throw new ArgumentException(null, nameof(cue.type)),
+                _ => throw new ArgumentException($"Unknown cue type '{cue.type}'!"),
             };
             viewModel.mainViewModel = mainViewModel;
 
