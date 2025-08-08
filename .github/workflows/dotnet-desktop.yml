@@ -34,8 +34,8 @@ jobs:
       uses: thedoctor0/zip-release@0.7.6
       with:
         type: zip
-        filename: QPlayer-release.zip
-        path: publish/
+        filename: ../QPlayer-release.zip
+        directory: publish/
   
     # Upload the build artifacts
     - name: Upload build artifacts
