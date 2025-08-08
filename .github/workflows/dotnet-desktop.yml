@@ -9,73 +9,40 @@ on:
 jobs:
 
   build:
-
-    strategy:
-      matrix:
-        configuration: [Release]
-
-    runs-on: windows-latest  # For a list of available runner types, refer to
-                             # https://help.github.com/en/actions/reference/workflow-syntax-for-github-actions#jobsjob_idruns-on
-
+    runs-on: ubuntu-latest
     env:
-      Solution_Name: QPlayer                                    # Replace with your solution name, i.e. MyWpfApp.sln.
-      Project_Directory: QPlayer                            # Replace with the Wap project directory relative to the solution, i.e. MyWpfApp.Package.
-      Project_Path: QPlayer/QPlayer.csproj                  # Replace with the path to your Wap project, i.e. MyWpf.App.Package\MyWpfApp.Package.wapproj.
+        EnableWindowsTargeting: true
 
     steps:
-    - name: Checkout
-      uses: actions/checkout@v3
+    - uses: actions/checkout@v3
+    - name: Setup .NET
+      uses: actions/setup-dotnet@v2
       with:
-        fetch-depth: 0
+        dotnet-version: 8.0.x
 
-    # Install the .NET Core workload
-    - name: Install .NET Core
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: 6.0.x
+    - name: Restore
+      working-directory: ${{ github.workspace }}
+      run: dotnet restore QPlayer/QPlayer.csproj
 
-    # Add  MSBuild to the PATH: https://github.com/microsoft/setup-msbuild
-    - name: Setup MSBuild.exe
-      uses: microsoft/setup-msbuild@v1.0.2
-
-    # Execute all unit tests in the solution
-    # - name: Execute unit tests
-    #   run: dotnet test
-
-    # Restore the application to populate the obj folder with RuntimeIdentifiers
-    - name: Restore the application
-      run: msbuild $env:Solution_Name /t:Restore /p:Configuration=$env:Configuration
-      env:
-        Configuration: ${{ matrix.configuration }}
-
-    # Create the app package by building and packaging the Windows Application Packaging project
-    - name: Create the app package
-      run: msbuild $env:Project_Path /p:Configuration=$env:Configuration /p:PublishProfile=$env:PublishProfileDir /p:PublishDir="publish/" /target:publish
-      env:
-        PublishProfileDir: "/QPlayer/Properties/PublishProfiles/ClickOnceProfile.pubxml"
-        Configuration: ${{ matrix.configuration }}
-
-    # Sign the assembly
-    - name: Sign the assembly
-      uses: GabrielAcostaEngler/signtool-code-sign@main
-      with:
-        certificate: '${{ secrets.Base64_Encoded_Pfx }}'
-        cert-password: '${{ secrets.Pfx_Key }}'
-        cert-sha1: '${{ secrets.PFX_HASH }}'
-        folder: '${{ env.Project_Directory }}\publish'
-        timestamp-server: 'http://timestamp.digicert.com'
-        recursive: true
+    - name: Build
+      shell: bash
+      working-directory: ${{ github.workspace }}
+      run: dotnet build -o "publish/" -r win-x64 --no-self-contained --no-restore --configuration Release QPlayer/QPlayer.csproj
 
     # Compress build artifacts
     - name: Compress build artifacts
-      run: Compress-Archive $env:Project_Directory\publish\* -DestinationPath $env:Project_Directory\QPlayer-release.zip
-
+      uses: thedoctor0/zip-release@0.7
+      with:
+        type: zip
+        filename: QPlayer-release.zip
+        path: publish/
+  
     # Upload the build artifacts
     - name: Upload build artifacts
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: ReleaseBinaries
-        path: ${{ env.Project_Directory }}\QPlayer-release.zip
+        path: QPlayer-release.zip
 
   create-release:
     needs: build
@@ -86,7 +53,7 @@ jobs:
 
     steps:
       - name: Download release binaries
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ReleaseBinaries
       - uses: "marvinpinto/action-automatic-releases@latest"
