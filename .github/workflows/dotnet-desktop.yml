@@ -31,7 +31,7 @@ jobs:
 
     # Compress build artifacts
     - name: Compress build artifacts
-      uses: thedoctor0/zip-release@0.7
+      uses: thedoctor0/zip-release@0.7.6
       with:
         type: zip
         filename: QPlayer-release.zip
