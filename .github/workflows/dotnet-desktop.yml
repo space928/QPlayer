@@ -22,7 +22,7 @@ jobs:
 
     - name: Restore
       working-directory: ${{ github.workspace }}
-      run: dotnet restore QPlayer/QPlayer.csproj
+      run: dotnet restore -r win-x64 QPlayer/QPlayer.csproj
 
     - name: Build
       shell: bash
