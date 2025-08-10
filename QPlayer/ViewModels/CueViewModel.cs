@@ -10,6 +10,7 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Linq;
+using System.Text;
 using System.Threading;
 using System.Windows.Media;
 using Cue = QPlayer.Models.Cue;
@@ -127,6 +128,8 @@ namespace QPlayer.ViewModels
                 return colourBrush;
             }
         }
+        [Reactive][ReactiveDependency(nameof(Type))] 
+        public string TypeName => CueTypeToString(Type);
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
@@ -404,6 +407,30 @@ namespace QPlayer.ViewModels
             viewModel.LoopCount = cue.loopCount;
 
             return viewModel;
+        }
+
+        public static string CueTypeToString(CueType type)
+        {
+            StringBuilder sb = new(type.ToString());
+            bool wasCapital = false;
+            for (int i = 1; i < sb.Length; i++)
+            {
+                char c = sb[i];
+                if (char.IsUpper(c))
+                {
+                    if (!wasCapital)
+                    {
+                        sb.Insert(i, ' ');
+                        i++;
+                    }
+                    wasCapital = true;
+                } 
+                else
+                {
+                    wasCapital = false;
+                }
+            }
+            return sb.ToString();
         }
     }
 }

@@ -7,7 +7,7 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
-        Title="QPlayer - About" Height="300" Width="350" 
+        Title="QPlayer - About" Height="350" Width="400" 
         Style="{DynamicResource CustomWindowStyle}" 
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen" 
         Icon="{StaticResource IconImage}">
@@ -17,12 +17,12 @@
             <ColumnDefinition Width="*"/>
         </Grid.ColumnDefinitions>
         <Image Source="{StaticResource IconImage}" Grid.Column="0" HorizontalAlignment="Left" Height="100" VerticalAlignment="Top" Width="100" MouseDown="Image_MouseDown"/>
-        <StackPanel Grid.Column="1" Margin="5,0,0,0">
-            <Label Content="QPlayer" FontSize="30" FontFamily="Segoe UI Semilight"/>
-            <Label Content="{Binding VersionString}"/>
-            <Label Content="{Binding CopyrightString}"/>
-            <TextBlock Margin="5" FontSize="10" Text="QPlayer is free software, released under the GPLv3 License" TextWrapping="WrapWithOverflow"/>
-            <ScrollViewer VerticalScrollBarVisibility="Auto">
+        <DockPanel Grid.Column="1" Margin="5,0,0,0" LastChildFill="True">
+            <Label Content="QPlayer" FontSize="30" FontFamily="Segoe UI Semilight" DockPanel.Dock="Top"/>
+            <Label Content="{Binding VersionString}" DockPanel.Dock="Top"/>
+            <Label Content="{Binding CopyrightString}" DockPanel.Dock="Top"/>
+            <TextBlock Margin="5" FontSize="10" Text="QPlayer is free software, released under the GPLv3 License" TextWrapping="WrapWithOverflow" DockPanel.Dock="Top"/>
+            <ScrollViewer VerticalScrollBarVisibility="Visible" DockPanel.Dock="Top">
                 <StackPanel>
                     <TextBlock TextWrapping="WrapWithOverflow" FontSize="10" Opacity="0.8" Margin="5,0,0,0">
                         <Run>Icons by Font Awesome, CC-BY-4.0 License</Run><LineBreak/>
@@ -39,14 +39,17 @@
                         <Hyperlink NavigateUri="https://github.com/PixiEditor/ColorPicker" RequestNavigate="Hyperlink_RequestNavigate">
                             https://github.com/PixiEditor/ColorPicker
                         </Hyperlink><LineBreak/>
+                        <LineBreak/>
                         <Run>Uses CommunityToolkit.Mvvm, MIT License</Run><LineBreak/>
                         <Hyperlink NavigateUri="https://github.com/CommunityToolkit/dotnet" RequestNavigate="Hyperlink_RequestNavigate">
                             https://github.com/CommunityToolkit/dotnet
                         </Hyperlink><LineBreak/>
+                        <LineBreak/>
                         <Run>Uses StarDust.RugOsc.netstandard, MIT License</Run><LineBreak/>
                         <Hyperlink NavigateUri="https://github.com/dust63/StarDust.RugOsc.netstandard" RequestNavigate="Hyperlink_RequestNavigate">
                             https://github.com/dust63/StarDust.RugOsc.netstandard
                         </Hyperlink><LineBreak/>
+                        <LineBreak/>
                         <Run>Full list of used packages is available on GitHub.</Run><LineBreak/>
                         <Hyperlink NavigateUri="https://github.com/space928/QPlayer/blob/main/QPlayer/QPlayer.csproj" RequestNavigate="Hyperlink_RequestNavigate">
                             https://github.com/space928/QPlayer
@@ -54,6 +57,6 @@
                     </TextBlock>
                 </StackPanel>
             </ScrollViewer>
-        </StackPanel>
+        </DockPanel>
     </Grid>
 </Window>

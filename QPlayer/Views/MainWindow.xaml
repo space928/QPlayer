@@ -9,7 +9,7 @@
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
-        Title="{Binding WindowTitle}" Height="500" Width="900" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
+        Title="{Binding WindowTitle}" Height="700" Width="1200" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
         Closed="Window_Closed" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
@@ -116,9 +116,9 @@
         <!--#endregion-->
         <Grid Grid.Row="1">
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="150" MinWidth="20"/>
+                <ColumnDefinition Width="200" MinWidth="20"/>
                 <ColumnDefinition Width="*" MinWidth="20"/>
-                <ColumnDefinition Width="250" MinWidth="20"/>
+                <ColumnDefinition Width="300" MinWidth="20"/>
             </Grid.ColumnDefinitions>
             <!--#region Left Column-->
             <Grid x:Name="LeftColumn" Grid.Column="0">
@@ -171,11 +171,12 @@
                            FontWeight="Bold" Margin="5,0,0,0"/>
                     <DockPanel>
                         <Label Content="Preload Time"/>
-                        <TextBox Text="{Binding PreloadTime, 
-                                        Converter={StaticResource TimeSpanStringConverter}, 
-                                        ConverterParameter=False,
-                                        UpdateSourceTrigger=Default}" 
-                                 DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2"
+                                         Text="{Binding PreloadTime, 
+                                                Converter={StaticResource TimeSpanStringConverter}, 
+                                                ConverterParameter=False,
+                                                UpdateSourceTrigger=Default}" 
+                                         DockPanel.Dock="Right" Margin="8,2,2,2"/>
                     </DockPanel>
                     <Button Content="Preload Cue" Command="{Binding PreloadCommand}" Margin="2" ToolTip="Loads the selected cue to given time"/>
                 </StackPanel>

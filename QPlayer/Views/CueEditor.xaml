@@ -15,23 +15,23 @@
     </UserControl.Resources>
     <StackPanel>
         <Label Content="Cue Information" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <DockPanel>
+        <DockPanel ToolTip="The numeric (decimal) ID number for this cue, this should be unique to this cue and sequential within the cue stack. This is also reffered to as a 'QID'.">
             <Label Content="Cue ID"/>
             <local:TextField Text="{Binding QID, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="A short name to identify the cue in the cue stack.">
             <Label Content="Cue Name"/>
             <local:TextField Text="{Binding Name, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="A longer description of this cue.">
             <Label Content="Description"/>
             <TextBox Text="{Binding Description, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2" Height="60" AcceptsReturn="True" TextWrapping="WrapWithOverflow"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="The colour to display next to this cue in the cue stack for organisational purposes.">
             <Label Content="Colour"/>
             <colorpicker:PortableColorPicker ColorState="{Binding Colour, Mode=TwoWay}" Style="{StaticResource DefaultColorPickerStyle}" Margin="8,2,2,2" ShowAlpha="False"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="When remote control is enabled in the 'Project Settings' tab, this field specifies the name of the remote node which this cue controls.">
             <Label Content="Remote Node"/>
             <local:TextField Text="{Binding RemoteNode, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
             <!--<ComboBox ItemsSource="{Binding MainViewModel.ProjectSettings.RemoteNodes}" 
@@ -39,7 +39,7 @@
                       DisplayMemberPath="Name" SelectedValuePath="Name" 
                       IsEditable="True" IsReadOnly="False" IsSynchronizedWithCurrentItem="True"/>-->
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="When unticked, this cue will be disabled, which means it will be skipped when running the cue stack.">
             <Label Content="Enabled"/>
             <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
@@ -48,33 +48,33 @@
             <ComboBox SelectedValue="{Binding Type}" IsEnabled="False" ItemsSource="{Binding CueTypeVals}" Margin="8,2,2,2"/>
         </DockPanel>-->
         <Label Content="Timing" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <DockPanel>
+        <DockPanel ToolTip="When ticked, this cue is triggered with the GO button (or key). When unticked, this cue triggers with the previous cue.">
             <Label Content="Halt"/>
             <CheckBox IsChecked="{Binding Halt}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="How long the cue should wait after being triggered (by pressing GO) until it begins playback.">
             <Label Content="Wait"/>
             <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding Delay, 
             Converter={StaticResource TimeSpanStringConverter}, 
             ConverterParameter=False,
             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="The computed total duration of the cue. To set the duration for a particular cue, look in the properties specific to that cue type.">
             <Label Content="Duration"/>
             <local:TextField Text="{Binding Duration, 
             Converter={StaticResource TimeSpanStringConverter},
             ConverterParameter=False,
             Mode=OneWay}" IsEnabled="False" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="Whether this cue should automatically loop after being triggered.">
             <Label Content="Loop"/>
             <ComboBox SelectedItem="{Binding LoopMode}" ItemsSource="{Binding LoopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel>
+        <DockPanel ToolTip="If this cue is set to loop, specifies how many times the cue should loop before ending.">
             <Label Content="Loop Count"/>
             <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.2" Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <Label Content="{Binding Type}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <Label Content="{Binding TypeName}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
         <ContentControl Content="{Binding}">
             <ContentControl.Resources>
                 <DataTemplate DataType="{x:Type vm:DummyCueViewModel}">
@@ -85,14 +85,14 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:SoundCueViewModel}">
                     <StackPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="The sound file this cue should play.">
                             <Label Content="Media File"/>
                             <Button Content="..." Width="30" Command="{Binding OpenMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
                             <local:TextField Text="{Binding Path}" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <local:WaveForm Height="80" WaveFormRenderer="{Binding WaveForm}" SoundCue="{Binding}"/>
-                        <DockPanel>
-                            <Label Content="Start Time" ToolTip="The time in the sound file to start playing from."/>
+                        <local:WaveForm Height="80" Margin="0,2" WaveFormRenderer="{Binding WaveForm}" SoundCue="{Binding}"/>
+                        <DockPanel ToolTip="The time in the sound file to start playing from.">
+                            <Label Content="Start Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding StartTime, 
                             Converter={StaticResource TimeSpanStringConverter}, 
                             ConverterParameter=False,
@@ -105,7 +105,7 @@
                             ConverterParameter=False,
                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="The playback volume of this cue. A value of 1 represents the sound file's full scale volume.">
                             <Label Content="Volume"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.05" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding Volume, UpdateSourceTrigger=Default}" Width="50" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                             <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
@@ -115,15 +115,15 @@
                                 TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
                                 LargeChange="0.1" SmallChange="0.01"/>
                         </DockPanel>
-                        <DockPanel ToolTip="Fade in time in seconds">
+                        <DockPanel ToolTip="Fade in time in seconds.">
                             <Label Content="Fade In Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeIn, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="Fade out time in seconds">
+                        <DockPanel ToolTip="Fade out time in seconds.">
                             <Label Content="Fade Out Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeOut, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                        <DockPanel ToolTip="The type of curve to use when fading the volume.">
                             <Label Content="Fade Type"/>
                             <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
@@ -131,14 +131,14 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:TimeCodeCueViewModel}">
                     <StackPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="The timecode value this cue should start at.">
                             <Label Content="Start Time"/>
                             <TextBox Text="{Binding StartTime, 
                             Converter={StaticResource TimeSpanStringConverter},
                             ConverterParameter=True,
                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="The total duration of this timecode cue.">
                             <Label Content="Duration"/>
                             <TextBox Text="{Binding TCDuration, 
                             Converter={StaticResource TimeSpanStringConverter}, 
@@ -149,19 +149,19 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:StopCueViewModel}">
                     <StackPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="The 'Cue ID' of the cue to be stopped when this cue is triggered.">
                             <Label Content="Target Q ID"/>
                             <local:TextField Text="{Binding StopTarget, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="Specifies how the target cue should be stopped.">
                             <Label Content="Stop Mode"/>
                             <ComboBox SelectedItem="{Binding StopMode}" ItemsSource="{Binding StopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="Fade out time in seconds">
+                        <DockPanel ToolTip="Fade out time in seconds.">
                             <Label Content="Fade Out Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeOutTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The type of curve to use when fading out">
+                        <DockPanel ToolTip="The type of curve to use when fading out.">
                             <Label Content="Fade Type"/>
                             <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
@@ -169,19 +169,19 @@
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:VolumeCueViewModel}">
                     <StackPanel>
-                        <DockPanel>
+                        <DockPanel ToolTip="The 'Cue ID' of the sound cue to adjust the volume of when this cue is triggered.">
                             <Label Content="Target Q ID"/>
                             <local:TextField Text="{Binding Target, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The volume to fade to">
+                        <DockPanel ToolTip="The volume to fade to.">
                             <Label Content="Volume"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.05" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding Volume, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="Fade time in seconds">
+                        <DockPanel ToolTip="Fade time in seconds.">
                             <Label Content="Fade Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The type of curve to use when fading the volume">
+                        <DockPanel ToolTip="The type of curve to use when fading the volume.">
                             <Label Content="Fade Type"/>
                             <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>

@@ -266,6 +266,22 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         NavBarTranslate.X += delta.x * panSpeed / width;
     }
 
+    private void Graph_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        if (Graph.ActualWidth <= 0)
+            return;
+
+        var pos = e.GetPosition(this);
+        var x = pos.X / Graph.ActualWidth;
+        var t = x * WaveFormRenderer.ViewSpan + WaveFormRenderer.ViewStart;
+
+        var scue = WaveFormRenderer.SoundCueViewModel;
+        //if (scue.State == CueState.Playing)
+        //scue.Preload(t);
+        scue.Go();
+        scue.PlaybackTime = t;
+    }
+
     private void NavBar_Loaded(object sender, RoutedEventArgs e)
     {
         window = Window.GetWindow(this);
