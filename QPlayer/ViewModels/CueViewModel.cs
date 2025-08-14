@@ -89,7 +89,7 @@ namespace QPlayer.ViewModels
         [Reactive] public string Name { get; set; } = string.Empty;
         [Reactive] public string Description { get; set; } = string.Empty;
         [Reactive] public string RemoteNode { get; set; } = string.Empty;
-        [Reactive] public bool Halt { get; set; }
+        [Reactive] public TriggerMode Trigger { get; set; }
         [Reactive] public bool Enabled { get; set; } = true;
         [Reactive] public TimeSpan Delay { get; set; }
         [Reactive] public virtual TimeSpan Duration { get; }
@@ -129,7 +129,7 @@ namespace QPlayer.ViewModels
             }
         }
         [Reactive][ReactiveDependency(nameof(Type))] 
-        public string TypeName => CueTypeToString(Type);
+        public string TypeName => EnumToString(Type);
 
         [Reactive] public RelayCommand GoCommand { get; private set; }
         [Reactive] public RelayCommand PauseCommand { get; private set; }
@@ -140,6 +140,7 @@ namespace QPlayer.ViewModels
         [Reactive] public static ObservableCollection<LoopMode>? LoopModeVals { get; private set; }
         [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
         [Reactive] public static ObservableCollection<FadeType>? FadeTypeVals { get; private set; }
+        [Reactive] public static ObservableCollection<string>? TriggerModeVals { get; private set; }
 
         [Reactive] public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
             && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
@@ -160,6 +161,7 @@ namespace QPlayer.ViewModels
         protected MainViewModel? mainViewModel;
         protected Timer goTimer;
         private readonly SolidColorBrush colourBrush;
+        private CueViewModel? waitCue;
 
         public CueViewModel(MainViewModel mainViewModel)
         {
@@ -182,8 +184,12 @@ namespace QPlayer.ViewModels
             LoopModeVals ??= new ObservableCollection<LoopMode>(Enum.GetValues<LoopMode>());
             StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
             FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
+            TriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<TriggerMode>().Select(x=>EnumToString(x)));
         }
 
+        /// <summary>
+        /// This method is invoked by QPlayer when this cue is selected in the inspector.
+        /// </summary>
         internal virtual void OnFocussed()
         {
 
@@ -211,8 +217,21 @@ namespace QPlayer.ViewModels
         /// <summary>
         /// Starts this cues after it's delay has elapsed.
         /// </summary>
-        public virtual void DelayedGo()
+        /// <param name="waitForCue">Optionally, a cue to wait for it's <see cref="OnCompleted"/> event before starting this cue.</param>
+        public virtual void DelayedGo(CueViewModel? waitForCue = null)
         {
+            if (waitForCue != null && waitForCue.Duration != TimeSpan.Zero)
+            {
+                State = CueState.Delay;
+                // Unregister the previous waiter, if it's still set
+                if (waitCue != null)
+                    waitCue.OnCompleted -= WaitCueOnCompleteHandler;
+                // Start waiting for this cue to complete
+                waitCue = waitForCue;
+                waitForCue.OnCompleted += WaitCueOnCompleteHandler;
+                return;
+            }
+
             if (Delay == TimeSpan.Zero)
             {
                 Go();
@@ -225,6 +244,17 @@ namespace QPlayer.ViewModels
 
             if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
                 mainViewModel?.ActiveCues.Add(this);
+        }
+
+        private void WaitCueOnCompleteHandler(object? sender, EventArgs args)
+        {
+            if (sender is not CueViewModel waitCue)
+                return; // Should never happen...
+            
+            waitCue.OnCompleted -= WaitCueOnCompleteHandler;
+            this.waitCue = null;
+
+            DelayedGo();
         }
 
         /// <summary>
@@ -276,6 +306,12 @@ namespace QPlayer.ViewModels
         /// </summary>
         internal void StopInternal()
         {
+            if (waitCue != null)
+            {
+                // This cue has been stopped/cancelled, stop waiting for the wait cue.
+                waitCue.OnCompleted -= WaitCueOnCompleteHandler;
+                waitCue = null;
+            }    
             goTimer.Stop();
             State = CueState.Ready;
             mainViewModel?.ActiveCues.Remove(this);
@@ -349,7 +385,7 @@ namespace QPlayer.ViewModels
                 case nameof(Name): cueModel.name = Name; break;
                 case nameof(Description): cueModel.description = Description; break;
                 case nameof(RemoteNode): cueModel.remoteNode = RemoteNode; break;
-                case nameof(Halt): cueModel.halt = Halt; break;
+                case nameof(Trigger): cueModel.trigger = Trigger; break;
                 case nameof(Enabled): cueModel.enabled = Enabled; break;
                 case nameof(Delay): cueModel.delay = Delay; break;
                 case nameof(LoopMode): cueModel.loopMode = LoopMode; break;
@@ -370,7 +406,7 @@ namespace QPlayer.ViewModels
             cue.name = Name;
             cue.description = Description;
             cue.remoteNode = RemoteNode;
-            cue.halt = Halt;
+            cue.trigger = Trigger;
             cue.enabled = Enabled;
             cue.delay = Delay;
             cue.loopMode = LoopMode;
@@ -400,7 +436,7 @@ namespace QPlayer.ViewModels
             viewModel.Name = cue.name;
             viewModel.Description = cue.description;
             viewModel.RemoteNode = cue.remoteNode;
-            viewModel.Halt = cue.halt;
+            viewModel.Trigger = cue.trigger;
             viewModel.Enabled = cue.enabled;
             viewModel.Delay = cue.delay;
             viewModel.LoopMode = cue.loopMode;
@@ -409,7 +445,7 @@ namespace QPlayer.ViewModels
             return viewModel;
         }
 
-        public static string CueTypeToString(CueType type)
+        public static string EnumToString<T>(T type) where T : Enum
         {
             StringBuilder sb = new(type.ToString());
             bool wasCapital = false;

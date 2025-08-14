@@ -11,7 +11,7 @@ namespace QPlayer.Models;
 [Serializable]
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 3;
+    public const int FILE_FORMAT_VERSION = 4;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
     public ShowSettings showSettings = new();
@@ -84,6 +84,13 @@ public enum StopMode
     LoopEnd
 }
 
+public enum TriggerMode
+{
+    Go,
+    WithLast,
+    AfterLast
+}
+
 [Serializable]
 [JsonPolymorphic(IgnoreUnrecognizedTypeDiscriminators = true, UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
 [JsonDerivedType(typeof(Cue), typeDiscriminator: nameof(Cue))]
@@ -101,7 +108,8 @@ public record Cue
     public SerializedColour colour = SerializedColour.Black;
     public string name = string.Empty;
     public string description = string.Empty;
-    public bool halt = true;
+    //public bool halt = true;
+    public TriggerMode trigger = TriggerMode.Go;
     public bool enabled = true;
     public TimeSpan delay;
     public LoopMode loopMode;

@@ -6,6 +6,7 @@
     </ResourceDictionary.MergedDictionaries>
     <ImageSource x:Key="IconImage">../Resources/Icon.ico</ImageSource>
 
+    <DrawingImage x:Key="IconBlank"/>
     <DrawingImage x:Key="IconPlay" Drawing="{StaticResource Icon_play_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconPause" Drawing="{StaticResource Icon_pause_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconStop" Drawing="{StaticResource Icon_stop_solidDrawingGroup}"/>
@@ -23,4 +24,7 @@
     <DrawingImage x:Key="IconOneShot" Drawing="{StaticResource Icon_arrow_right_long_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconLoop" Drawing="{StaticResource Icon_rotate_solidDrawingGroup}"/>
     <DrawingImage x:Key="IconHoldLast" Drawing="{StaticResource Icon_arrow_right_to_bracket_solidDrawingGroup}"/>
+
+    <DrawingImage x:Key="IconWithLast" Drawing="{StaticResource Icon_arrow_turn_left_solid_fullDrawingGroup}"/>
+    <DrawingImage x:Key="IconAfterLast" Drawing="{StaticResource Icon_arrow_turn_left_wait_solid_fullDrawingGroup}"/>
 </ResourceDictionary>

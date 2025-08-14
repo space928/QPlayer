@@ -155,12 +155,11 @@ namespace QPlayer.ViewModels
         public MSCManager MSCManager => mscManager;
         public PersistantDataManager PersistantDataManager => persistantDataManager;
 
-        public static readonly string AUTOBACK_PATH = "autoback.qproj";
-
         private int selectedCueInd = 0;
         private ShowFile showFile;
         private List<string>? captureResolvedPaths;
         private Dictionary<string, string>? packedPaths;
+        private int autoBackInd = 0;
         private static ObservableCollection<string> logList = [];
         private static LogWindow? logWindow;
         private static RemoteNodesWindow? remoteNodesWindow;
@@ -212,6 +211,9 @@ namespace QPlayer.ViewModels
             LogList = logList;
             Log("Starting QPlayer...");
             Log("  Copyright Thomas Mathieson 2025");
+
+            //foreach (FontFamily fontFamily in Fonts.GetFontFamilies(new Uri("pack://application:,,,/"), "./Resources/"))
+            //    Log($"Found embedded font: {fontFamily.Source}", LogLevel.Debug);
 
             syncContext = SynchronizationContext.Current ?? new();
             audioPlaybackManager = new(this);
@@ -324,9 +326,9 @@ namespace QPlayer.ViewModels
 
             showFile = new();
             LoadShowfileModel(showFile);
-            CreateCue(CueType.GroupCue, afterLast: true);
+            /*CreateCue(CueType.GroupCue, afterLast: true);
             CreateCue(CueType.SoundCue, afterLast: true);
-            CreateCue(CueType.TimeCodeCue, afterLast: true);
+            CreateCue(CueType.TimeCodeCue, afterLast: true);*/
 
             using var ms = new MemoryStream();
             SerializeShowFile(ms).Wait();
@@ -337,6 +339,15 @@ namespace QPlayer.ViewModels
             //OpenAudioDevice();
             oscManager.SubscribeOSC();
             mscManager.SubscribeMSC();
+
+            var args = Environment.GetCommandLineArgs();
+            if (args.Length > 1)
+            {
+                if (File.Exists(args[1]))
+                {
+                    OpenSpecificProjectExecute(args[1]);
+                }
+            }
         }
 
         public void OnExit()
@@ -382,7 +393,9 @@ namespace QPlayer.ViewModels
 
         private void AutoSave(object? sender, ElapsedEventArgs e)
         {
-            SaveProjectAsync(AUTOBACK_PATH, false, false).ContinueWith((_) => Log($"Autosaved project to '{AUTOBACK_PATH}'."));
+            string path = Path.Combine(persistantDataManager.AutoBackDir, $"autoback{autoBackInd + 1}.qproj");
+            autoBackInd = (autoBackInd + 1) % 5;
+            SaveProjectAsync(path, false, false).ContinueWith((_) => Log($"Autosaved project to '{path}'."));
         }
 
         #region Commands
@@ -466,7 +479,7 @@ namespace QPlayer.ViewModels
             {
                 Dispatcher.Yield();
                 Task.Run(() => OpenProject(openFileDialog.FileName));
-            } 
+            }
             else
             {
                 ProgressBoxViewModel.Visible = Visibility.Collapsed;
@@ -489,7 +502,7 @@ namespace QPlayer.ViewModels
             {
                 Dispatcher.Yield();
                 Task.Run(() => OpenProject(path));
-            } 
+            }
             else
             {
                 ProgressBoxViewModel.Visible = Visibility.Collapsed;
@@ -575,12 +588,38 @@ namespace QPlayer.ViewModels
             //Log($"[Playback Debugging] Go command started! {dbg_cueStartTime:HH:mm:ss.ffff}");
             MeasureProfiler.StartCollectingData("Go Execute");
 
-            do
+            // Get the cue to run
+            var cue = SelectedCue;
+            if (cue == null)
+                return;
+
+            CueViewModel? waitCue = null;
+            int i = SelectedCueInd;
+
+            while (true)
             {
-                if (SelectedCue?.Enabled ?? false)
-                    SelectedCue.DelayedGo();
-                SelectedCueInd += 1;
-            } while ((!SelectedCue?.Halt ?? false) || (!SelectedCue?.Enabled ?? false));
+                // If this cue is enabled, run it
+                if (cue.Enabled)
+                    cue.DelayedGo(waitCue);
+
+                i++;
+                if (i >= Cues.Count) break;
+
+                // Look at the next cue in the stack to determine if we should keep executing cues.
+                var next = Cues[i];
+                if (next == null)
+                    break;
+
+                if (next.Enabled)
+                {
+                    if (next.Trigger == TriggerMode.Go)
+                        break;
+                    else if (next.Trigger == TriggerMode.AfterLast)
+                        waitCue = cue;
+                }
+                cue = next;
+            }
+            SelectedCueInd = i;
         }
 
         public void PauseExecute()
@@ -972,8 +1011,8 @@ namespace QPlayer.ViewModels
             Cues.Clear();
             for (int i = 0; i < showFile.cues.Count; i++)
             {
-                ProgressBoxViewModel.Progress = (i+1) / (float)showFile.cues.Count;
-                ProgressBoxViewModel.Message = $"Loading cues... ({i+1}/{showFile.cues.Count})";
+                ProgressBoxViewModel.Progress = (i + 1) / (float)showFile.cues.Count;
+                ProgressBoxViewModel.Message = $"Loading cues... ({i + 1}/{showFile.cues.Count})";
                 Dispatcher.Yield();
                 Cue c = showFile.cues[i];
                 try
@@ -981,7 +1020,7 @@ namespace QPlayer.ViewModels
                     var vm = CueViewModel.FromModel(c, this);
                     vm.Bind(c);
                     Cues.Add(vm);
-                } 
+                }
                 catch (Exception ex)
                 {
                     Log($"Error occurred while trying to create cue from save file! {ex.Message}\n{ex}", LogLevel.Error);
@@ -1226,7 +1265,7 @@ namespace QPlayer.ViewModels
                 Directory.CreateDirectory(mediaDir);
                 packedPaths = [];
 
-                var pathsDistinct = captureResolvedPaths.Where(x=>!string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
+                var pathsDistinct = captureResolvedPaths.Where(x => !string.IsNullOrWhiteSpace(x)).Distinct().ToArray();
                 captureResolvedPaths = null;
                 Dictionary<string, List<(string expanded, string captured)>> expandedPaths = [];
                 foreach (var capturedPath in pathsDistinct)
@@ -1269,13 +1308,13 @@ namespace QPlayer.ViewModels
                             trim = nextEnd + 1;
                         }
                     SubPathFound:
-                        foreach (var expanded in expandedList.DistinctBy(x=>x.captured))
+                        foreach (var expanded in expandedList.DistinctBy(x => x.captured))
                         {
                             var dst = Path.Combine(mediaDir, expanded.expanded[trim..]);
                             Log($"  copying {expanded.expanded}...", LogLevel.Debug);
                             syncContext.Post(_ =>
                             {
-                                ProgressBoxViewModel.Message = $"Copying media... ({packedPaths.Count+1}/{nCaptured})";
+                                ProgressBoxViewModel.Message = $"Copying media... ({packedPaths.Count + 1}/{nCaptured})";
                                 ProgressBoxViewModel.Progress = packedPaths.Count / (float)nCaptured;
                                 ProgressBoxViewModel.Visible = Visibility.Visible;
                             }, null);
@@ -1284,7 +1323,7 @@ namespace QPlayer.ViewModels
                             // Store the new path in a lookup
                             packedPaths.TryAdd(expanded.captured, Path.GetRelativePath(path, dst));
                         }
-                    } 
+                    }
                     else
                     {
                         // Just a single file with this name, copy it to the root
@@ -1292,7 +1331,7 @@ namespace QPlayer.ViewModels
                         Log($"  copying {fileName}...", LogLevel.Debug);
                         syncContext.Post(_ =>
                         {
-                            ProgressBoxViewModel.Message = $"Copying media... ({packedPaths.Count+1}/{nCaptured})";
+                            ProgressBoxViewModel.Message = $"Copying media... ({packedPaths.Count + 1}/{nCaptured})";
                             ProgressBoxViewModel.Progress = packedPaths.Count / (float)nCaptured;
                             ProgressBoxViewModel.Visible = Visibility.Visible;
                         }, null);

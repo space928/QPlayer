@@ -13,6 +13,7 @@
     </ResourceDictionary.MergedDictionaries>
     <util:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
     <util:GreaterThanConverter x:Key="GreaterThanConverter"/>
+    <util:TriggerModeConverter x:Key="TriggerModeConverter"/>
     <DataTemplate x:Key="GroupIconTemplate" DataType="bool">
         <Rectangle/>
     </DataTemplate>
@@ -42,7 +43,7 @@
     </DataTemplate>
     
     <DataTemplate x:Key="CueTypeTemplate" DataType="model:CueType">
-        <Image x:Name="IconImg" Source="{StaticResource IconPlay}" MaxHeight="20" VerticalAlignment="Center">
+        <Image x:Name="IconImg" Source="{StaticResource IconPlay}" MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
             <Image.ToolTip>
                 <ToolTip Content="{Binding Mode=OneWay}"/>
             </Image.ToolTip>
@@ -70,7 +71,7 @@
     </DataTemplate>
 
     <DataTemplate x:Key="LoopModeTemplate" DataType="model:LoopMode">
-        <Image x:Name="IconImg" Source="{StaticResource IconStop}" MaxHeight="20" VerticalAlignment="Center">
+        <Image x:Name="IconImg" Source="{StaticResource IconStop}" MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
             <Image.ToolTip>
                 <ToolTip Content="{Binding Mode=OneWay}"/>
             </Image.ToolTip>
@@ -84,6 +85,25 @@
             </DataTrigger>
             <DataTrigger Binding="{Binding}" Value="{x:Static model:LoopMode.OneShot}">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconOneShot}"/>
+            </DataTrigger>
+        </DataTemplate.Triggers>
+    </DataTemplate>
+
+    <DataTemplate x:Key="TriggerModeTemplate" DataType="model:TriggerMode">
+        <Image x:Name="IconImg" Source="{StaticResource IconBlank}" MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
+            <Image.ToolTip>
+                <ToolTip Content="{Binding Mode=OneWay}"/>
+            </Image.ToolTip>
+        </Image>
+        <DataTemplate.Triggers>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:TriggerMode.Go}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconBlank}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:TriggerMode.WithLast}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconWithLast}"/>
+            </DataTrigger>
+            <DataTrigger Binding="{Binding}" Value="{x:Static model:TriggerMode.AfterLast}">
+                <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconAfterLast}"/>
             </DataTrigger>
         </DataTemplate.Triggers>
     </DataTemplate>

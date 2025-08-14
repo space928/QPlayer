@@ -17,10 +17,12 @@ public class PersistantDataManager : ObservableObject
     private const int MAX_RECENT_FILES = 10;
 
     private string? dataDir;
+    private string? autoBackDir;
 
     private readonly ObservableCollection<RecentFile> recentFiles = [];
 
     public ObservableCollection<RecentFile> RecentFiles => recentFiles;
+    public string AutoBackDir => autoBackDir ?? string.Empty;
 
     public PersistantDataManager()
     {
@@ -37,6 +39,8 @@ public class PersistantDataManager : ObservableObject
 
             dataDir = Path.Combine(appdata, "QPlayer");
             Directory.CreateDirectory(dataDir);
+            autoBackDir = Path.Combine(dataDir, "Autobackup");
+            Directory.CreateDirectory(AutoBackDir);
         }
         catch (Exception ex)
         {

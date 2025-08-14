@@ -43,14 +43,10 @@
             <Label Content="Enabled"/>
             <CheckBox IsChecked="{Binding Enabled}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <!--<DockPanel>
-            <Label Content="Type"/>
-            <ComboBox SelectedValue="{Binding Type}" IsEnabled="False" ItemsSource="{Binding CueTypeVals}" Margin="8,2,2,2"/>
-        </DockPanel>-->
         <Label Content="Timing" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <DockPanel ToolTip="When ticked, this cue is triggered with the GO button (or key). When unticked, this cue triggers with the previous cue.">
-            <Label Content="Halt"/>
-            <CheckBox IsChecked="{Binding Halt}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        <DockPanel ToolTip="How this cue should be triggered. The default option of 'Go' triggers the cue when it is selected and the GO button is pressed. The 'With Previous' and 'After Previous' options allow this cue to automatically follow the previous cue(s).">
+            <Label Content="Trigger"/>
+            <ComboBox SelectedIndex="{Binding Trigger, Converter={StaticResource TriggerModeConverter}}" ItemsSource="{Binding TriggerModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <DockPanel ToolTip="How long the cue should wait after being triggered (by pressing GO) until it begins playback.">
             <Label Content="Wait"/>

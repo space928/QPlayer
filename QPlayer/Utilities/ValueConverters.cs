@@ -6,6 +6,7 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows;
+using QPlayer.Models;
 
 namespace QPlayer.Utilities;
 
@@ -70,10 +71,26 @@ public class TimeSpanStringConverter : IValueConverter
 
     public static bool ConvertBack(string value, out TimeSpan result, bool useHours = false)
     {
+        if (int.TryParse(value, out var intSeconds))
+        {
+            // Default to parsing an int as seconds instead of as minutes.
+            result = TimeSpan.FromSeconds(intSeconds);
+            return true;
+        }
+
         if (useHours)
-            return TimeSpan.TryParse(value, out result);
-        else
-            return TimeSpan.TryParse($"00:{value}", out result);
+            if (TimeSpan.TryParse(value, out result))
+                return true;
+        if (TimeSpan.TryParse($"00:{value}", out result))
+            return true;
+        // Couldn't parse a full timespan string, try parsing a number of seconds
+        if (double.TryParse(value, out var seconds))
+        {
+            result = TimeSpan.FromSeconds(seconds);
+            return true;
+        }
+
+        return false;
     }
 }
 
@@ -102,5 +119,19 @@ public class MultiplyByConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
     {
         return DependencyProperty.UnsetValue;
+    }
+}
+
+[ValueConversion(typeof(TriggerMode), typeof(int))]
+public class TriggerModeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (int)(TriggerMode)value;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (TriggerMode)(int)value;
     }
 }

@@ -138,6 +138,8 @@ public class ShowFileConverter
         // When the file format version is upgrade chain new format upgraders here.
         if (showFile.fileFormatVersion < 3)
             UpgradeV2ToV3(showFile, json);
+        if (showFile.fileFormatVersion < 4)
+            UpgradeV3ToV4(showFile, json);
     }
 
     private static void UpgradeV2ToV3(ShowFile showFile, JsonDocument json)
@@ -189,7 +191,7 @@ public class ShowFileConverter
                                 {
                                     case "R":
                                         if (colField.Value.TryGetByte(out var r))
-                                            col.r = r / 255f; 
+                                            col.r = r / 255f;
                                         break;
                                     case "G":
                                         if (colField.Value.TryGetByte(out var g))
@@ -207,6 +209,52 @@ public class ShowFileConverter
                             }
                         }
                         cue.colour = col;
+                        break;
+                }
+            }
+        }
+    }
+
+    private static void UpgradeV3ToV4(ShowFile showFile, JsonDocument json)
+    {
+        MainViewModel.Log($"Upgrading show file from V3 to V4...", MainViewModel.LogLevel.Info);
+
+        if (json.RootElement.ValueKind != JsonValueKind.Object)
+            return;
+
+        foreach (var field in json.RootElement.EnumerateObject())
+        {
+            switch (field.Name)
+            {
+                case nameof(ShowFile.cues):
+                    if (field.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        int i = 0;
+                        foreach (var cue in field.Value.EnumerateArray())
+                        {
+                            if (cue.ValueKind == JsonValueKind.Object)
+                            {
+                                var cueLoaded = showFile.cues[i];
+                                UpgradeCue(cueLoaded, cue);
+                                i++;
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+
+        static void UpgradeCue(Cue cue, JsonElement json)
+        {
+            foreach (var field in json.EnumerateObject())
+            {
+                switch (field.Name)
+                {
+                    case "halt":
+                        if (field.Value.ValueKind == JsonValueKind.True)
+                            cue.trigger = TriggerMode.Go;
+                        else if (field.Value.ValueKind == JsonValueKind.False)
+                            cue.trigger = TriggerMode.WithLast;
                         break;
                 }
             }
@@ -282,6 +330,15 @@ public class ShowFileConverter
                     fld.SetValue(cue, obj);
                 }
                 catch { }
+            }
+            switch (jsonProp.Name)
+            {
+                case "halt":
+                    if (jsonProp.Value.ValueKind == JsonValueKind.True)
+                        cue.trigger = TriggerMode.Go;
+                    else if (jsonProp.Value.ValueKind == JsonValueKind.False)
+                        cue.trigger = TriggerMode.WithLast;
+                    break;
             }
         }
 

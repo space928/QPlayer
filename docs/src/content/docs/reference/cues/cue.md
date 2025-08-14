@@ -54,7 +54,37 @@ after pressing GO.
 
 ## Timing
 
-### Halt
+### Trigger
+
+Specifies what triggers the start of this cue. The following options are available:
+ - **Go** (default) -- This cue is triggered by pressing the GO button.
+ - **With Previous** -- This cue triggers at the same time as the previous cue.
+ - **After Previous** -- This cue triggers after the previous cue has completed. (If 
+                         the previous cue is stopped before it finishes, then this cue 
+                         won't run)
+
+The 'With Previous' trigger mode can be applied to multiple consecutive cues to have 
+them all start at once. Additionally, if a 'After Previous' cues can be chained to start 
+one after the other.
+
+Consider a more complex example:
+
+| QID | Name        | Trigger        |
+|-----|-------------|----------------|
+| 1   | Music       | Go             |
+| 2   | Other Music | After Previous |
+| 2.1 | Sound FX    | With Previous  |
+| 3   | Final FX    | After Previous |
+| 3.1 | Stop Music  | With Previous  |
+| 4   | Exit Music  | Go             |
+
+In this case (given that the first cue is selected), the following happens when we press GO:
+ - GO -> Cue 1 is fired
+ - When Cue 1 completes -> Cues 2 and 2.1 are fired
+ - When Cue 2.1 completes -> Cues 3 and 3.1 are fired
+ - GO -> Cue 4 is fired
+
+### *Halt (Legacy)*
 
 When disabled, this cue is triggered with the previous cue when it is started. 
 When the GO button is pressed, the selected cue is triggered as well as all 

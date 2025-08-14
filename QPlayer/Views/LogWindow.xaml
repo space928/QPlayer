@@ -20,6 +20,6 @@
             <Button Content="Save To Disk" Padding="10, 2" Margin="4,0,0,0" Click="SaveToDiskButton_Click"/>
             <CheckBox Content="Scroll To Bottom" IsChecked="True" Margin="4,0,0,0" x:Name="ScrollToBottomCheckbox" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
         </StackPanel>
-        <ListBox ItemsSource="{Binding LogList}" FontSize="11" FontFamily="Cascadia Mono" x:Name="LogListBox" Grid.Row="1" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"/>
+        <ListBox ItemsSource="{Binding LogList}" FontSize="11" FontFamily="{StaticResource CascadiaMono}" x:Name="LogListBox" Grid.Row="1" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged"/>
     </Grid>
 </Window>

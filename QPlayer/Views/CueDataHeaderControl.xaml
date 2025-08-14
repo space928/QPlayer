@@ -32,7 +32,7 @@
         <Label Content="Playback" Grid.Column="3"/>
         <Label Content="Name" Grid.Column="4"/>
         <Label Content="Enabled" Grid.Column="5"/>
-        <Label Content="Halt" Grid.Column="6"/>
+        <Label Content="Trigger" Grid.Column="6"/>
         <Label Content="Wait" Grid.Column="7"/>
         <Label Content="Duration" Grid.Column="8"/>
         <Label Content="Loop Mode" Grid.Column="9"/>

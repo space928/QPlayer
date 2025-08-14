@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.8.10</Version>
+    <Version>1.9.2</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
 	<Copyright>©️ Thomas Mathieson 2025</Copyright>
@@ -19,6 +19,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="Resources\CascadiaMono-Regular.ttf" />
     <None Remove="Resources\IconM.png" />
     <None Remove="Resources\Icons\arrow-right-long-solid.svg" />
     <None Remove="Resources\Icons\circle-solid.svg" />
@@ -39,6 +40,7 @@
   </ItemGroup>
 
   <ItemGroup>
+	<Resource Include="Resources\CascadiaMono-Regular.ttf" />
     <Resource Include="Resources\Icon.ico" />
     <Resource Include="Resources\Icons\arrow-right-long-solid.svg" />
     <Resource Include="Resources\Icons\circle-solid.svg" />
