@@ -1,5 +1,5 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
+import { defineConfig, passthroughImageService } from 'astro/config';
 import starlight from '@astrojs/starlight';
 import starlightAutoSidebar from 'starlight-auto-sidebar';
 import starlightGiscus from 'starlight-giscus';
@@ -9,6 +9,16 @@ import starlightKbd from 'starlight-kbd'
 export default defineConfig({
 	site: 'https://space928.github.io',
 	base: '/QPlayer',
+	image: {
+		service: passthroughImageService()/* {
+			entrypoint: 'astro/assets/services/sharp',
+			config: {
+				limitInputPixels: false,
+				format: 'png',
+				quality: 'max'
+			},
+		},*/
+	},
 	integrations: [
 		starlight({
 			title: 'QPlayer Documentation',
