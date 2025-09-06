@@ -16,6 +16,7 @@ using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using QPlayer.Models;
+using QPlayer.Utilities;
 
 namespace QPlayer.ViewModels;
 
@@ -47,6 +48,29 @@ public class WaveFormRenderer : ObservableObject
         get => height;
         set { var prev = height; height = (int)value; if (prev != value) InternalUpdate(); }
     }
+    public (double width, double height) Size
+    {
+        get => (width, height);
+        set
+        {
+            int widthI = (int)value.width;
+            int heightI = (int)value.height;
+
+            bool shouldUpdate = false;
+            if (width != widthI)
+            {
+                width = widthI;
+                shouldUpdate = true;
+            }
+            if (height != heightI)
+            {
+                height = heightI;
+                shouldUpdate = true;
+            }
+            if (shouldUpdate)
+                InternalUpdate();
+        }
+    }
     [Reactive]
     public TimeSpan ViewStart
     {
@@ -58,6 +82,23 @@ public class WaveFormRenderer : ObservableObject
     {
         get => TimeSpan.FromSeconds(endTime * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
         set { endTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); InternalUpdate(); }
+    }
+    // This property exists for users which need to set both the start and end times at tthe same time without triggering two separate renders.
+    [Reactive]
+    public (TimeSpan start, TimeSpan end) ViewBounds
+    {
+        get
+        {
+            float len = (peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1);
+            return (TimeSpan.FromSeconds(startTime * len), TimeSpan.FromSeconds(endTime * len));
+        }
+        set
+        {
+            float len = (peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1);
+            startTime = Math.Clamp(((float)value.start.TotalSeconds) / len, 0, 1);
+            endTime = Math.Clamp(((float)value.end.TotalSeconds) / len, 0, 1);
+            InternalUpdate();
+        }
     }
     [Reactive]
     public TimeSpan ViewSpan => TimeSpan.FromSeconds((endTime - startTime) * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
@@ -136,6 +177,8 @@ public class WaveFormRenderer : ObservableObject
         drawingGroup.Children.Add(geometryDrawingPeak);
         drawingGroup.Children.Add(geometryDrawingRMS);
         drawingGroup.ClipGeometry = clipGeometry;
+        /*using var ctx = drawingGroup.Open();
+        ctx.DrawGeometry();*/
 
         SoundCueViewModel = soundCue;
 
@@ -211,8 +254,8 @@ public class WaveFormRenderer : ObservableObject
 
         peakPoly.Points.Clear();
         rmsPoly.Points.Clear();
-        peakPoly.Points.Add(peakPoints);
-        rmsPoly.Points.Add(rmsPoints);
+        peakPoly.Points.AddRange(peakPoints);
+        rmsPoly.Points.AddRange(rmsPoints);
 
         OnPropertyChanged(nameof(WaveFormDrawing));
     }

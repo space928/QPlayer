@@ -63,6 +63,7 @@ namespace QPlayer.ViewModels
         [Reactive] public ObservableCollection<CueViewModel> ActiveCues { get; set; }
         [Reactive] public ObservableCollection<ObservableStruct<float>> ColumnWidths { get; set; }
         [Reactive] public ObservableCollection<CueViewModel> DraggingCues { get; set; }
+        [Reactive] public bool EnableAutosave { get; set; } = true;
 
         [Reactive] public ProjectSettingsViewModel ProjectSettings { get; private set; }
 
@@ -155,6 +156,7 @@ namespace QPlayer.ViewModels
         public MSCManager MSCManager => mscManager;
         public PersistantDataManager PersistantDataManager => persistantDataManager;
 
+        private volatile bool fastUpdateInProgress;
         private int selectedCueInd = 0;
         private ShowFile showFile;
         private List<string>? captureResolvedPaths;
@@ -172,10 +174,12 @@ namespace QPlayer.ViewModels
             AllowTrailingCommas = true,
             WriteIndented = true,
         };
+        private readonly Timer fastUpdateTimer;
         private readonly Timer slowUpdateTimer;
         private readonly Timer autosaveTimer;
         private readonly AudioPlaybackManager audioPlaybackManager;
         private readonly SynchronizationContext syncContext;
+        private readonly Dispatcher dispatcher;
         private readonly Dictionary<decimal, CueViewModel> cuesDict;
         private readonly OSCManager oscManager;
         private readonly MSCManager mscManager;
@@ -216,6 +220,7 @@ namespace QPlayer.ViewModels
             //    Log($"Found embedded font: {fontFamily.Source}", LogLevel.Debug);
 
             syncContext = SynchronizationContext.Current ?? new();
+            dispatcher = Dispatcher.CurrentDispatcher;
             audioPlaybackManager = new(this);
             oscManager = new(this);
             mscManager = new(this);
@@ -250,6 +255,11 @@ namespace QPlayer.ViewModels
             UpCommand = new(() => SelectedCueInd--);
             DownCommand = new(() => SelectedCueInd++);
             PreloadCommand = new(PreloadExecute);
+
+            fastUpdateTimer = new(40);
+            fastUpdateTimer.AutoReset = true;
+            fastUpdateTimer.Elapsed += FastUpdate;
+            fastUpdateTimer.Start();
 
             slowUpdateTimer = new(TimeSpan.FromMilliseconds(250));
             slowUpdateTimer.AutoReset = true;
@@ -363,6 +373,40 @@ namespace QPlayer.ViewModels
             Log("Goodbye!");
         }
 
+        private void FastUpdate(object? sender, ElapsedEventArgs e)
+        {
+            // Skip this update if one is already in progress.
+            if (fastUpdateInProgress)
+                return;
+
+            fastUpdateInProgress = true;
+            dispatcher.Invoke(() =>
+            {
+                try
+                {
+                    fastUpdateInProgress = true;
+
+                    // Ask each active cue to update it's UI status if it needs too.
+                    // Reverse iterate the list, since cues can stop themselves. If a cue stops/starts another cue
+                    // during this iteration then a cue may be invoked twice/skipped. This is fine so long as we 
+                    // have eventual consistency.
+                    for (int i = ActiveCues.Count - 1; i >= 0; i--)
+                    {
+                        var cue = ActiveCues[i];
+                        cue.UpdateUIStatus();
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Log($"Error while updating cue status: {ex.Message}\n{ex}", LogLevel.Error);
+                }
+                finally
+                {
+                    fastUpdateInProgress = false;
+                }
+            }, DispatcherPriority.Background);
+        }
+
         private void SlowUpdate(object? sender, ElapsedEventArgs e)
         {
             OnPropertyChanged(nameof(Clock));
@@ -393,9 +437,12 @@ namespace QPlayer.ViewModels
 
         private void AutoSave(object? sender, ElapsedEventArgs e)
         {
-            string path = Path.Combine(persistantDataManager.AutoBackDir, $"autoback{autoBackInd + 1}.qproj");
-            autoBackInd = (autoBackInd + 1) % 5;
-            SaveProjectAsync(path, false, false).ContinueWith((_) => Log($"Autosaved project to '{path}'."));
+            if (EnableAutosave)
+            {
+                string path = Path.Combine(persistantDataManager.AutoBackDir, $"autoback{autoBackInd + 1}.qproj");
+                autoBackInd = (autoBackInd + 1) % 5;
+                SaveProjectAsync(path, false, false).ContinueWith((_) => Log($"Autosaved project to '{path}'."));
+            }
         }
 
         #region Commands

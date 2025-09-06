@@ -9,8 +9,12 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Numerics;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows;
+using System.Windows.Media;
+using Color = System.Drawing.Color;
 
 namespace QPlayer.Utilities;
 
@@ -104,19 +108,19 @@ public static partial class ExtensionMethods
     /// <param name="collection"></param>
     /// <param name="listGetter"></param>
     /// <param name="converter"></param>
-    public static void SyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter, 
+    public static void SyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter,
         Func<TCollection, TList> converter)
     {
         collection.CollectionChanged += (o, e) => ObservableCollectionChangedHandler(e, listGetter, converter);
     }
 
-    public static void UnSyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter, 
+    public static void UnSyncList<TCollection, TList>(this ObservableCollection<TCollection> collection, Func<IList<TList>?> listGetter,
         Func<TCollection, TList> converter)
     {
         collection.CollectionChanged -= (o, e) => ObservableCollectionChangedHandler(e, listGetter, converter);
     }
 
-    private static void ObservableCollectionChangedHandler<TCollection, TList>(NotifyCollectionChangedEventArgs e, 
+    private static void ObservableCollectionChangedHandler<TCollection, TList>(NotifyCollectionChangedEventArgs e,
         Func<IList<TList>?> listGetter, Func<TCollection, TList> converter)
     {
         var list = listGetter();
@@ -152,5 +156,51 @@ public static partial class ExtensionMethods
         // TODO: This is a hopelessly stupid way of doing this
         int ind = collection.IndexOf(obj);
         collection[ind] = collection[ind];
+    }
+
+    /*private static Func<PointCollection, IList<System.Windows.Point>>? pointCollectionBackingCollectionGetter = null;
+    private static Func<PointCollection, IList<System.Windows.Point>> PointCollectionBackingCollectionGetter
+    {
+        get
+        {
+            if (pointCollectionBackingCollectionGetter != null)
+                return pointCollectionBackingCollectionGetter;
+
+            var fld = typeof(PointCollection).GetField("_collection", System.Reflection.BindingFlags.Instance | System.Reflection.BindingFlags.NonPublic)!;
+            pointCollectionBackingCollectionGetter = pc => Unsafe.As<IList<System.Windows.Point>>(fld.GetValue(pc)!);
+            return pointCollectionBackingCollectionGetter;
+        }
+    }*/
+
+    /// <summary>
+    /// Efficiently adds a collection of points to the collection.
+    /// </summary>
+    /// <param name="collection"></param>
+    /// <param name="points"></param>
+    public static void AddRange(this PointCollection collection, IEnumerable<System.Windows.Point> points)
+    {
+        /*WritePreamble(collection);
+
+        var baseCollection = PointCollectionBackingCollectionGetter(collection);// GetCollection(collection);
+        foreach (var point in points)
+            baseCollection.Add(point);
+
+        GetSetVersion(collection)++;
+        WritePostscript(collection);*/
+
+        foreach (var point in points)
+            AddWithoutFiringPublicEvents(collection, point);
+        WritePostscript(collection);
+
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "AddWithoutFiringPublicEvents")]
+        static extern int AddWithoutFiringPublicEvents(PointCollection c, System.Windows.Point value);
+        //[UnsafeAccessor(UnsafeAccessorKind.Method, Name = "WritePreamble")]
+        //static extern void WritePreamble(Freezable c);
+        [UnsafeAccessor(UnsafeAccessorKind.Method, Name = "WritePostscript")]
+        static extern void WritePostscript(Freezable c);
+        //[UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_collection")]
+        //extern static ref IList<System.Windows.Point> GetCollection(PointCollection c);
+        //[UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_version")]
+        //extern static ref int GetSetVersion(PointCollection c);
     }
 }

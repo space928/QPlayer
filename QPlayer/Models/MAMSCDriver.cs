@@ -24,6 +24,8 @@ public class MAMSCDriver : IDisposable
 
     private UdpClient? mscReceiver;
     private UdpClient? mscSender;
+    private Thread? mscRXThread;
+    private CancellationTokenSource? mscRXThreadCancellation;
 
     private IPEndPoint? rxIP;
     private IPEndPoint? txIP;
@@ -53,7 +55,15 @@ public class MAMSCDriver : IDisposable
             mscSender = new(new IPEndPoint(nicAddress, 0));
             //oscSender.Connect(txIP);
 
-            Task.Run(MSCRXThread);
+            if (mscRXThread != null && mscRXThread.ThreadState == ThreadState.Running && mscRXThreadCancellation != null)
+            {
+                mscRXThreadCancellation.Cancel();
+            }
+            mscRXThreadCancellation?.Dispose();
+            mscRXThreadCancellation = new();
+            mscRXThread = new(MSCRXThread);
+            mscRXThread.Name = "MSC RX Thread";
+            mscRXThread.Start();
         }
         catch (Exception e)
         {
@@ -123,19 +133,20 @@ public class MAMSCDriver : IDisposable
         }
     }
 
-    private void MSCRXThread()
+    private async void MSCRXThread()
     {
         IPEndPoint? remoteEndPoint = null;
         IPEndPoint? endPointAny = new(IPAddress.Any, rxIP?.Port ?? 0);
         IPEndPoint? endPointAnyV6 = new(IPAddress.IPv6Any, rxIP?.Port ?? 0);
         var recvBuff = new byte[0x10000];
-        while (mscReceiver?.Client?.IsBound ?? false)
+        while (mscReceiver?.Client?.IsBound ?? false && !mscRXThreadCancellation.IsCancellationRequested)
         {
             try
             {
                 EndPoint tempRemoteEP = mscReceiver.Client.AddressFamily == AddressFamily.InterNetwork ? endPointAny : endPointAnyV6;
-                int received = mscReceiver.Client.ReceiveFrom(recvBuff, recvBuff.Length, SocketFlags.None, ref tempRemoteEP);
-                remoteEndPoint = (IPEndPoint)tempRemoteEP;
+                var res = await mscReceiver.Client.ReceiveFromAsync(new ArraySegment<byte>(recvBuff), tempRemoteEP, mscRXThreadCancellation?.Token ?? default);
+                int received = res.ReceivedBytes;
+                remoteEndPoint = (IPEndPoint)res.RemoteEndPoint;
 
                 if (!MAMSCPacket.TryRead(recvBuff.AsSpan(0, received), out var pkt))
                 {
@@ -160,7 +171,7 @@ public class MAMSCDriver : IDisposable
             }
             catch (SocketException e)
             {
-                if (e.SocketErrorCode == SocketError.Interrupted)
+                if (e.SocketErrorCode == SocketError.Interrupted || e.SocketErrorCode == SocketError.OperationAborted)
                     continue;
 
                 // TODO: For now, there are cases where this triggers a feedback loop of reconnecting to OSC

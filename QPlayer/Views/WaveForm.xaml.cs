@@ -38,6 +38,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
     [Reactive] public bool Enabled => waveFormWindow == null || waveFormWindow == window || waveFormWindow.DataContext != SoundCue;
     [Reactive] public Visibility WaveFormVisible => Enabled ? Visibility.Visible : Visibility.Hidden;
     [Reactive] public Visibility InvWaveFormVisible => Enabled ? Visibility.Hidden : Visibility.Visible;
+    [Reactive] public Visibility WaveFormLoading => (WaveFormRenderer?.PeakFile != null && Enabled) ? Visibility.Hidden : Visibility.Visible;
     [Reactive] public RelayCommand PopupCommand { get; private set; }
     [Reactive, ReactiveDependency(nameof(NavBarHeight))] public double TimeStampFontSize => NavBarHeight / 2;
     [Reactive]
@@ -156,9 +157,11 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
                 break;
             case nameof(vm.WaveFormRenderer.PeakFile):
                 vm.WaveForm_SizeChanged(vm, null);
+                vm.OnPropertyChanged(nameof(WaveFormLoading));
                 break;
             case WaveFormRenderer.OnVMUpdate:
                 vm.WaveForm_SizeChanged(sender, null);
+                vm.OnPropertyChanged(nameof(WaveFormLoading));
                 //vm.Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Background, () => vm.WaveForm_SizeChanged(sender, null));
                 break;
         }
@@ -171,8 +174,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         if (WaveFormRenderer == null)
             return;
 
-        WaveFormRenderer.Width = Graph.ActualWidth;
-        WaveFormRenderer.Height = Graph.ActualHeight;
+        WaveFormRenderer.Size = (Graph.ActualWidth, Graph.ActualHeight);
         OnPropertyChanged(nameof(PlaybackMarkerPos));
         UpdateTimePositions();
     }
@@ -189,8 +191,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         mouseStartPos.y -= 40;
 
         // There are still plenty of cases where these don't get propagated up to the renderer correctly, so we'll set it here too.
-        WaveFormRenderer.Width = Graph.ActualWidth;
-        WaveFormRenderer.Height = Graph.ActualHeight;
+        WaveFormRenderer.Size = (Graph.ActualWidth, Graph.ActualHeight);
     }
 
     private void WaveFormZoom_MouseUp(object sender, MouseButtonEventArgs e)
@@ -247,8 +248,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
             return;
 
         var wf = WaveFormRenderer;
-        var start = wf.ViewStart;
-        var end = wf.ViewEnd;
+        var (start, end) = wf.ViewBounds;
         var viewDelta = end - start;
         if (viewDelta.TotalSeconds < 0.05)
         {
@@ -257,10 +257,9 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
             delta.y = Math.Max(delta.y, 0); 
         }
         var width = Math.Max(RenderSize.Width, 10);
-        var zoom = viewDelta * delta.y * zoomSpeed / width;
-        var pan = viewDelta * delta.x * panSpeed / width;
-        wf.ViewStart = start - pan - zoom;
-        wf.ViewEnd = end - pan + zoom;
+        var zoom = delta.y * zoomSpeed / width;
+        var pan = delta.x * panSpeed / width;
+        wf.ViewBounds = (start - viewDelta * (pan + zoom), end - viewDelta * (pan - zoom));
 
         NavBarScale.ScaleX -= delta.y * zoomSpeed / width;
         NavBarTranslate.X += delta.x * panSpeed / width;
@@ -279,7 +278,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         //if (scue.State == CueState.Playing)
         //scue.Preload(t);
         scue.Go();
-        scue.PlaybackTime = t;
+        scue.PlaybackTime = t - scue.StartTime;
     }
 
     private void NavBar_Loaded(object sender, RoutedEventArgs e)
@@ -308,11 +307,13 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         if (waveFormWindow != null)
         {
             waveFormWindow.DataContext = SoundCue;
+            waveFormWindow.WindowState = WindowState.Normal;
             waveFormWindow.Activate();
             return;
         }
 
-        waveFormWindow = new();
+        waveFormWindow = new(SoundCue.MainViewModel, window.InputBindings);
+        waveFormWindow.Owner = window;
         waveFormWindow.DataContext = SoundCue;
         waveFormWindow.Closed += (s, e) =>
         {
@@ -321,10 +322,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(InvWaveFormVisible)));
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(Enabled)));
             if (WaveFormRenderer != null)
-            {
-                WaveFormRenderer.Width = Graph.ActualWidth;
-                WaveFormRenderer.Height = Graph.ActualHeight;
-            }
+                WaveFormRenderer.Size = (Graph.ActualWidth, Graph.ActualHeight);
         };
         window.Closed += (s, e) =>
         {
@@ -421,7 +419,6 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         }
 
         var start = WaveFormRenderer.ViewStart;
-        var end = WaveFormRenderer.ViewEnd;
         var span = WaveFormRenderer.ViewSpan;
         double left = (SoundCue.StartTime - start) / span;
         double right = (SoundCue.Duration + SoundCue.StartTime - start) / span;

@@ -14,6 +14,7 @@ using QPlayer.Audio;
 using CommunityToolkit.Mvvm.Input;
 using PropertyChanged;
 using QPlayer.Utilities;
+using System.Threading;
 
 namespace QPlayer.ViewModels;
 
@@ -30,12 +31,20 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public int SelectedAudioOutputDeviceIndex { get; set; }
 
     [Reactive] public static ObservableCollection<AudioOutputDriver>? AudioOutputDriverValues { get; private set; }
-    [Reactive, ReactiveDependency(nameof(AudioOutputDriver))]
+    [Reactive]
     public ObservableCollection<string> AudioOutputDevices
     {
         get
         {
-            audioOutputDevices = mainViewModel.AudioPlaybackManager.GetOutputDevices(AudioOutputDriver);
+            var sc = SynchronizationContext.Current;
+            mainViewModel.AudioPlaybackManager.GetOutputDevices(AudioOutputDriver).ContinueWith(x =>
+            {
+                if (x.Result.Zip(audioOutputDevices).Any(x => x.First.identifier != x.Second.identifier))
+                {
+                    audioOutputDevices = x.Result;
+                    sc?.Post(x => OnPropertyChanged(nameof(AudioOutputDevices)), null);
+                }
+            });
             return new(audioOutputDevices.Select(x => x.identifier));
         }
     }
@@ -79,7 +88,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         }
     }
 
-    private (object key, string identifier)[] audioOutputDevices = [];
+    private (object? key, string identifier)[] audioOutputDevices = [];
     private readonly MainViewModel mainViewModel;
     private ShowSettings? projectSettings;
     private readonly ObservableCollection<string> nics = [];
@@ -98,6 +107,17 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         {
             switch (e.PropertyName)
             {
+                case nameof(AudioOutputDriver):
+                    // Refresh the audio output devices asynchronously
+                    audioOutputDevices = [(null, string.Empty)];
+                    OnPropertyChanged(nameof(AudioOutputDevices));
+                    var sc = SynchronizationContext.Current;
+                    mainViewModel.AudioPlaybackManager.GetOutputDevices(AudioOutputDriver).ContinueWith(x =>
+                    {
+                        audioOutputDevices = x.Result;
+                        sc?.Post(x => OnPropertyChanged(nameof(AudioOutputDevices)), null);
+                    });
+                    break;
                 case nameof(AudioLatency):
                 case nameof(SelectedAudioOutputDeviceIndex):
                     if (SelectedAudioOutputDeviceIndex >= 0 && SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)

@@ -41,6 +41,9 @@
             <TextBlock Padding="2" Text="Waveform is being displayed in another window..." 
                        TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center"
                        Visibility="{Binding InvWaveFormVisible, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"/>
+            <TextBlock Padding="2" Text="Waveform loading..." 
+                       TextAlignment="Center" TextWrapping="Wrap" VerticalAlignment="Center"
+                       Visibility="{Binding WaveFormLoading, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"/>
             <Rectangle x:Name="Graph" SizeChanged="WaveForm_SizeChanged" MouseDown="Graph_MouseDown" Cursor="IBeam"
                        Visibility="{Binding WaveFormVisible, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}">
                 <Rectangle.Fill>
@@ -56,11 +59,15 @@
                     </DrawingBrush>
                 </Rectangle.Fill>
             </Rectangle>
-            <Button Content="[  ]" ToolTip="Open the waveform in a separate window."
+            <Button Content="[  ]"
                     Command="{Binding PopupCommand, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"
                     FontSize="6" Width="16" Height="16" Padding="0"
                     HorizontalAlignment="Right" VerticalAlignment="Top"
-                    VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
+                    VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                <Button.ToolTip>
+                    <ToolTip Content="Open the waveform in a separate window." FontSize="11" FontWeight="Medium"/>
+                </Button.ToolTip>
+            </Button>
             <Rectangle x:Name="PlaybackMarker" Width="10" HorizontalAlignment="Left" IsHitTestVisible="False"
                        Margin="{Binding PlaybackMarkerPos, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"
                        Visibility="{Binding WaveFormVisible, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}">

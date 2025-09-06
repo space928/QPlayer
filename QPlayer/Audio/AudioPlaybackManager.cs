@@ -5,6 +5,7 @@ using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -22,7 +23,7 @@ public enum AudioOutputDriver
 public class AudioPlaybackManager : IDisposable
 {
     private readonly MainViewModel mainViewModel;
-    private readonly MixingSampleProvider mixer;
+    private readonly MixerSampleProvider mixer;
     private readonly Dictionary<ISampleProvider, (ISampleProvider convertedStream, Action<ISampleProvider>? completedCallback)> activeChannels;
     private readonly ManualResetEventSlim deviceClosedEvent;
     private readonly SynchronizationContext? synchronizationContext;
@@ -41,7 +42,7 @@ public class AudioPlaybackManager : IDisposable
         deviceClosedEvent = new(false);
         // TODO: Expose sample rate, channel, and latency controls
         mixer = new(WaveFormat.CreateIeeeFloatWaveFormat(48000, 2));
-        mixer.ReadFully = true;
+        //mixer.ReadFully = true;
         mixer.MixerInputEnded += (o, e) =>
         {
             if (activeChannels.FirstOrDefault(x => x.Value.convertedStream == e.SampleProvider) is var channel)
@@ -86,6 +87,7 @@ public class AudioPlaybackManager : IDisposable
         // Wait for the device to finish playing...
         deviceClosedEvent.Wait(200);
         device?.Dispose();
+        device = null;
     }
 
     private void DevicePlaybackStopped(object? sender, StoppedEventArgs e)
@@ -109,35 +111,38 @@ public class AudioPlaybackManager : IDisposable
         deviceClosedEvent.Set();
     }
 
-    public (object key, string identifier)[] GetOutputDevices(AudioOutputDriver driver)
+    public async Task<(object? key, string identifier)[]> GetOutputDevices(AudioOutputDriver driver)
     {
-        switch (driver)
+        return await Task.Run(() =>
         {
-            case AudioOutputDriver.Wave:
-                return Enumerable.Range(0, WaveOut.DeviceCount).Select(x =>
-                {
-                    var caps = WaveOut.GetCapabilities(x);
-                    return ((object)x, $"{x}: {caps.ProductName} ({caps.Channels} channels) (Wave)");
-                }).ToArray();
-            case AudioOutputDriver.DirectSound:
-                return DirectSoundOut.Devices.Select(x =>
-                {
-                    return ((object)x.Guid, $"{x.Description} (DirectSound)");
-                }).ToArray();
-            case AudioOutputDriver.WASAPI:
-                var enumerator = new MMDeviceEnumerator();
-                return enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active).Select(x =>
-                {
-                    return ((object)x, $"{x.FriendlyName} {x.DeviceFriendlyName} (WASAPI)");
-                }).ToArray();
-            case AudioOutputDriver.ASIO:
-                return AsioOut.GetDriverNames().Select(x =>
-                {
-                    return ((object)x, $"{x} (ASIO)");
-                }).ToArray();
-            default:
-                return [];
-        }
+            switch (driver)
+            {
+                case AudioOutputDriver.Wave:
+                    return Enumerable.Range(0, WaveOut.DeviceCount).Select(x =>
+                    {
+                        var caps = WaveOut.GetCapabilities(x);
+                        return ((object?)x, $"{x}: {caps.ProductName} ({caps.Channels} channels) (Wave)");
+                    }).ToArray();
+                case AudioOutputDriver.DirectSound:
+                    return DirectSoundOut.Devices.Select(x =>
+                    {
+                        return ((object?)x.Guid, $"{x.Description} (DirectSound)");
+                    }).ToArray();
+                case AudioOutputDriver.WASAPI:
+                    var enumerator = new MMDeviceEnumerator();
+                    return enumerator.EnumerateAudioEndPoints(DataFlow.Render, DeviceState.Active).Select(x =>
+                    {
+                        return ((object?)x.ID, $"{x.FriendlyName} {x.DeviceFriendlyName} (WASAPI)");
+                    }).ToArray();
+                case AudioOutputDriver.ASIO:
+                    return AsioOut.GetDriverNames().Select(x =>
+                    {
+                        return ((object?)x, $"{x} (ASIO)");
+                    }).ToArray();
+                default:
+                    return [];
+            }
+        });
     }
 
     public void OpenOutputDevice(AudioOutputDriver driver, object? key, int desiredLatency = 40)
@@ -155,7 +160,7 @@ public class AudioPlaybackManager : IDisposable
             {
                 AudioOutputDriver.Wave => new WaveOutEvent() { DeviceNumber = (int)key, DesiredLatency = desiredLatency },
                 AudioOutputDriver.DirectSound => new DirectSoundOut((Guid)key, desiredLatency),
-                AudioOutputDriver.WASAPI => new WasapiOut((MMDevice)key, AudioClientShareMode.Shared, true, desiredLatency),
+                AudioOutputDriver.WASAPI => new WasapiOut(new MMDeviceEnumerator().GetDevice((string)key), AudioClientShareMode.Shared, true, desiredLatency),
                 AudioOutputDriver.ASIO => new AsioOut((string)key),
                 _ => throw new NotImplementedException($"Unsupported audio driver '{driver}'!"),
             };
@@ -270,5 +275,22 @@ public class AudioPlaybackManager : IDisposable
         foreach (var channel in activeChannels)
             channel.Value.completedCallback?.Invoke(channel.Key);
         activeChannels.Clear();
+    }
+}
+
+public static partial class AVRTLib
+{
+    [LibraryImport("avrt")]
+    internal static partial nint AvSetMmThreadCharacteristicsW([MarshalAs(UnmanagedType.LPWStr)] string taskName, ref int taskIndex);
+    [LibraryImport("avrt")]
+    [return: MarshalAs(UnmanagedType.Bool)]
+    internal static partial bool AvSetMmThreadPriority(nint AvrtHandle, AVRT_PRIORITY Priority);
+
+    public enum AVRT_PRIORITY : int
+    {
+        AVRT_PRIORITY_NORMAL = 0,
+        AVRT_PRIORITY_CRITICAL = 2,
+        AVRT_PRIORITY_HIGH = 1,
+        AVRT_PRIORITY_LOW = -1,
     }
 }

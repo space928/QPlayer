@@ -17,17 +17,10 @@ namespace QPlayer.ViewModels
         [Reactive] public float FadeTime { get; set; }
         [Reactive] public FadeType FadeType { get; set; }
 
-        private readonly Timer playbackProgressUpdater;
         private DateTime startTime;
 
         public VolumeCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
-            playbackProgressUpdater = new Timer
-            {
-                AutoReset = true,
-                Interval = 100
-            };
-            playbackProgressUpdater.Elapsed += PlaybackProgressUpdater_Elapsed;
             PropertyChanged += (o, e) =>
             {
                 switch (e.PropertyName)
@@ -41,13 +34,11 @@ namespace QPlayer.ViewModels
             };
         }
 
-        private void PlaybackProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
+        internal override void UpdateUIStatus()
         {
             PlaybackTime = DateTime.Now.Subtract(startTime);
             if (PlaybackTime >= Duration)
-            {
-                synchronizationContext?.Post(x => Stop(), null);
-            }
+                Stop();
         }
 
         public override void Go()
@@ -56,7 +47,6 @@ namespace QPlayer.ViewModels
             // Volume cues don't support preloading
             PlaybackTime = TimeSpan.Zero;
             startTime = DateTime.Now;
-            playbackProgressUpdater.Start();
             var cue = mainViewModel?.Cues.FirstOrDefault(x => x.QID == Target);
             if(cue != null)
             {
@@ -73,7 +63,6 @@ namespace QPlayer.ViewModels
         public override void Stop()
         {
             base.Stop();
-            playbackProgressUpdater.Stop();
             PlaybackTime = TimeSpan.Zero;
         }
 

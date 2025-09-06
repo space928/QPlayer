@@ -17,6 +17,8 @@ internal class FadingSampleProvider : ISampleProvider
     private FadeState state;
     private long fadeTime;
     private long fadeDuration;
+    private long maxDuration;
+    private long processedSamples;
     private float startVolume = 1;
     private float endVolume = 1;
     private FadeType fadeType;
@@ -35,10 +37,30 @@ internal class FadingSampleProvider : ISampleProvider
 
     public WaveFormat WaveFormat => source.WaveFormat;
 
+    /// <summary>
+    /// The initial volume of the samples processed.
+    /// </summary>
     public float Volume
     {
         get => startVolume;
         set => startVolume = value;
+    }
+
+    /// <summary>
+    /// The maximum number of samples provided by this sample provider.
+    /// </summary>
+    public long MaxDuration
+    {
+        get => maxDuration;
+        set => maxDuration = value;
+    }
+
+    /// <summary>
+    /// Resets the sample provider's internal sample counter for the purpose of limiting the <see cref="MaxDuration"/>.
+    /// </summary>
+    public void ResetPosition()
+    {
+        processedSamples = 0;
     }
 
     public int Read(float[] buffer, int offset, int count)
@@ -47,6 +69,13 @@ internal class FadingSampleProvider : ISampleProvider
         int num = numSource;
         lock (lockObj)
         {
+            processedSamples += num;
+            if (maxDuration > 0 && processedSamples > maxDuration)
+            {
+                num = numSource = (int)(num - (processedSamples - maxDuration));
+                processedSamples = maxDuration;
+            }
+
             if (state == FadeState.Fading)
             {
                 int numFaded = FadeSamples(buffer, offset, numSource);
@@ -56,7 +85,7 @@ internal class FadingSampleProvider : ISampleProvider
 
             if (startVolume == 0)
             {
-                Array.Clear(buffer, offset, num);
+                buffer.AsSpan(offset, num).Clear();
                 return numSource;
             }
             else if (startVolume == 1)

@@ -27,6 +27,8 @@ public class OSCDriver : IDisposable
 
     private UdpClient? oscReceiver;
     private UdpClient? oscSender;
+    private Thread? oscRXThread;
+    private CancellationTokenSource? oscRXCancellationToken;
 
     private IPEndPoint? rxIP;
     private IPEndPoint? txIP;
@@ -57,7 +59,15 @@ public class OSCDriver : IDisposable
             oscSender = new(new IPEndPoint(nicAddress, 0));
             //oscSender.Connect(txIP);
 
-            Task.Run(OSCRXThread);
+            if (oscRXThread != null && oscRXThread.ThreadState == ThreadState.Running && oscRXCancellationToken != null)
+            {
+                oscRXCancellationToken.Cancel();
+            }
+            oscRXCancellationToken?.Dispose();
+            oscRXCancellationToken = new();
+            oscRXThread = new(OSCRXThread);
+            oscRXThread.Name = "OSC RX Thread";
+            oscRXThread.Start();
         }
         catch (Exception e)
         {
@@ -127,19 +137,20 @@ public class OSCDriver : IDisposable
         OSCAddressRouter.Subscribe(router, pattern, handler, syncContext);
     }
 
-    private void OSCRXThread()
+    private async void OSCRXThread()
     {
         IPEndPoint? remoteEndPoint;
         IPEndPoint? endPointAny = new(IPAddress.Any, rxIP?.Port ?? 0);
         IPEndPoint? endPointAnyV6 = new(IPAddress.IPv6Any, rxIP?.Port ?? 0);
         var recvBuff = new byte[0x10000];
-        while (oscReceiver?.Client?.IsBound ?? false)
+        while (oscReceiver?.Client?.IsBound ?? false && !oscRXCancellationToken.IsCancellationRequested)
         {
             try
             {
                 EndPoint tempRemoteEP = oscReceiver.Client.AddressFamily == AddressFamily.InterNetwork ? endPointAny : endPointAnyV6;
-                int received = oscReceiver.Client.ReceiveFrom(recvBuff, recvBuff.Length, SocketFlags.None, ref tempRemoteEP);
-                remoteEndPoint = (IPEndPoint)tempRemoteEP;
+                var res = await oscReceiver.Client.ReceiveFromAsync(recvBuff, tempRemoteEP, oscRXCancellationToken?.Token ?? default);
+                int received = res.ReceivedBytes;
+                remoteEndPoint = (IPEndPoint)res.RemoteEndPoint;
 
                 var pkt = OscPacket.Read(recvBuff, 0, received, remoteEndPoint);
 
@@ -157,7 +168,7 @@ public class OSCDriver : IDisposable
             }
             catch (SocketException e)
             {
-                if (e.SocketErrorCode == SocketError.Interrupted)
+                if (e.SocketErrorCode == SocketError.Interrupted || e.SocketErrorCode == SocketError.OperationAborted)
                     continue;
 
                 // TODO: For now, there are cases where this triggers a feedback loop of reconnecting to OSC

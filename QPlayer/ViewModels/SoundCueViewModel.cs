@@ -10,7 +10,6 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading.Tasks;
 using System.Timers;
-using System.Windows.Media;
 using Cue = QPlayer.Models.Cue;
 
 namespace QPlayer.ViewModels
@@ -21,7 +20,8 @@ namespace QPlayer.ViewModels
         [Reactive] public TimeSpan StartTime { get; set; }
         [Reactive] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
         [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (audioFile?.TotalTime ?? TimeSpan.Zero) - StartTime : PlaybackDuration;
-        [Reactive] public override TimeSpan PlaybackTime
+        [Reactive]
+        public override TimeSpan PlaybackTime
         {
             get => IsAudioFileValid ? audioFile.CurrentTime - StartTime : TimeSpan.Zero;
             set
@@ -42,15 +42,15 @@ namespace QPlayer.ViewModels
         private string? thisNodeName;
         private AudioFileReader? audioFile;
         private FadingSampleProvider? fadeInOutProvider;
-        private readonly Timer audioProgressUpdater;
+        //private readonly Timer audioProgressUpdater;
         private readonly Timer fadeOutTimer;
         private readonly WaveFormRenderer waveFormRenderer;
 
         public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
         {
             OpenMediaFileCommand = new(OpenMediaFileExecute);
-            audioProgressUpdater = new Timer(50);
-            audioProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;
+            /*audioProgressUpdater = new Timer(50);
+            audioProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;*/
             fadeOutTimer = new Timer
             {
                 AutoReset = false
@@ -84,7 +84,7 @@ namespace QPlayer.ViewModels
         [MemberNotNullWhen(true, nameof(audioFile))]
         private bool IsAudioFileValid
         {
-            get 
+            get
             {
                 try { return (audioFile?.Position ?? -1) >= 0; } catch { return false; }
             }
@@ -126,7 +126,7 @@ namespace QPlayer.ViewModels
                 return;
             if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
                 StopAudio();
-            
+
             if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
                 return;
 
@@ -134,10 +134,10 @@ namespace QPlayer.ViewModels
             if (mainViewModel.AudioPlaybackManager.IsPlaying(fadeInOutProvider))
                 StopAudio();
 
-            shouldSendRemoteStatus = mainViewModel.ProjectSettings.EnableRemoteControl 
+            shouldSendRemoteStatus = mainViewModel.ProjectSettings.EnableRemoteControl
                 && (string.IsNullOrEmpty(RemoteNode) || RemoteNode == mainViewModel.ProjectSettings.NodeName);
             thisNodeName = mainViewModel.ProjectSettings.NodeName;
-            audioProgressUpdater.Start();
+            //audioProgressUpdater.Start();
             if (FadeOut > 0)
             {
                 double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - audioFile.CurrentTime + StartTime).TotalMilliseconds;
@@ -149,9 +149,14 @@ namespace QPlayer.ViewModels
             }
             //var dbg_t = DateTime.Now;
             //MainViewModel.Log($"[Playback Debugging] Cue about to start! {dbg_t:HH:mm:ss.ffff} dt={(dbg_t-MainViewModel.dbg_cueStartTime)}");
-            mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x)=>Stop());
+            fadeInOutProvider.ResetPosition();
+            if (PlaybackDuration == default)
+                fadeInOutProvider.MaxDuration = 0;
+            else
+                fadeInOutProvider.MaxDuration = (long)((audioFile.CurrentTime + StartTime + Duration).TotalSeconds * fadeInOutProvider.WaveFormat.SampleRate * fadeInOutProvider.WaveFormat.Channels);
+            mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x) => Stop());
             fadeInOutProvider.Volume = 0;
-            fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000/(double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
+            fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000 / (double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
         }
 
         public override void Pause()
@@ -160,7 +165,7 @@ namespace QPlayer.ViewModels
             if (IsRemoteControlling || fadeInOutProvider == null || mainViewModel == null)
                 return;
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
-            audioProgressUpdater.Stop();
+            //audioProgressUpdater.Stop();
             fadeOutTimer.Stop();
             OnPropertyChanged(nameof(PlaybackTime));
             OnPropertyChanged(nameof(PlaybackTimeString));
@@ -222,7 +227,7 @@ namespace QPlayer.ViewModels
             {
                 case CueState.Ready:
                 case CueState.Paused:
-                case CueState.Delay: 
+                case CueState.Delay:
                     return;
                 case CueState.PlayingLooped:
                 case CueState.Playing:
@@ -239,7 +244,8 @@ namespace QPlayer.ViewModels
 
         private void FadeOutTimer_Elapsed(object? sender, ElapsedEventArgs e)
         {
-            synchronizationContext?.Post((x) => {
+            synchronizationContext?.Post((x) =>
+            {
                 if (fadeInOutProvider == null || mainViewModel == null)
                     return;
 
@@ -260,22 +266,15 @@ namespace QPlayer.ViewModels
             }, null);
         }
 
-        private void AudioProgressUpdater_Elapsed(object? sender, ElapsedEventArgs e)
+        internal override void UpdateUIStatus()
         {
-            synchronizationContext?.Post((x) => {
-                OnPropertyChanged(nameof(PlaybackTime));
-                OnPropertyChanged(nameof(PlaybackTimeString));
-                OnPropertyChanged(nameof(PlaybackTimeStringShort));
+            OnPropertyChanged(nameof(PlaybackTime));
+            OnPropertyChanged(nameof(PlaybackTimeString));
+            OnPropertyChanged(nameof(PlaybackTimeStringShort));
 
-                // When not using a fadeout, there's nothing to stop the sound early if it's been trimmed.
-                // This won't be very accurate, but should work for now...
-                if (PlaybackTime >= Duration)
-                    Stop();
-
-                if (shouldSendRemoteStatus)
-                    mainViewModel?.OSCManager?.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
-                        State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
-            }, null);
+            if (shouldSendRemoteStatus)
+                mainViewModel?.OSCManager?.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
+                    State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
         }
 
         private void FadeOut_Completed(bool completed)
@@ -293,7 +292,7 @@ namespace QPlayer.ViewModels
                 return;
             mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
             PlaybackTime = TimeSpan.Zero;
-            audioProgressUpdater.Stop();
+            //audioProgressUpdater.Stop();
             fadeOutTimer.Stop();
         }
 
@@ -346,7 +345,8 @@ namespace QPlayer.ViewModels
                         waveFormRenderer.PeakFile = (PeakFile?)x;
                     }, x.Result);
                 });
-            } catch (Exception ex)
+            }
+            catch (Exception ex)
             {
                 MainViewModel.Log($"Error while loading audio file ({path}): \n" + ex, MainViewModel.LogLevel.Error);
             }
@@ -355,7 +355,7 @@ namespace QPlayer.ViewModels
         public override void ToModel(string propertyName)
         {
             base.ToModel(propertyName);
-            if(cueModel is SoundCue scue)
+            if (cueModel is SoundCue scue)
             {
                 switch (propertyName)
                 {
@@ -388,7 +388,7 @@ namespace QPlayer.ViewModels
         public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
         {
             SoundCueViewModel vm = new(mainViewModel);
-            if(cue is SoundCue scue)
+            if (cue is SoundCue scue)
             {
                 vm.Path = scue.path;
                 vm.StartTime = scue.startTime;

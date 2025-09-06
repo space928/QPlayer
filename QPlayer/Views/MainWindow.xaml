@@ -14,6 +14,10 @@
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
+    <Window.Resources>
+        <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        <util:MultiplyByConverter x:Key="MultiplyByConverter"/>
+    </Window.Resources>
     <Window.InputBindings>
         <KeyBinding Key="Space" Command="{Binding GoCommand}"/>
         <KeyBinding Key="Esc" Command="{Binding StopCommand}"/>
@@ -33,10 +37,6 @@
         <KeyBinding Gesture="CTRL+D" Command="{Binding DuplicateCueCommand}"/>
         <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueMenuCommand}"/>
     </Window.InputBindings>
-    <Window.Resources>
-        <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
-        <util:MultiplyByConverter x:Key="MultiplyByConverter"/>
-    </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
@@ -76,6 +76,7 @@
                     <MenuItem Header="Open" InputGestureText="Ctrl+O" Command="{Binding OpenProjectCommand}"/>
                     <MenuItem Header="Save" InputGestureText="Ctrl+S" Command="{Binding SaveProjectCommand}"/>
                     <MenuItem Header="Save As" InputGestureText="Ctrl+Shift+S" Command="{Binding SaveProjectAsCommand}"/>
+                    <MenuItem Header="Autosave" IsCheckable="True" IsChecked="{Binding EnableAutosave}"/>
                     <MenuItem Header="Pack" InputGestureText="Ctrl+E" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" ItemsSource="{Binding RecentFiles}" ItemContainerStyle="{StaticResource RecentItemStyle}">
                         <!--<MenuItem.ItemTemplate>

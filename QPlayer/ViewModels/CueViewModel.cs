@@ -341,6 +341,14 @@ namespace QPlayer.ViewModels
             if (mainViewModel != null)
                 mainViewModel.SelectedCue = this;
         }
+
+        /// <summary>
+        /// This callback is triggered every 50 or so ms when this cue is active by the main thread.
+        /// </summary>
+        internal virtual void UpdateUIStatus()
+        {
+
+        }
         #endregion
 
         public void OnColourUpdate()
