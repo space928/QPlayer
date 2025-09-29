@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
@@ -45,9 +46,9 @@ public partial class MainWindow : Window
                 keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
     }
 
-    public void Window_Closed(object sender, EventArgs e)
+    public void Window_Closing(object sender, CancelEventArgs e)
     {
-        ((MainViewModel)DataContext).OnExit();
+        e.Cancel = !((MainViewModel)DataContext).OnExit();
     }
 
     private void Consume_PreviewKeyDown(object sender, KeyEventArgs e)

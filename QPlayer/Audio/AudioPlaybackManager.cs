@@ -24,7 +24,8 @@ public class AudioPlaybackManager : IDisposable
 {
     private readonly MainViewModel mainViewModel;
     private readonly MixerSampleProvider mixer;
-    private readonly Dictionary<ISampleProvider, (ISampleProvider convertedStream, Action<ISampleProvider>? completedCallback)> activeChannels;
+    private readonly MeteringSampleProviderVec meteringProvider;
+    private readonly Dictionary<ISamplePositionProvider, (ISamplePositionProvider convertedStream, Action<ISampleProvider>? completedCallback)> activeChannels;
     private readonly ManualResetEventSlim deviceClosedEvent;
     private readonly SynchronizationContext? synchronizationContext;
 
@@ -32,6 +33,18 @@ public class AudioPlaybackManager : IDisposable
     private IWavePlayer? device;
     private int restartAudioDeviceDelay = 100;
     private CancellationTokenSource cancelAudioDeviceRestart;
+
+    public event Action<MeteringEvent> OnMixerMeter
+    {
+        add
+        {
+            meteringProvider.OnMeter += value;
+        }
+        remove
+        {
+            meteringProvider.OnMeter -= value;
+        }
+    }
 
     public AudioPlaybackManager(MainViewModel mainViewModel)
     {
@@ -60,6 +73,10 @@ public class AudioPlaybackManager : IDisposable
                 restartAudioDeviceDelay = 100;
             }
         };
+
+        meteringProvider = new(mixer);
+        // 30 notifications per second
+        meteringProvider.SamplesPerNotification = mixer.WaveFormat.SampleRate / 30;
     }
 
     public void Stop()
@@ -177,7 +194,7 @@ public class AudioPlaybackManager : IDisposable
         deviceClosedEvent.Reset();
         try
         {
-            device.Init(mixer);
+            device.Init(meteringProvider);
             device.Play();
         }
         catch (Exception ex)
@@ -199,20 +216,21 @@ public class AudioPlaybackManager : IDisposable
     /// <param name="input"></param>
     /// <returns></returns>
     /// <exception cref="NotImplementedException"></exception>
-    private ISampleProvider ConvertToMixerFormat(ISampleProvider input)
+    public ISamplePositionProvider ConvertToMixerFormat(ISamplePositionProvider input)
     {
         if (input.WaveFormat.SampleRate != mixer.WaveFormat.SampleRate)
         {
             // Resample
-            input = new WdlResamplingSampleProvider(input, mixer.WaveFormat.SampleRate);
+            input = new WdlResamplingProviderVec(input, mixer.WaveFormat.SampleRate, input.WaveFormat.Channels);
         }
+
         if (input.WaveFormat.Channels == mixer.WaveFormat.Channels)
         {
             return input;
         }
         else if (input.WaveFormat.Channels == 1 && mixer.WaveFormat.Channels == 2)
         {
-            return new MonoToStereoSampleProvider(input);
+            return new MonoToStereoSampleProviderVec(input);
         }
         throw new NotImplementedException("Not yet implemented this channel count conversion");
     }
@@ -222,7 +240,7 @@ public class AudioPlaybackManager : IDisposable
     /// </summary>
     /// <param name="provider">the sample stream to play</param>
     /// <param name="onCompleted">a callback raised when the stream is removed from the mixer</param>
-    public void PlaySound(ISampleProvider provider, Action<ISampleProvider>? onCompleted = null)
+    public void PlaySound(ISamplePositionProvider provider, Action<ISampleProvider>? onCompleted = null)
     {
         try
         {
@@ -243,7 +261,7 @@ public class AudioPlaybackManager : IDisposable
     /// Stops the playback of a sound stream.
     /// </summary>
     /// <param name="provider">the sample stream to stop</param>
-    public void StopSound(ISampleProvider provider)
+    public void StopSound(ISamplePositionProvider provider)
     {
         try
         {
@@ -264,7 +282,7 @@ public class AudioPlaybackManager : IDisposable
     /// </summary>
     /// <param name="provider"></param>
     /// <returns></returns>
-    public bool IsPlaying(ISampleProvider provider) => activeChannels.ContainsKey(provider);
+    public bool IsPlaying(ISamplePositionProvider provider) => activeChannels.ContainsKey(provider);
 
     /// <summary>
     /// Stops all sound sources.

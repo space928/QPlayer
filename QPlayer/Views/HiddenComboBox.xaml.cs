@@ -70,14 +70,34 @@ public partial class HiddenComboBox : UserControl
     public static readonly DependencyProperty SelectedIndexProperty =
         DependencyProperty.Register("SelectedIndex", typeof(int), typeof(HiddenComboBox), new PropertyMetadata(0));
 
-    private void Label_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void Edit()
     {
+        if (editing)
+            return;
+
         editing = true;
         ComboBoxInst.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => {
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+        {
             ComboBoxInst.Focus();
             ComboBoxInst.IsDropDownOpen = true;
         });
+    }
+
+    private void Close()
+    {
+        editing = false;
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+        {
+            ComboBoxInst.IsDropDownOpen = false;
+            ComboBoxInst.Visibility = Visibility.Collapsed;
+        });
+        //ComboBoxInst.Visibility = Visibility.Collapsed;
+    }
+
+    private void Label_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        Edit();
     }
 
     private void Label_MouseDown(object sender, MouseButtonEventArgs e)
@@ -87,16 +107,17 @@ public partial class HiddenComboBox : UserControl
 
     private void ComboBoxInst_DropDownClosed(object sender, EventArgs e)
     {
-        editing = false;
-        ComboBoxInst.Visibility = Visibility.Collapsed;
+        Close();
     }
 
     private void Grid_IsEnabledChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
         if ((bool)e.NewValue == false)
-        {
-            editing = false;
-            ComboBoxInst.Visibility = Visibility.Collapsed;
-        }
+            Close();
+    }
+
+    private void HiddenComboBoxInst_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        Edit();
     }
 }

@@ -68,7 +68,7 @@
         </DockPanel>
         <DockPanel ToolTip="If this cue is set to loop, specifies how many times the cue should loop before ending.">
             <Label Content="Loop Count"/>
-            <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.2" Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.2" MinValue="1" MaxValue="999" ClampValue="True" Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <Label Content="{Binding TypeName}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
         <ContentControl Content="{Binding}">
@@ -123,6 +123,35 @@
                             <Label Content="Fade Type"/>
                             <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
+                        <DockPanel ToolTip="When ticked, audio equalisation is applied to this cue.">
+                            <Label Content="Enable EQ"/>
+                            <CheckBox IsChecked="{Binding EQ.Enabled}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                        <Grid IsEnabled="{Binding EQ.Enabled}">
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <Grid.RowDefinitions>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                                <RowDefinition/>
+                            </Grid.RowDefinitions>
+                            <TextBlock Grid.Row="0" Grid.Column="0" Margin="2" FontStyle="Italic" Text="Low" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="1" Margin="2" FontStyle="Italic" Text="Low Mid" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="2" Margin="2" FontStyle="Italic" Text="High Mid" HorizontalAlignment="Center"/>
+                            <TextBlock Grid.Row="0" Grid.Column="3" Margin="2" FontStyle="Italic" Text="High" HorizontalAlignment="Center"/>
+                            <local:Knob Grid.Row="1" Grid.Column="0" MaxWidth="50" Value="{Binding EQ.LowFreq}" Label="Freq" ValueFormat="{}{0:F0} Hz" MinValue="10" MaxValue="20000" Power="3"/>
+                            <local:Knob Grid.Row="1" Grid.Column="1" MaxWidth="50" Value="{Binding EQ.LowMidFreq}" Label="Freq" ValueFormat="{}{0:F0} Hz" MinValue="10" MaxValue="20000" Power="3"/>
+                            <local:Knob Grid.Row="1" Grid.Column="2" MaxWidth="50" Value="{Binding EQ.HighMidFreq}" Label="Freq" ValueFormat="{}{0:F0} Hz" MinValue="10" MaxValue="20000" Power="3"/>
+                            <local:Knob Grid.Row="1" Grid.Column="3" MaxWidth="50" Value="{Binding EQ.HighFreq}" Label="Freq" ValueFormat="{}{0:F0} Hz" MinValue="10" MaxValue="20000" Power="3"/>
+                            <local:Knob Grid.Row="2" Grid.Column="0" MaxWidth="50" Value="{Binding EQ.LowGain}" Label="Gain" ValueFormat="{}{0:F2} dB" MinValue="-20" MaxValue="20" Power="1"/>
+                            <local:Knob Grid.Row="2" Grid.Column="1" MaxWidth="50" Value="{Binding EQ.LowMidGain}" Label="Gain" ValueFormat="{}{0:F2} dB" MinValue="-20" MaxValue="20" Power="1"/>
+                            <local:Knob Grid.Row="2" Grid.Column="2" MaxWidth="50" Value="{Binding EQ.HighMidGain}" Label="Gain" ValueFormat="{}{0:F2} dB" MinValue="-20" MaxValue="20" Power="1"/>
+                            <local:Knob Grid.Row="2" Grid.Column="3" MaxWidth="50" Value="{Binding EQ.HighGain}" Label="Gain" ValueFormat="{}{0:F2} dB" MinValue="-20" MaxValue="20" Power="1"/>
+                        </Grid>
                     </StackPanel>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:TimeCodeCueViewModel}">

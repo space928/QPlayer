@@ -11,12 +11,12 @@ namespace QPlayer.Models;
 [Serializable]
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 4;
+    public const int FILE_FORMAT_VERSION = 5;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
     public ShowSettings showSettings = new();
     public List<float> columnWidths = [];
-    public List<Cue> cues = [new SoundCue()];
+    public List<Cue> cues = [];
 }
 
 [Serializable]
@@ -27,8 +27,8 @@ public record ShowSettings
     public string author = "";
     public DateTime date = DateTime.Today;
 
-    public int audioLatency = 100;
-    public AudioOutputDriver audioOutputDriver;
+    public int audioLatency = 10;
+    public AudioOutputDriver audioOutputDriver = AudioOutputDriver.WASAPI;
     public string audioOutputDevice = "";
 
     public string oscNIC = "";
@@ -113,7 +113,7 @@ public record Cue
     public bool enabled = true;
     public TimeSpan delay;
     public LoopMode loopMode;
-    public int loopCount;
+    public int loopCount = 1;
     public string remoteNode = string.Empty;
 
     public static Cue CreateCue(CueType type) => type switch
@@ -160,6 +160,7 @@ public record SoundCue : Cue
     public float fadeIn;
     public float fadeOut;
     public FadeType fadeType = FadeType.SCurve;
+    public EQSettings? eq;
 
     public SoundCue() : base()
     {

@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:QPlayer.Views"
              x:Name="HiddenComboBoxInst"
              mc:Ignorable="d" 
+             Focusable="True" IsTabStop="True" GotKeyboardFocus="HiddenComboBoxInst_GotKeyboardFocus"
              d:DesignHeight="450" d:DesignWidth="800">
     <Grid IsEnabledChanged="Grid_IsEnabledChanged">
         <Label Name="Label" MouseDown="Label_MouseDown" MouseDoubleClick="Label_MouseDoubleClick" Content="{Binding InactiveContent, ElementName=HiddenComboBoxInst}" ContentTemplate="{Binding InactiveContentTemplate, ElementName=HiddenComboBoxInst}" VerticalContentAlignment="Center"/>

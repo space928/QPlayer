@@ -10,7 +10,7 @@
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
         Title="{Binding WindowTitle}" Height="700" Width="1200" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
-        Closed="Window_Closed" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
+        Closing="Window_Closing" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
@@ -125,38 +125,40 @@
             <Grid x:Name="LeftColumn" Grid.Column="0">
                 <Grid.RowDefinitions>
                     <RowDefinition/>
-                    <RowDefinition MaxHeight="85"/>
+                    <RowDefinition MaxHeight="112"/>
                 </Grid.RowDefinitions>
                 <DockPanel Grid.Row="0">
                     <Button Content="GO" Command="{Binding GoCommand}"
-                        Height="70"
-                        FontSize="28" FontWeight="Bold" 
-                        Background="#FF135F1B" BorderBrush="#FF032707" 
-                        Style="{DynamicResource SlightlyRoundButton}"
-                        DockPanel.Dock="Top">
+                            Height="70"
+                            FontSize="28" FontWeight="Bold" 
+                            Background="#FF135F1B" BorderBrush="#FF032707" 
+                            Style="{DynamicResource SlightlyRoundButton}"
+                            Focusable="False"
+                            DockPanel.Dock="Top">
                         <Button.ToolTip>
                             <ToolTip Content="Advances to the next cue (Space)" FontSize="11" FontWeight="Medium"/>
                         </Button.ToolTip>
                     </Button>
                     <Button Content="Stop" Command="{Binding StopCommand}" 
-                        Height="40"
-                        FontSize="16" FontWeight="Bold" 
-                        Background="#FF5F1313" BorderBrush="#FF4C0707" 
-                        Style="{DynamicResource SlightlyRoundButton}"
-                        DockPanel.Dock="Top">
+                            Height="40"
+                            FontSize="16" FontWeight="Bold" 
+                            Background="#FF5F1313" BorderBrush="#FF4C0707" 
+                            Style="{DynamicResource SlightlyRoundButton}"
+                            Focusable="False"
+                            DockPanel.Dock="Top">
                         <Button.ToolTip>
                             <ToolTip Content="Stops all active cues (Esc)" FontSize="11" FontWeight="Medium"/>
                         </Button.ToolTip>
                     </Button>
                     <Label Content="{Binding Clock}" 
-                       HorizontalAlignment="Center" 
-                       FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
-                       BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
-                       DockPanel.Dock="Top"/>
+                           HorizontalAlignment="Center" 
+                           FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
+                           BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
+                           DockPanel.Dock="Top"/>
                     <Separator DockPanel.Dock="Top"/>
                     <Label Content="Active Cues" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
-                       FontWeight="Bold" Margin="5,0,0,0"
-                       DockPanel.Dock="Top"/>
+                           FontWeight="Bold" Margin="5,0,0,0"
+                           DockPanel.Dock="Top"/>
                     <ScrollViewer VerticalScrollBarVisibility="Auto" DockPanel.Dock="Top">
                         <ItemsControl ItemsSource="{Binding ActiveCues}" Margin="2,0,2,0">
                             <ItemsControl.ItemTemplate>
@@ -168,6 +170,23 @@
                     </ScrollViewer>
                 </DockPanel>
                 <StackPanel Grid.Row="1">
+                    <Grid Margin="4,0,2,4">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="18"/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Grid.RowDefinitions>
+                            <RowDefinition/>
+                            <RowDefinition/>
+                        </Grid.RowDefinitions>
+                        <TextBlock Text="L" VerticalAlignment="Center" Margin="4,0,0,0"/>
+                        <TextBlock Text="R" VerticalAlignment="Center" Margin="4,0,0,0" Grid.Row="1"/>
+                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.PeakL}" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
+                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.PeakR}" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
+                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.RMSL}" Opacity="0.5" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
+                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.RMSR}" Opacity="0.5" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
+                    </Grid>
+                    
                     <Label Content="Preload Cue" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
                            FontWeight="Bold" Margin="5,0,0,0"/>
                     <DockPanel>
@@ -179,7 +198,7 @@
                                                 UpdateSourceTrigger=Default}" 
                                          DockPanel.Dock="Right" Margin="8,2,2,2"/>
                     </DockPanel>
-                    <Button Content="Preload Cue" Command="{Binding PreloadCommand}" Margin="2" ToolTip="Loads the selected cue to given time"/>
+                    <Button Content="Preload Cue" Command="{Binding PreloadCommand}" Margin="2" ToolTip="Loads the selected cue to given time" Focusable="False"/>
                 </StackPanel>
             </Grid>
             <!--#endregion-->
@@ -210,7 +229,7 @@
                         </ContextMenu>
                     </ScrollViewer.ContextMenu>
                     <StackPanel>
-                        <ItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}" d:Height="1000">
+                        <ItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}" d:Height="1000" KeyboardNavigation.TabNavigation="Cycle">
                             <ItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <local:CueDataControl/>

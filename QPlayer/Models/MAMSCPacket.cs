@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Buffers.Binary;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -108,7 +109,7 @@ public struct MAMSCPacket
         if (buffer.Length < 5)
             return false;
 
-        return decimal.TryParse(buffer, null, out qid);
+        return decimal.TryParse(buffer, CultureInfo.InvariantCulture.NumberFormat, out qid);
     }
 
     internal static bool TryReadExecutorAndPage(ReadOnlySpan<byte> buffer, out byte? executor, out byte? page)
@@ -120,11 +121,11 @@ public struct MAMSCPacket
         if (sep == -1)
             return false;
 
-        if (!byte.TryParse(buffer[..sep], null, out byte exec))
+        if (!byte.TryParse(buffer[..sep], CultureInfo.InvariantCulture.NumberFormat, out byte exec))
             return false;
         executor = exec;
 
-        if (!byte.TryParse(buffer[(sep + 1)..], null, out byte pg))
+        if (!byte.TryParse(buffer[(sep + 1)..], CultureInfo.InvariantCulture.NumberFormat, out byte pg))
             return false;
         page = pg;
 

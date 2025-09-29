@@ -31,11 +31,18 @@ public partial class HiddenTextbox : UserControl
         DefaultUpdateSourceTrigger = UpdateSourceTrigger.LostFocus
     });
 
-    private void Label_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    private void Edit()
     {
+        if (editing)
+            return;
         editing = true;
         TextFieldInst.Visibility = Visibility.Visible;
         Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, TextFieldInst.TextBox.Focus);
+    }
+
+    private void Label_MouseDoubleClick(object sender, MouseButtonEventArgs e)
+    {
+        Edit();
     }
 
     private void Label_MouseDown(object sender, MouseButtonEventArgs e)
@@ -47,5 +54,10 @@ public partial class HiddenTextbox : UserControl
     {
         editing = false;
         TextFieldInst.Visibility = Visibility.Collapsed;
+    }
+
+    private void HiddenTextboxInst_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
+    {
+        Edit();
     }
 }

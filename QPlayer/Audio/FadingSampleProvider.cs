@@ -10,22 +10,20 @@ using System.Threading.Tasks;
 
 namespace QPlayer.Audio;
 
-internal class FadingSampleProvider : ISampleProvider
+internal class FadingSampleProvider : ISamplePositionProvider
 {
-    private readonly ISampleProvider source;
+    private readonly ISamplePositionProvider source;
     private readonly object lockObj = new();
     private FadeState state;
     private long fadeTime;
     private long fadeDuration;
-    private long maxDuration;
-    private long processedSamples;
     private float startVolume = 1;
     private float endVolume = 1;
     private FadeType fadeType;
     private Action<bool>? onCompleteAction;
     private SynchronizationContext? synchronizationContext;
 
-    public FadingSampleProvider(ISampleProvider source, bool startSilent = false)
+    public FadingSampleProvider(ISamplePositionProvider source, bool startSilent = false)
     {
         this.source = source;
         state = FadeState.Ready;
@@ -33,6 +31,12 @@ internal class FadingSampleProvider : ISampleProvider
             startVolume = 0;
         else
             startVolume = 1;
+    }
+
+    public long Position
+    {
+        get => source.Position;
+        set => source.Position = value;
     }
 
     public WaveFormat WaveFormat => source.WaveFormat;
@@ -46,36 +50,12 @@ internal class FadingSampleProvider : ISampleProvider
         set => startVolume = value;
     }
 
-    /// <summary>
-    /// The maximum number of samples provided by this sample provider.
-    /// </summary>
-    public long MaxDuration
-    {
-        get => maxDuration;
-        set => maxDuration = value;
-    }
-
-    /// <summary>
-    /// Resets the sample provider's internal sample counter for the purpose of limiting the <see cref="MaxDuration"/>.
-    /// </summary>
-    public void ResetPosition()
-    {
-        processedSamples = 0;
-    }
-
     public int Read(float[] buffer, int offset, int count)
     {
         int numSource = source.Read(buffer, offset, count);
         int num = numSource;
         lock (lockObj)
         {
-            processedSamples += num;
-            if (maxDuration > 0 && processedSamples > maxDuration)
-            {
-                num = numSource = (int)(num - (processedSamples - maxDuration));
-                processedSamples = maxDuration;
-            }
-
             if (state == FadeState.Fading)
             {
                 int numFaded = FadeSamples(buffer, offset, numSource);

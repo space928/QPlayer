@@ -12,6 +12,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -104,6 +105,7 @@ namespace QPlayer.ViewModels
         [Reactive] public SolidColorBrush StatusTextColour { get; private set; } = StatusInfoBrush;
 
         [Reactive] public ProgressBoxViewModel ProgressBoxViewModel { get; private set; }
+        [Reactive] public AudioMeterViewModel MainAudioMeter { get; private set; }
 
         [Reactive]
         public static ObservableCollection<string> LogList
@@ -184,6 +186,7 @@ namespace QPlayer.ViewModels
         private readonly OSCManager oscManager;
         private readonly MSCManager mscManager;
         private readonly PersistantDataManager persistantDataManager;
+        private readonly NumberFormatInfo numberFormat = CultureInfo.InvariantCulture.NumberFormat;
         private static readonly SolidColorBrush StatusInfoBrush = new(Color.FromArgb(255, 220, 220, 220));
         private static readonly SolidColorBrush StatusWarningBrush = new(Color.FromArgb(255, 200, 220, 50));
         private static readonly SolidColorBrush StatusErrorBrush = new(Color.FromArgb(255, 220, 60, 40));
@@ -226,6 +229,7 @@ namespace QPlayer.ViewModels
             mscManager = new(this);
             persistantDataManager = new();
             ProgressBoxViewModel = new();
+            MainAudioMeter = new(dispatcher);
 
             // Bind commands
             OpenLogCommand = new(OpenLogExecute);
@@ -334,8 +338,11 @@ namespace QPlayer.ViewModels
                     OnPropertyChanged(nameof(WindowTitle));
             };
 
+            audioPlaybackManager.OnMixerMeter += MainAudioMeter.ProcessSample;
+
             showFile = new();
             LoadShowfileModel(showFile);
+            CreateCue(CueType.SoundCue);
             /*CreateCue(CueType.GroupCue, afterLast: true);
             CreateCue(CueType.SoundCue, afterLast: true);
             CreateCue(CueType.TimeCodeCue, afterLast: true);*/
@@ -360,17 +367,35 @@ namespace QPlayer.ViewModels
             }
         }
 
-        public void OnExit()
+        public bool OnExit()
         {
+            if (ActiveCues.Count > 0)
+            {
+                var mbRes = MessageBox.Show("Cues are currently playing! Do you want to exit QPlayer anyway?",
+                "Exit QPlayer",
+                MessageBoxButton.OKCancel,
+                MessageBoxImage.Warning, MessageBoxResult.Cancel);
+
+                // Abort exit
+                if (mbRes == MessageBoxResult.Cancel)
+                    return false;
+            }
+
+            if (!UnsavedChangedCheck(true))
+                return false;
+
             Log("Shutting down...");
-            UnsavedChangedCheck(false);
             CloseAboutExecute();
             CloseSettingsExecute();
             CloseLogExecute();
             CloseRemoteNodesExecute();
+            slowUpdateTimer.Stop();
+            fastUpdateTimer.Stop();
+            autosaveTimer.Stop();
             audioPlaybackManager.Stop();
             audioPlaybackManager.Dispose();
             Log("Goodbye!");
+            return true;
         }
 
         private void FastUpdate(object? sender, ElapsedEventArgs e)
@@ -380,31 +405,34 @@ namespace QPlayer.ViewModels
                 return;
 
             fastUpdateInProgress = true;
-            dispatcher.Invoke(() =>
+            try
             {
-                try
+                dispatcher.Invoke(() =>
                 {
-                    fastUpdateInProgress = true;
-
-                    // Ask each active cue to update it's UI status if it needs too.
-                    // Reverse iterate the list, since cues can stop themselves. If a cue stops/starts another cue
-                    // during this iteration then a cue may be invoked twice/skipped. This is fine so long as we 
-                    // have eventual consistency.
-                    for (int i = ActiveCues.Count - 1; i >= 0; i--)
+                    try
                     {
-                        var cue = ActiveCues[i];
-                        cue.UpdateUIStatus();
+                        fastUpdateInProgress = true;
+
+                        // Ask each active cue to update it's UI status if it needs too.
+                        // Reverse iterate the list, since cues can stop themselves. If a cue stops/starts another cue
+                        // during this iteration then a cue may be invoked twice/skipped. This is fine so long as we 
+                        // have eventual consistency.
+                        for (int i = ActiveCues.Count - 1; i >= 0; i--)
+                        {
+                            var cue = ActiveCues[i];
+                            cue.UpdateUIStatus();
+                        }
                     }
-                }
-                catch (Exception ex)
-                {
-                    Log($"Error while updating cue status: {ex.Message}\n{ex}", LogLevel.Error);
-                }
-                finally
-                {
-                    fastUpdateInProgress = false;
-                }
-            }, DispatcherPriority.Background);
+                    catch (Exception ex)
+                    {
+                        Log($"Error while updating cue status: {ex.Message}\n{ex}", LogLevel.Error);
+                    }
+                    finally
+                    {
+                        fastUpdateInProgress = false;
+                    }
+                }, DispatcherPriority.Background);
+            } catch { }
         }
 
         private void SlowUpdate(object? sender, ElapsedEventArgs e)
@@ -847,7 +875,7 @@ namespace QPlayer.ViewModels
                 case decimal idDec:
                     return cuesDict.TryGetValue(idDec, out cue);
                 case string idString:
-                    return cuesDict.TryGetValue(decimal.Parse(idString), out cue);
+                    return cuesDict.TryGetValue(decimal.Parse(idString, numberFormat), out cue);
                 default:
                     cue = null;
                     Log($"Couldn't find cue with ID: {id}!", LogLevel.Warning);
@@ -1042,6 +1070,9 @@ namespace QPlayer.ViewModels
             ProgressBoxViewModel.Progress = 0.3f;
             ProgressBoxViewModel.Message = $"Initialising devices...";
             Dispatcher.Yield();
+
+            // Stop all running cues...
+            StopExecute();
 
             showFile = show;
             ProjectSettings = ProjectSettingsViewModel.FromModel(show.showSettings, this);

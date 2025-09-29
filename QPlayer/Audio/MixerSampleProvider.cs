@@ -110,6 +110,9 @@ public class MixerSampleProvider : ISampleProvider
 
     public void AddMixerInput(ISampleProvider input)
     {
+        if (WaveFormat.SampleRate != input.WaveFormat.SampleRate || WaveFormat.Channels != input.WaveFormat.Channels)
+            throw new ArgumentException("All mixer inputs must have the same WaveFormat");
+
         lock (mixerInputs)
         {
             if (mixerInputs.Count >= maxInputs)
@@ -117,9 +120,6 @@ public class MixerSampleProvider : ISampleProvider
 
             mixerInputs.Add(input);
         }
-
-        if (WaveFormat.SampleRate != input.WaveFormat.SampleRate || WaveFormat.Channels != input.WaveFormat.Channels)
-            throw new ArgumentException("All mixer inputs must have the same WaveFormat");
     }
 
     /*public bool RemoveMixerInput(IWaveProvider input)

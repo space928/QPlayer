@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.9.3</Version>
+    <Version>1.10.2</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
 	<Copyright>©️ Thomas Mathieson 2025</Copyright>
@@ -36,7 +36,7 @@
     <None Remove="Resources\Icons\rotate-solid.svg" />
     <None Remove="Resources\Icons\sort-solid.svg" />
     <None Remove="Resources\Icons\stop-solid.svg" />
-    <None Remove="Resources\Splash.png" />
+    <None Remove="Resources\SplashV2.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -75,7 +75,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <SplashScreen Include="Resources\Splash.png" />
+    <SplashScreen Include="Resources\SplashV2.png" />
   </ItemGroup>
 
 </Project>

@@ -48,7 +48,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         {
             if (SoundCue == null || WaveFormRenderer == null || WaveFormRenderer.ViewSpan == TimeSpan.Zero)
                 return new(-10, 0, 0, 0);
-            return new((SoundCue.PlaybackTime - WaveFormRenderer.ViewStart + SoundCue.StartTime) / WaveFormRenderer.ViewSpan * Graph.ActualWidth - PlaybackMarker.Width, 0, 0, 0);
+            return new((SoundCue.SamplePlaybackTime - WaveFormRenderer.ViewStart/* + SoundCue.StartTime*/) / WaveFormRenderer.ViewSpan * Graph.ActualWidth - PlaybackMarker.Width, 0, 0, 0);
         }
     }
     [Reactive] public Thickness TimeInMarkerPos => new(timeInMarkerPos,0,0,0);
@@ -340,7 +340,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         isTimeinCapturing = true;
         timeHandleMouseOffset = e.GetPosition(TimeInMarker).X;
         if(SoundCue != null)
-            timeOutStart = SoundCue.Duration + SoundCue.StartTime;
+            timeOutStart = SoundCue.SampleDuration + SoundCue.StartTime;
         e.MouseDevice.Capture(TimeInMarker, CaptureMode.Element);
     }
 
@@ -421,7 +421,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         var start = WaveFormRenderer.ViewStart;
         var span = WaveFormRenderer.ViewSpan;
         double left = (SoundCue.StartTime - start) / span;
-        double right = (SoundCue.Duration + SoundCue.StartTime - start) / span;
+        double right = (SoundCue.SampleDuration + SoundCue.StartTime - start) / span;
         var markerWidth = TimeInMarker.ActualWidth;
         var graphWidth = Graph.ActualWidth;
         timeInMarkerPos = left * graphWidth;

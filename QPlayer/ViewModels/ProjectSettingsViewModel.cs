@@ -15,6 +15,7 @@ using CommunityToolkit.Mvvm.Input;
 using PropertyChanged;
 using QPlayer.Utilities;
 using System.Threading;
+using DynamicData;
 
 namespace QPlayer.ViewModels;
 
@@ -69,7 +70,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     [Reactive] public int MAMSCExecutor { get; set; } = -1;
     [Reactive] public bool MonitorMSCMessages { get; set; } = false;
 
-    [Reactive] public RelayCommand<RemoteNodeViewModel> RemoveRemoteNodeCommand {  get; private set; }
+    [Reactive] public RelayCommand<RemoteNodeViewModel> RemoveRemoteNodeCommand { get; private set; }
     [Reactive] public MainViewModel MainViewModel => mainViewModel;
     #endregion
 
@@ -89,6 +90,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
     }
 
     private (object? key, string identifier)[] audioOutputDevices = [];
+    private volatile bool suppressAudioDeviceQuery = false;
     private readonly MainViewModel mainViewModel;
     private ShowSettings? projectSettings;
     private readonly ObservableCollection<string> nics = [];
@@ -108,6 +110,22 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             switch (e.PropertyName)
             {
                 case nameof(AudioOutputDriver):
+                    // Try to be friendly and set the latency to a value that's likely to work.
+                    switch (AudioOutputDriver)
+                    {
+                        case AudioOutputDriver.Wave:
+                            if (AudioLatency < 50)
+                                AudioLatency = 100;
+                            break;
+                        case AudioOutputDriver.DirectSound:
+                            if (AudioLatency < 20)
+                                AudioLatency = 50;
+                            break;
+                    }
+
+                    if (suppressAudioDeviceQuery)
+                        break;
+
                     // Refresh the audio output devices asynchronously
                     audioOutputDevices = [(null, string.Empty)];
                     OnPropertyChanged(nameof(AudioOutputDevices));
@@ -120,7 +138,10 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                     break;
                 case nameof(AudioLatency):
                 case nameof(SelectedAudioOutputDeviceIndex):
-                    if (SelectedAudioOutputDeviceIndex >= 0 && SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
+                    if (suppressAudioDeviceQuery)
+                        break;
+                    int ind = Math.Max(0, SelectedAudioOutputDeviceIndex);
+                    if (ind < audioOutputDevices.Length)
                         mainViewModel.OpenAudioDevice();
                     break;
                 case nameof(SelectedNIC):
@@ -139,8 +160,8 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                 case nameof(MonitorMSCMessages):
                     mainViewModel.MSCManager.MonitorMSC(MonitorMSCMessages);
                     break;
-                //case nameof(EnableRemoteControl):
-                //    break;
+                    //case nameof(EnableRemoteControl):
+                    //    break;
             }
         };
 
@@ -148,7 +169,8 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         //if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
         //    mainViewModel.OpenAudioDevice();
 
-        RemoveRemoteNodeCommand = new(item => { 
+        RemoveRemoteNodeCommand = new(item =>
+        {
             if (item != null)
                 RemoveRemoteNode(item.Name);
         });
@@ -164,14 +186,29 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         ret.Author = model.author;
         ret.Date = model.date;
 
+        // Prevent needlessly querying the audio driver while loading parameters
+        ret.suppressAudioDeviceQuery = true;
         ret.AudioLatency = model.audioLatency;
         ret.AudioOutputDriver = model.audioOutputDriver;
-        ret.SelectedAudioOutputDeviceIndex = ret.AudioOutputDevices.IndexOf(model.audioOutputDevice);
+        ret.suppressAudioDeviceQuery = false;
+        //ret.SelectedAudioOutputDeviceIndex = ret.AudioOutputDevices.IndexOf(model.audioOutputDevice);
+
+        // The audio device list gets populated asynchronously, defer selecting the device until the list is populated.
+        var sc = SynchronizationContext.Current;
+        mainViewModel.AudioPlaybackManager.GetOutputDevices(model.audioOutputDriver).ContinueWith(x =>
+        {
+            ret.audioOutputDevices = x.Result;
+            int ind = ret.audioOutputDevices.Select(x => x.identifier).IndexOf(model.audioOutputDevice);
+            sc?.Post(x => { 
+                ret.OnPropertyChanged(nameof(AudioOutputDevices));
+                ret.SelectedAudioOutputDeviceIndex = ind;
+            }, null);
+        });
 
         ret.OSCRXPort = model.oscRXPort;
         ret.OSCTXPort = model.oscTXPort;
         if (IPAddress.TryParse(model.oscNIC, out var oscIP))
-            ret.SelectedNIC = ret.nicAddresses.FindIndex(x=> x.addr.Equals(oscIP));//.IndexOf(oscIP);
+            ret.SelectedNIC = ret.nicAddresses.FindIndex(x => x.addr.Equals(oscIP));//.IndexOf(oscIP);
 
         ret.EnableRemoteControl = model.enableRemoteControl;
         ret.SyncShowFileOnSave = model.syncShowFileOnSave;
@@ -215,7 +252,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         model.audioLatency = AudioLatency;
         model.audioOutputDriver = AudioOutputDriver;
         var devices = AudioOutputDevices;
-        model.audioOutputDevice = devices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, devices.Count)];
+        model.audioOutputDevice = devices.Count == 0 ? string.Empty : devices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, devices.Count)];
 
         model.oscRXPort = OSCRXPort;
         model.oscTXPort = OSCTXPort;
@@ -261,7 +298,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
                 break;
             case nameof(SelectedAudioOutputDeviceIndex):
                 var outputDevices = AudioOutputDevices;
-                projectSettings.audioOutputDevice = outputDevices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, outputDevices.Count - 1)];
+                projectSettings.audioOutputDevice = outputDevices.Count > 0 ? outputDevices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, outputDevices.Count - 1)] : string.Empty;
                 break;
             case nameof(AudioOutputDevices):
             case nameof(AudioOutputDriverValues):
@@ -348,7 +385,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         lock (remoteNodesDict)
         {
             if (remoteNodesDict.TryGetValue(name, out node!))
-            return false;
+                return false;
 
             var nameStr = new string(name);
             node = new RemoteNodeViewModel(nameStr, this);

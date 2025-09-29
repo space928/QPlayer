@@ -6,6 +6,7 @@ using System.Buffers;
 using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Globalization;
 using System.Linq;
 using System.Net;
 using System.Net.Sockets;
@@ -283,9 +284,9 @@ public static class OSCMessageParser
                 var strArg = msg[split];
                 if (bool.TryParse(strArg, out var bVal))
                     args.Add(bVal);
-                else if (int.TryParse(strArg, out var iVal))
+                else if (int.TryParse(strArg, CultureInfo.InvariantCulture.NumberFormat, out var iVal))
                     args.Add(iVal);
-                else if (float.TryParse(strArg, out var fVal))
+                else if (float.TryParse(strArg, CultureInfo.InvariantCulture.NumberFormat, out var fVal))
                     args.Add(fVal);
                 else if (strArg.Length > 0 && strArg[0] == '\"')
                 {

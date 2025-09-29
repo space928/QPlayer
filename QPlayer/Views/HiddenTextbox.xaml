@@ -6,6 +6,7 @@
              xmlns:local="clr-namespace:QPlayer.Views"
              x:Name="HiddenTextboxInst"
              mc:Ignorable="d" 
+             Focusable="True" IsTabStop="True" GotKeyboardFocus="HiddenTextboxInst_GotKeyboardFocus" KeyboardNavigation.TabNavigation="Local"
              d:DesignHeight="30" d:DesignWidth="200">
     <Grid>
         <Label Name="Label" MouseDown="Label_MouseDown" MouseDoubleClick="Label_MouseDoubleClick" Content="{Binding Text, ElementName=HiddenTextboxInst}"/>

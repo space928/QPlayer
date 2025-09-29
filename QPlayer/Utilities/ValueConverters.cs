@@ -71,7 +71,10 @@ public class TimeSpanStringConverter : IValueConverter
 
     public static bool ConvertBack(string value, out TimeSpan result, bool useHours = false)
     {
-        if (int.TryParse(value, out var intSeconds))
+        var fmtTS = CultureInfo.InvariantCulture.DateTimeFormat;
+        var fmtNum = CultureInfo.InvariantCulture.NumberFormat;
+
+        if (int.TryParse(value, fmtNum, out var intSeconds))
         {
             // Default to parsing an int as seconds instead of as minutes.
             result = TimeSpan.FromSeconds(intSeconds);
@@ -79,12 +82,12 @@ public class TimeSpanStringConverter : IValueConverter
         }
 
         if (useHours)
-            if (TimeSpan.TryParse(value, out result))
+            if (TimeSpan.TryParse(value, fmtTS, out result))
                 return true;
-        if (TimeSpan.TryParse($"00:{value}", out result))
+        if (TimeSpan.TryParse($"00:{value}", fmtTS, out result))
             return true;
         // Couldn't parse a full timespan string, try parsing a number of seconds
-        if (double.TryParse(value, out var seconds))
+        if (double.TryParse(value, fmtNum, out var seconds))
         {
             result = TimeSpan.FromSeconds(seconds);
             return true;
@@ -99,7 +102,9 @@ public class GreaterThanConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
     {
-        return (double)value > double.Parse((string)parameter);
+        var fmtNum = CultureInfo.InvariantCulture.NumberFormat;
+
+        return (double)value > double.Parse((string)parameter, fmtNum);
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
@@ -113,7 +118,9 @@ public class MultiplyByConverter : IValueConverter
 {
     public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
     {
-        return (double)value * double.Parse((string)parameter);
+        var fmtNum = CultureInfo.InvariantCulture.NumberFormat;
+
+        return (double)value * double.Parse((string)parameter, fmtNum);
     }
 
     public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)

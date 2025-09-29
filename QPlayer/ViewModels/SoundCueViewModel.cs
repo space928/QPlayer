@@ -12,185 +12,287 @@ using System.Threading.Tasks;
 using System.Timers;
 using Cue = QPlayer.Models.Cue;
 
-namespace QPlayer.ViewModels
+namespace QPlayer.ViewModels;
+
+public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>, IDisposable
 {
-    public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>, IDisposable
+    [Reactive] public string Path { get; set; } = string.Empty;
+    [Reactive] public TimeSpan StartTime { get; set; }
+    [Reactive] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
+    [Reactive]
+    public override TimeSpan Duration
     {
-        [Reactive] public string Path { get; set; } = string.Empty;
-        [Reactive] public TimeSpan StartTime { get; set; }
-        [Reactive] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
-        [Reactive] public override TimeSpan Duration => PlaybackDuration == TimeSpan.Zero ? (audioFile?.TotalTime ?? TimeSpan.Zero) - StartTime : PlaybackDuration;
-        [Reactive]
-        public override TimeSpan PlaybackTime
+        get
         {
-            get => IsAudioFileValid ? audioFile.CurrentTime - StartTime : TimeSpan.Zero;
-            set
-            {
-                if (IsAudioFileValid)
-                    audioFile.CurrentTime = value + StartTime;
-            }
+            if (LoopMode == LoopMode.LoopedInfinite)
+                return TimeSpan.FromTicks(1);
+
+            return (loopingAudioStream?.TotalTime ?? TimeSpan.Zero);
         }
-        [Reactive] public float Volume { get; set; }
-        [Reactive] public float FadeIn { get; set; }
-        [Reactive] public float FadeOut { get; set; }
-        [Reactive] public FadeType FadeType { get; set; }
-        [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
+    }
 
-        [Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
-
-        private bool shouldSendRemoteStatus;
-        private string? thisNodeName;
-        private AudioFileReader? audioFile;
-        private FadingSampleProvider? fadeInOutProvider;
-        //private readonly Timer audioProgressUpdater;
-        private readonly Timer fadeOutTimer;
-        private readonly WaveFormRenderer waveFormRenderer;
-
-        public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
+    [Reactive]
+    public override TimeSpan PlaybackTime
+    {
+        get => IsAudioFileValid ? loopingAudioStream.CurrentTime : TimeSpan.Zero;
+        set
         {
-            OpenMediaFileCommand = new(OpenMediaFileExecute);
-            /*audioProgressUpdater = new Timer(50);
-            audioProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;*/
-            fadeOutTimer = new Timer
-            {
-                AutoReset = false
-            };
-            fadeOutTimer.Elapsed += FadeOutTimer_Elapsed;
+            if (IsAudioFileValid)
+                loopingAudioStream.CurrentTime = value;
+        }
+    }
+    [Reactive] public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
+    [Reactive] public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
+    [Reactive] public float Volume { get; set; }
+    [Reactive] public float FadeIn { get; set; }
+    [Reactive] public float FadeOut { get; set; }
+    [Reactive] public FadeType FadeType { get; set; }
+    [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
+    [Reactive] public EQViewModel EQ { get; init; }
 
-            PropertyChanged += (o, e) =>
+    [Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
+
+    private bool shouldSendRemoteStatus;
+    private string? thisNodeName;
+    private AudioFileReader? audioFile;
+    private LoopingSampleProvider<AudioFileReader>? loopingAudioStream;
+    private FadingSampleProvider? fadeInOutProvider;
+    //private readonly Timer audioProgressUpdater;
+    private readonly Timer fadeOutTimer;
+    private readonly WaveFormRenderer waveFormRenderer;
+
+    public SoundCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
+    {
+        OpenMediaFileCommand = new(OpenMediaFileExecute);
+        /*audioProgressUpdater = new Timer(50);
+        audioProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;*/
+        EQ = new();
+        fadeOutTimer = new Timer
+        {
+            AutoReset = false
+        };
+        fadeOutTimer.Elapsed += FadeOutTimer_Elapsed;
+
+        PropertyChanged += (o, e) =>
+        {
+            switch (e.PropertyName)
             {
-                switch (e.PropertyName)
-                {
-                    case nameof(Path):
-                        LoadAudioFile();
-                        break;
-                    case nameof(Volume):
-                        if (fadeInOutProvider != null)
-                            fadeInOutProvider.Volume = Volume;
-                        break;
-                    case nameof(StartTime):
+                case nameof(Path):
+                    LoadAudioFile();
+                    break;
+                case nameof(Volume):
+                    if (fadeInOutProvider != null)
+                        fadeInOutProvider.Volume = Volume;
+                    break;
+                case nameof(StartTime):
+                    if (loopingAudioStream != null)
+                    {
+                        loopingAudioStream.StartTime = StartTime;
+                        loopingAudioStream.EndTime = PlaybackDuration + StartTime;
+                    }
+                    OnPropertyChanged(nameof(Duration));
+                    break;
+                case nameof(PlaybackDuration):
+                    if (loopingAudioStream != null)
+                        loopingAudioStream.EndTime = PlaybackDuration + StartTime;
+                    OnPropertyChanged(nameof(Duration));
+                    break;
+                case nameof(LoopMode):
+                case nameof(LoopCount):
+                    if (loopingAudioStream != null)
+                    {
+                        loopingAudioStream.Infinite = LoopMode == LoopMode.LoopedInfinite;
+                        loopingAudioStream.Loops = LoopMode == LoopMode.OneShot ? 1 : LoopCount;
                         OnPropertyChanged(nameof(Duration));
-                        OnPropertyChanged(nameof(PlaybackTimeString));
-                        OnPropertyChanged(nameof(PlaybackTimeStringShort));
-                        break;
-                }
-            };
-            waveFormRenderer = new WaveFormRenderer(this);
-        }
-
-        /// <summary>
-        /// Checks whether the current audio file is valid. This also checks that the underlying stream object still exists.
-        /// </summary>
-        [MemberNotNullWhen(true, nameof(audioFile))]
-        private bool IsAudioFileValid
-        {
-            get
-            {
-                try { return (audioFile?.Position ?? -1) >= 0; } catch { return false; }
+                    }
+                    break;
+                case nameof(Duration):
+                    OnPropertyChanged(nameof(SampleDuration));
+                    OnPropertyChanged(nameof(PlaybackTime));
+                    break;
+                case nameof(PlaybackTime):
+                    OnPropertyChanged(nameof(SamplePlaybackTime));
+                    OnPropertyChanged(nameof(PlaybackTimeString));
+                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
+                    break;
             }
-        }
+        };
+        waveFormRenderer = new WaveFormRenderer(this);
+    }
 
-        public void Dispose()
+    /// <summary>
+    /// Checks whether the current audio file is valid. This also checks that the underlying stream object still exists.
+    /// </summary>
+    [MemberNotNullWhen(true, nameof(audioFile))]
+    [MemberNotNullWhen(true, nameof(loopingAudioStream))]
+    private bool IsAudioFileValid
+    {
+        get
         {
-            UnloadAudioFile();
+            try { return (audioFile?.Position ?? -1) >= 0; } catch { return false; }
         }
+    }
 
-        internal override void OnFocussed()
+    public void Dispose()
+    {
+        UnloadAudioFile();
+    }
+
+    internal override void OnFocussed()
+    {
+        base.OnFocussed();
+
+        WaveForm.Update();
+    }
+
+    public void OpenMediaFileExecute()
+    {
+        OpenFileDialog openFileDialog = new()
         {
-            base.OnFocussed();
-
-            WaveForm.Update();
+            Multiselect = false,
+            Title = "Open Media File",
+            CheckFileExists = true,
+            FileName = Path,
+            Filter = "Supported Media (*.wav;*.mp3;*.ogg;*.flac;*.aif;*.aiff;*.wma)|*.wav;*.mp3;*.ogg;*.flac;*.aif;*.aiff;*.wma|All files (*.*)|*.*"
+        };
+        if (openFileDialog.ShowDialog() ?? false)
+        {
+            Path = openFileDialog.FileName;
         }
+    }
 
-        public void OpenMediaFileExecute()
-        {
-            OpenFileDialog openFileDialog = new()
-            {
-                Multiselect = false,
-                Title = "Open Media File",
-                CheckFileExists = true,
-                FileName = Path,
-                Filter = "Supported Media (*.wav;*.mp3;*.ogg;*.flac;*.aif;*.aiff;*.wma)|*.wav;*.mp3;*.ogg;*.flac;*.aif;*.aiff;*.wma|All files (*.*)|*.*"
-            };
-            if (openFileDialog.ShowDialog() ?? false)
-            {
-                Path = openFileDialog.FileName;
-            }
-        }
-
-        public override void Go()
-        {
-            var oldState = State; // We need to capture the old state here since the base function writes to it
-            base.Go();
-            if (IsRemoteControlling)
-                return;
-            if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
-                StopAudio();
-
-            if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
-                return;
-
-            // There are a few edge cases where this can happen (notably when starting a cue while it's in the delay state).
-            if (mainViewModel.AudioPlaybackManager.IsPlaying(fadeInOutProvider))
-                StopAudio();
-
-            shouldSendRemoteStatus = mainViewModel.ProjectSettings.EnableRemoteControl
-                && (string.IsNullOrEmpty(RemoteNode) || RemoteNode == mainViewModel.ProjectSettings.NodeName);
-            thisNodeName = mainViewModel.ProjectSettings.NodeName;
-            //audioProgressUpdater.Start();
-            if (FadeOut > 0)
-            {
-                double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - audioFile.CurrentTime + StartTime).TotalMilliseconds;
-                if (fadeOutTime > 0 && fadeOutTime <= int.MaxValue)
-                {
-                    fadeOutTimer.Interval = fadeOutTime;
-                    fadeOutTimer.Start();
-                }
-            }
-            //var dbg_t = DateTime.Now;
-            //MainViewModel.Log($"[Playback Debugging] Cue about to start! {dbg_t:HH:mm:ss.ffff} dt={(dbg_t-MainViewModel.dbg_cueStartTime)}");
-            fadeInOutProvider.ResetPosition();
-            if (PlaybackDuration == default)
-                fadeInOutProvider.MaxDuration = 0;
-            else
-                fadeInOutProvider.MaxDuration = (long)((audioFile.CurrentTime + StartTime + Duration).TotalSeconds * fadeInOutProvider.WaveFormat.SampleRate * fadeInOutProvider.WaveFormat.Channels);
-            mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x) => Stop());
-            fadeInOutProvider.Volume = 0;
-            fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000 / (double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
-        }
-
-        public override void Pause()
-        {
-            base.Pause();
-            if (IsRemoteControlling || fadeInOutProvider == null || mainViewModel == null)
-                return;
-            mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
-            //audioProgressUpdater.Stop();
-            fadeOutTimer.Stop();
-            OnPropertyChanged(nameof(PlaybackTime));
-            OnPropertyChanged(nameof(PlaybackTimeString));
-            OnPropertyChanged(nameof(PlaybackTimeStringShort));
-        }
-
-        public override void Stop()
-        {
-            base.Stop();
-            if (IsRemoteControlling)
-                return;
-            if (shouldSendRemoteStatus)
-                mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);
+    public override void Go()
+    {
+        var oldState = State; // We need to capture the old state here since the base function writes to it
+        base.Go();
+        if (IsRemoteControlling)
+            return;
+        if (oldState == CueState.Playing || oldState == CueState.PlayingLooped)
             StopAudio();
+
+        if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
+            return;
+
+        // There are a few edge cases where this can happen (notably when starting a cue while it's in the delay state).
+        if (mainViewModel.AudioPlaybackManager.IsPlaying(fadeInOutProvider))
+            StopAudio();
+
+        shouldSendRemoteStatus = mainViewModel.ProjectSettings.EnableRemoteControl
+            && (string.IsNullOrEmpty(RemoteNode) || RemoteNode == mainViewModel.ProjectSettings.NodeName);
+        thisNodeName = mainViewModel.ProjectSettings.NodeName;
+
+        if (oldState != CueState.Paused)
+        {
+            loopingAudioStream.Reset();
+            loopingAudioStream.StartTime = StartTime;
+            loopingAudioStream.EndTime = StartTime + PlaybackDuration;
         }
 
-        /// <summary>
-        /// Fades out the current playing sound.
-        /// </summary>
-        /// <param name="duration">The duration in seconds to fade over</param>
-        /// <param name="fadeType">The type of fade to use</param>
-        public void FadeOutAndStop(float duration, FadeType? fadeType = null)
+        //audioProgressUpdater.Start();
+        if (FadeOut > 0)
+        {
+            double fadeOutTime = (Duration - TimeSpan.FromSeconds(FadeOut) - loopingAudioStream.CurrentTime).TotalMilliseconds;
+            if (fadeOutTime > 0 && fadeOutTime <= int.MaxValue)
+            {
+                fadeOutTimer.Interval = fadeOutTime;
+                fadeOutTimer.Start();
+            }
+        }
+        //var dbg_t = DateTime.Now;
+        //MainViewModel.Log($"[Playback Debugging] Cue about to start! {dbg_t:HH:mm:ss.ffff} dt={(dbg_t-MainViewModel.dbg_cueStartTime)}");
+        mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x) => Stop());
+        fadeInOutProvider.Volume = 0;
+        fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000 / (double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
+    }
+
+    public override void Pause()
+    {
+        base.Pause();
+        if (IsRemoteControlling || fadeInOutProvider == null || mainViewModel == null)
+            return;
+        mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
+        //audioProgressUpdater.Stop();
+        fadeOutTimer.Stop();
+        OnPropertyChanged(nameof(PlaybackTime));
+    }
+
+    public override void Stop()
+    {
+        base.Stop();
+        if (IsRemoteControlling)
+            return;
+        if (shouldSendRemoteStatus)
+            mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);
+        StopAudio();
+    }
+
+    /// <summary>
+    /// Fades out the current playing sound.
+    /// </summary>
+    /// <param name="duration">The duration in seconds to fade over</param>
+    /// <param name="fadeType">The type of fade to use</param>
+    public void FadeOutAndStop(float duration, FadeType? fadeType = null)
+    {
+        if (fadeInOutProvider == null || mainViewModel == null)
+            return;
+        switch (State)
+        {
+            case CueState.Ready:
+            case CueState.Paused:
+                return;
+            case CueState.PlayingLooped:
+            case CueState.Playing:
+                break;
+            case CueState.Delay:
+                Stop();
+                break;
+        }
+
+        if (duration == 0)
+        {
+            Stop();
+            return;
+        }
+
+        fadeInOutProvider.BeginFade(0, duration * 1000, fadeType ?? FadeType, FadeOut_Completed);
+    }
+
+    /// <summary>
+    /// Fades this sound to the given volume in a given amount of time.
+    /// </summary>
+    /// <param name="volume">The volume to fade to</param>
+    /// <param name="duration">The duration in seconds to fade over</param>
+    /// <param name="fadeType">The type of fade to use</param>
+    public void Fade(float volume, float duration, FadeType? fadeType = null)
+    {
+        if (fadeInOutProvider == null || mainViewModel == null)
+            return;
+        switch (State)
+        {
+            case CueState.Ready:
+            case CueState.Paused:
+            case CueState.Delay:
+                return;
+            case CueState.PlayingLooped:
+            case CueState.Playing:
+                break;
+        }
+
+        if (duration == 0)
+        {
+            return;
+        }
+
+        fadeInOutProvider.BeginFade(volume, duration * 1000, fadeType ?? FadeType);
+    }
+
+    private void FadeOutTimer_Elapsed(object? sender, ElapsedEventArgs e)
+    {
+        synchronizationContext?.Post((x) =>
         {
             if (fadeInOutProvider == null || mainViewModel == null)
                 return;
+
             switch (State)
             {
                 case CueState.Ready:
@@ -204,201 +306,154 @@ namespace QPlayer.ViewModels
                     break;
             }
 
-            if (duration == 0)
-            {
-                Stop();
-                return;
-            }
+            fadeInOutProvider.BeginFade(0, FadeOut * 1000, FadeType, FadeOut_Completed);
+        }, null);
+    }
 
-            fadeInOutProvider.BeginFade(0, duration * 1000, fadeType ?? FadeType, FadeOut_Completed);
-        }
+    internal override void UpdateUIStatus()
+    {
+        OnPropertyChanged(nameof(PlaybackTime));
 
-        /// <summary>
-        /// Fades this sound to the given volume in a given amount of time.
-        /// </summary>
-        /// <param name="volume">The volume to fade to</param>
-        /// <param name="duration">The duration in seconds to fade over</param>
-        /// <param name="fadeType">The type of fade to use</param>
-        public void Fade(float volume, float duration, FadeType? fadeType = null)
-        {
-            if (fadeInOutProvider == null || mainViewModel == null)
-                return;
-            switch (State)
-            {
-                case CueState.Ready:
-                case CueState.Paused:
-                case CueState.Delay:
-                    return;
-                case CueState.PlayingLooped:
-                case CueState.Playing:
-                    break;
-            }
+        if (shouldSendRemoteStatus)
+            mainViewModel?.OSCManager?.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
+                State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
+    }
 
-            if (duration == 0)
-            {
-                return;
-            }
-
-            fadeInOutProvider.BeginFade(volume, duration * 1000, fadeType ?? FadeType);
-        }
-
-        private void FadeOutTimer_Elapsed(object? sender, ElapsedEventArgs e)
-        {
-            synchronizationContext?.Post((x) =>
-            {
-                if (fadeInOutProvider == null || mainViewModel == null)
-                    return;
-
-                switch (State)
-                {
-                    case CueState.Ready:
-                    case CueState.Paused:
-                        return;
-                    case CueState.PlayingLooped:
-                    case CueState.Playing:
-                        break;
-                    case CueState.Delay:
-                        Stop();
-                        break;
-                }
-
-                fadeInOutProvider.BeginFade(0, FadeOut * 1000, FadeType, FadeOut_Completed);
-            }, null);
-        }
-
-        internal override void UpdateUIStatus()
-        {
-            OnPropertyChanged(nameof(PlaybackTime));
-            OnPropertyChanged(nameof(PlaybackTimeString));
-            OnPropertyChanged(nameof(PlaybackTimeStringShort));
-
-            if (shouldSendRemoteStatus)
-                mainViewModel?.OSCManager?.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
-                    State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
-        }
-
-        private void FadeOut_Completed(bool completed)
-        {
-            if (completed)
-                Stop();
-        }
-
-        /// <summary>
-        /// Stops all playing audio, stops the timers, and rewinds the audioFile to it's start time.
-        /// </summary>
-        private void StopAudio()
-        {
-            if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
-                return;
-            mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
-            PlaybackTime = TimeSpan.Zero;
-            //audioProgressUpdater.Stop();
-            fadeOutTimer.Stop();
-        }
-
-        private void UnloadAudioFile()
-        {
+    private void FadeOut_Completed(bool completed)
+    {
+        if (completed)
             Stop();
-            audioFile?.Dispose();
-            audioFile = null;
+    }
+
+    /// <summary>
+    /// Stops all playing audio, stops the timers, and rewinds the audioFile to it's start time.
+    /// </summary>
+    private void StopAudio()
+    {
+        if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
+            return;
+        mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
+        PlaybackTime = TimeSpan.Zero;
+        //audioProgressUpdater.Stop();
+        fadeOutTimer.Stop();
+    }
+
+    private void UnloadAudioFile()
+    {
+        Stop();
+        audioFile?.Dispose();
+        audioFile = null;
+        OnPropertyChanged(nameof(Duration));
+    }
+
+    private void LoadAudioFile()
+    {
+        if (mainViewModel == null)
+            return;
+
+        UnloadAudioFile();
+
+        var path = mainViewModel.ResolvePath(Path);
+        // Empty paths should fail silently
+        if (string.IsNullOrEmpty(path))
+            return;
+        if (!File.Exists(path))
+        {
+            MainViewModel.Log($"Sound file does not exist! Path: '{path}'", MainViewModel.LogLevel.Warning);
+            return;
+        }
+
+        try
+        {
+            audioFile = new(path);
+
+            // Hook up the different sample providers.
+            loopingAudioStream = new(audioFile, LoopMode == LoopMode.LoopedInfinite, LoopMode != LoopMode.OneShot ? LoopCount : 1);
+            // The EQ sample provider isn't compatible with the resampler (if the resampler comes after it in the chain)
+            // Hence resampling must happen first.
+            EQ.InputSampleProvider = mainViewModel.AudioPlaybackManager.ConvertToMixerFormat(loopingAudioStream);
+            fadeInOutProvider = new(EQ.EQSampleProvider!, true);
+
+            PlaybackTime = TimeSpan.Zero;
+
             OnPropertyChanged(nameof(Duration));
-            OnPropertyChanged(nameof(PlaybackTimeString));
-            OnPropertyChanged(nameof(PlaybackTimeStringShort));
-        }
 
-        private void LoadAudioFile()
-        {
-            if (mainViewModel == null)
-                return;
-
-            UnloadAudioFile();
-
-            var path = mainViewModel.ResolvePath(Path);
-            // Empty paths should fail silently
-            if (string.IsNullOrEmpty(path))
-                return;
-            if (!File.Exists(path))
+            Task.Run(async () =>
             {
-                MainViewModel.Log($"Sound file does not exist! Path: '{path}'", MainViewModel.LogLevel.Warning);
-                return;
-            }
-
-            try
+                return await PeakFileWriter.LoadOrGeneratePeakFile(path);
+            }).ContinueWith(x =>
             {
-                audioFile = new(path);
-                OnPropertyChanged(nameof(Duration));
-                PlaybackTime = TimeSpan.Zero;
-                // For some reason these don't get raised automatically...
-                OnPropertyChanged(nameof(PlaybackTimeString));
-                OnPropertyChanged(nameof(PlaybackTimeStringShort));
-                // audioFile.Volume = Volume;
-                fadeInOutProvider = new(audioFile, true);
-
-                Task.Run(async () =>
+                // Make sure this happens on the UI thread...
+                synchronizationContext?.Post(x =>
                 {
-                    return await PeakFileWriter.LoadOrGeneratePeakFile(path);
-                }).ContinueWith(x =>
-                {
-                    // Make sure this happens on the UI thread...
-                    synchronizationContext?.Post(x =>
-                    {
-                        waveFormRenderer.PeakFile = (PeakFile?)x;
-                    }, x.Result);
-                });
-            }
-            catch (Exception ex)
-            {
-                MainViewModel.Log($"Error while loading audio file ({path}): \n" + ex, MainViewModel.LogLevel.Error);
-            }
+                    waveFormRenderer.PeakFile = (PeakFile?)x;
+                }, x.Result);
+            });
         }
-
-        public override void ToModel(string propertyName)
+        catch (Exception ex)
         {
-            base.ToModel(propertyName);
-            if (cueModel is SoundCue scue)
-            {
-                switch (propertyName)
-                {
-                    case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
-                    case nameof(StartTime): scue.startTime = StartTime; break;
-                    case nameof(PlaybackDuration): scue.duration = PlaybackDuration; break;
-                    case nameof(Volume): scue.volume = Volume; break;
-                    case nameof(FadeIn): scue.fadeIn = FadeIn; break;
-                    case nameof(FadeOut): scue.fadeOut = FadeOut; break;
-                    case nameof(FadeType): scue.fadeType = FadeType; break;
-                }
-            }
+            MainViewModel.Log($"Error while loading audio file ({path}): \n" + ex, MainViewModel.LogLevel.Error);
         }
+    }
 
-        public override void ToModel(Cue cue)
+    public override void ToModel(string propertyName)
+    {
+        base.ToModel(propertyName);
+        if (cueModel is SoundCue scue)
         {
-            base.ToModel(cue);
-            if (cue is SoundCue scue)
+            switch (propertyName)
             {
-                scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path;
-                scue.startTime = StartTime;
-                scue.duration = PlaybackDuration;
-                scue.volume = Volume;
-                scue.fadeIn = FadeIn;
-                scue.fadeOut = FadeOut;
-                scue.fadeType = FadeType;
+                case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
+                case nameof(StartTime): scue.startTime = StartTime; break;
+                case nameof(PlaybackDuration): scue.duration = PlaybackDuration; break;
+                case nameof(Volume): scue.volume = Volume; break;
+                case nameof(FadeIn): scue.fadeIn = FadeIn; break;
+                case nameof(FadeOut): scue.fadeOut = FadeOut; break;
+                case nameof(FadeType): scue.fadeType = FadeType; break;
             }
         }
+    }
 
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
+    public override void ToModel(Cue cue)
+    {
+        base.ToModel(cue);
+        if (cue is SoundCue scue)
         {
-            SoundCueViewModel vm = new(mainViewModel);
-            if (cue is SoundCue scue)
-            {
-                vm.Path = scue.path;
-                vm.StartTime = scue.startTime;
-                vm.PlaybackDuration = scue.duration;
-                vm.Volume = scue.volume;
-                vm.FadeIn = scue.fadeIn;
-                vm.FadeOut = scue.fadeOut;
-                vm.FadeType = scue.fadeType;
-            }
-            return vm;
+            scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path;
+            scue.startTime = StartTime;
+            scue.duration = PlaybackDuration;
+            scue.volume = Volume;
+            scue.fadeIn = FadeIn;
+            scue.fadeOut = FadeOut;
+            scue.fadeType = FadeType;
+            scue.eq ??= new();
+            EQ.ToModel(scue.eq);
         }
+    }
+
+    public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
+    {
+        SoundCueViewModel vm = new(mainViewModel);
+        if (cue is SoundCue scue)
+        {
+            vm.Path = scue.path;
+            vm.StartTime = scue.startTime;
+            vm.PlaybackDuration = scue.duration;
+            vm.Volume = scue.volume;
+            vm.FadeIn = scue.fadeIn;
+            vm.FadeOut = scue.fadeOut;
+            vm.FadeType = scue.fadeType;
+            if (scue.eq == null)
+            {
+                scue.eq = new();
+                // Use the default values from the vm
+                vm.EQ.ToModel(scue.eq);
+            }
+            else
+            {
+                vm.EQ.FromModel(scue.eq);
+            }
+        }
+        return vm;
     }
 }
