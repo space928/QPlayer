@@ -203,7 +203,7 @@ namespace QPlayer.ViewModels
             ReturnSpecialDirectories = false,
             MaxRecursionDepth = 5
         };
-        private readonly byte[] defaultShowfile; // So that the unsaved changes check works correctly, we compare against the default showfile
+        private byte[] defaultShowfile = []; // So that the unsaved changes check works correctly, we compare against the default showfile
 
         //public static DateTime dbg_cueStartTime;
 
@@ -347,9 +347,13 @@ namespace QPlayer.ViewModels
             CreateCue(CueType.SoundCue, afterLast: true);
             CreateCue(CueType.TimeCodeCue, afterLast: true);*/
 
-            using var ms = new MemoryStream();
-            SerializeShowFile(ms).Wait();
-            defaultShowfile = ms.ToArray();
+            // Wait before doing this so that the audio driver has a chance to be discovered. This is a hack.
+            Task.Delay(2000).ContinueWith(async _ =>
+            {
+                using var ms = new MemoryStream();
+                await SerializeShowFile(ms);
+                defaultShowfile = ms.ToArray();
+            });
 
             // These are redundant, they are done when we load the showfile
             //ConnectOSC();
@@ -432,7 +436,8 @@ namespace QPlayer.ViewModels
                         fastUpdateInProgress = false;
                     }
                 }, DispatcherPriority.Background);
-            } catch { }
+            }
+            catch { }
         }
 
         private void SlowUpdate(object? sender, ElapsedEventArgs e)

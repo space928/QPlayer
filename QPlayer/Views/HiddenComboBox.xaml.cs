@@ -118,6 +118,9 @@ public partial class HiddenComboBox : UserControl
 
     private void HiddenComboBoxInst_GotKeyboardFocus(object sender, KeyboardFocusChangedEventArgs e)
     {
+        if (sender == this)
+            return;
+
         Edit();
     }
 }

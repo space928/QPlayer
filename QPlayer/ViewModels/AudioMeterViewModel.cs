@@ -33,13 +33,13 @@ public class AudioMeterViewModel : ReactiveObject
 
         prevOperation = dispatcher.InvokeAsync(() =>
         {
-            PeakL = ComputeMeter(PeakL, ref meter.peakL);
-            PeakR = ComputeMeter(PeakR, ref meter.peakR);
-            RMSL = ComputeMeter(RMSL, ref meter.rmsL);
-            RMSR = ComputeMeter(RMSR, ref meter.rmsR);
+            PeakL = ComputeMeter(PeakL, meter.peakL);
+            PeakR = ComputeMeter(PeakR, meter.peakR);
+            RMSL = ComputeMeter(RMSL, meter.rmsL);
+            RMSR = ComputeMeter(RMSR, meter.rmsR);
         }, DispatcherPriority.Input);
 
-        static float ComputeMeter(float prev, ref float next)
+        static float ComputeMeter(float prev, float next)
         {
             float x = prev;
             x = DbToLin(x);
