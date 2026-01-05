@@ -1,116 +1,77 @@
-﻿using QPlayer.Models;
-using ReactiveUI.Fody.Helpers;
+﻿using ReactiveUI.Fody.Helpers;
 using System;
 using System.Linq;
 using System.Timers;
-using Cue = QPlayer.Models.Cue;
 using QPlayer.Audio;
+using QPlayer.Models;
+using QPlayer.Views;
 
-namespace QPlayer.ViewModels
+namespace QPlayer.ViewModels;
+
+[Model(typeof(VolumeCue))]
+[View(typeof(CueEditor))]
+public class VolumeCueViewModel : CueViewModel
 {
-    public class VolumeCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
+    [Reactive, ReactiveDependency(nameof(FadeTime))] 
+    public override TimeSpan Duration => TimeSpan.FromSeconds(FadeTime);
+    [Reactive, ModelBindsTo(nameof(VolumeCue.soundQid))] public decimal Target { get; set; }
+    [Reactive] public float Volume { get; set; }
+    [Reactive] public float FadeTime { get; set; }
+    [Reactive] public FadeType FadeType { get; set; }
+
+    private DateTime startTime;
+
+    public VolumeCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
     {
-        [Reactive, ReactiveDependency(nameof(FadeTime))] 
-        public override TimeSpan Duration => TimeSpan.FromSeconds(FadeTime);
-        [Reactive] public decimal Target { get; set; }
-        [Reactive] public float Volume { get; set; }
-        [Reactive] public float FadeTime { get; set; }
-        [Reactive] public FadeType FadeType { get; set; }
-
-        private DateTime startTime;
-
-        public VolumeCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
+        PropertyChanged += (o, e) =>
         {
-            PropertyChanged += (o, e) =>
+            switch (e.PropertyName)
             {
-                switch (e.PropertyName)
-                {
-                    case nameof(FadeTime):
-                        OnPropertyChanged(nameof(Duration));
-                        OnPropertyChanged(nameof(PlaybackTimeString));
-                        OnPropertyChanged(nameof(PlaybackTimeStringShort));
-                        break;
-                }
-            };
-        }
-
-        internal override void UpdateUIStatus()
-        {
-            PlaybackTime = DateTime.Now.Subtract(startTime);
-            if (PlaybackTime >= Duration)
-                Stop();
-        }
-
-        public override void Go()
-        {
-            base.Go();
-            // Volume cues don't support preloading
-            PlaybackTime = TimeSpan.Zero;
-            startTime = DateTime.Now;
-            var cue = mainViewModel?.Cues.FirstOrDefault(x => x.QID == Target);
-            if(cue != null)
-            {
-                if (cue is SoundCueViewModel soundCue)
-                    soundCue.Fade(Volume, FadeTime, FadeType);
-                else
-                    Stop();
-            } else
-            {
-                Stop();
+                case nameof(FadeTime):
+                    OnPropertyChanged(nameof(Duration));
+                    OnPropertyChanged(nameof(PlaybackTimeString));
+                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
+                    break;
             }
-        }
+        };
+    }
 
-        public override void Stop()
-        {
-            base.Stop();
-            PlaybackTime = TimeSpan.Zero;
-        }
+    internal override void UpdateUIStatus()
+    {
+        PlaybackTime = DateTime.Now.Subtract(startTime);
+        if (PlaybackTime >= Duration)
+            Stop();
+    }
 
-        public override void Pause()
+    public override void Go()
+    {
+        base.Go();
+        // Volume cues don't support preloading
+        PlaybackTime = TimeSpan.Zero;
+        startTime = DateTime.Now;
+        var cue = mainViewModel?.Cues.FirstOrDefault(x => x.QID == Target);
+        if(cue != null)
         {
-            // Pausing isn't supported on stop cues
-            //base.Pause();
+            if (cue is SoundCueViewModel soundCue)
+                soundCue.Fade(Volume, FadeTime, FadeType);
+            else
+                Stop();
+        } else
+        {
             Stop();
         }
+    }
 
-        public override void ToModel(string propertyName)
-        {
-            base.ToModel(propertyName);
-            if (cueModel is VolumeCue scue)
-            {
-                switch (propertyName)
-                {
-                    case nameof(Target): scue.soundQid = Target; break;
-                    case nameof(Volume): scue.volume = Volume; break;
-                    case nameof(FadeTime): scue.fadeTime = FadeTime; break;
-                    case nameof(FadeType): scue.fadeType = FadeType; break;
-                }
-            }
-        }
+    public override void Stop()
+    {
+        base.Stop();
+        PlaybackTime = TimeSpan.Zero;
+    }
 
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-            if (cue is VolumeCue scue)
-            {
-                scue.soundQid = Target;
-                scue.volume = Volume;
-                scue.fadeTime = FadeTime;
-                scue.fadeType = FadeType;
-            }
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            VolumeCueViewModel vm = new(mainViewModel);
-            if (cue is VolumeCue scue)
-            {
-                vm.Target = scue.soundQid;
-                vm.Volume = scue.volume;
-                vm.FadeTime = scue.fadeTime;
-                vm.FadeType = scue.fadeType;
-            }
-            return vm;
-        }
+    public override void Pause()
+    {
+        // Pausing isn't supported on stop cues
+        //base.Pause();
+        Stop();
     }
 }

@@ -15,6 +15,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using QPlayer.Models;
 using QPlayer.ViewModels;
 using QPlayer.Views;
 
@@ -36,6 +37,21 @@ public partial class MainWindow : Window
         {
             CueListHeader.Margin = new Thickness(-e.HorizontalOffset, 0, 0, 0);
         };
+    }
+
+    public void AddMenuItem(string menu, string? subMenu, MenuItem menuItem)
+    {
+        // TOOD: Check that x.Header is actually a string and not a label.
+        if (MainMenu.Items.OfType<MenuItem>().FirstOrDefault(x => x.Header is string text && text == menu) is MenuItem parentMenu)
+            parentMenu.Items.Add(menuItem);
+        else
+            MainMenu.Items.Add(menuItem);
+    }
+
+    public void RegisterCueType(Type cueType, DataTemplate dataTemplate)
+    {
+        dataTemplate.DataType = cueType;
+        CueEditorInst.CueEditorTemplates.Add(dataTemplate, dataTemplate);
     }
 
     public void Window_Loaded(object sender, RoutedEventArgs e)
@@ -161,7 +177,8 @@ public partial class MainWindow : Window
                         case ".ogg":
                         case ".wma":
                             {
-                                var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
+                                if (vm.CreateCue(nameof(SoundCue), afterLast: true) is not SoundCueViewModel cue)
+                                    break;
                                 cue.Path = file;
                                 cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
                                 vm.MoveCue(cue, dstIndex++);

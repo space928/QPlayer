@@ -302,7 +302,7 @@ public class OSCManager
         oscDriver.Subscribe("/qplayer/remote/go", msg =>
         {
             if (FindRemoteMessageCue(msg, out var cue))
-                cue.Go();
+                cue.DelayedGo();
         }, syncContext);
         oscDriver.Subscribe("/qplayer/remote/pause", msg =>
         {

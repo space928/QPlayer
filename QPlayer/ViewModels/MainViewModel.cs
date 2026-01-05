@@ -170,12 +170,7 @@ namespace QPlayer.ViewModels
         private static SettingsWindow? settingsWindow;
         private static AboutWindow? aboutWindow;
         private static readonly object logListLock = new();
-        private readonly JsonSerializerOptions jsonSerializerOptions = new()
-        {
-            IncludeFields = true,
-            AllowTrailingCommas = true,
-            WriteIndented = true,
-        };
+        private readonly JsonSerializerOptions jsonSerializerOptions;
         private readonly Timer fastUpdateTimer;
         private readonly Timer slowUpdateTimer;
         private readonly Timer autosaveTimer;
@@ -218,6 +213,19 @@ namespace QPlayer.ViewModels
             LogList = logList;
             Log("Starting QPlayer...");
             Log("  Copyright Thomas Mathieson 2025");
+
+            Log("Loading plugins...");
+            PluginLoader.LoadPlugins(this);
+            Log($"Loaded {PluginLoader.LoadedPlugins}");
+
+            // Configure the json serializer, make sure that the polymorphic type resolver is resolved after the plugins (and cue types) have been loaded.
+            jsonSerializerOptions = new()
+            {
+                IncludeFields = true,
+                AllowTrailingCommas = true,
+                WriteIndented = true,
+                TypeInfoResolver = new PolymorphicTypeResolver() 
+            };
 
             //foreach (FontFamily fontFamily in Fonts.GetFontFamilies(new Uri("pack://application:,,,/"), "./Resources/"))
             //    Log($"Found embedded font: {fontFamily.Source}", LogLevel.Debug);
@@ -342,7 +350,7 @@ namespace QPlayer.ViewModels
 
             showFile = new();
             LoadShowfileModel(showFile);
-            CreateCue(CueType.SoundCue);
+            CreateCue(nameof(SoundCue));
             /*CreateCue(CueType.GroupCue, afterLast: true);
             CreateCue(CueType.SoundCue, afterLast: true);
             CreateCue(CueType.TimeCodeCue, afterLast: true);*/
@@ -389,6 +397,7 @@ namespace QPlayer.ViewModels
                 return false;
 
             Log("Shutting down...");
+            PluginLoader.OnUnload();
             CloseAboutExecute();
             CloseSettingsExecute();
             CloseLogExecute();
@@ -447,6 +456,7 @@ namespace QPlayer.ViewModels
             syncContext.Post(_ =>
             {
                 OnSlowUpdate?.Invoke();
+                PluginLoader.OnSlowUpdate();
 
                 if (DateTime.Now - lastLogStatusMessageTime > TimeSpan.FromSeconds(5))
                 {
@@ -778,18 +788,16 @@ namespace QPlayer.ViewModels
             if (src == null)
                 return null;
 
-            return CreateCue(src.Type, false, false, src);
+            return CreateCue(src.TypeName, false, false, src);
         }
 
         public void ShowCreateCueMenuExecute()
         {
             ContextMenu menu = new();
             menu.IsOpen = true;
-            foreach (var qtypeObj in typeof(CueType).GetEnumValues())
+            foreach (var qtypeObj in CueFactory.RegisteredCueTypes)
             {
-                var qtype = (CueType)qtypeObj;
-                if (qtype == CueType.None)
-                    continue;
+                var qtype = qtypeObj.name;
                 menu.Items.Add(new MenuItem()
                 {
                     Header = $"Create {qtype.ToString()[..^3]} Cue",
@@ -1080,8 +1088,9 @@ namespace QPlayer.ViewModels
             StopExecute();
 
             showFile = show;
-            ProjectSettings = ProjectSettingsViewModel.FromModel(show.showSettings, this);
+            ProjectSettings = new ProjectSettingsViewModel(this);
             ProjectSettings.Bind(show.showSettings);
+            ProjectSettings.SyncFromModel();
             ProjectSettings.PropertyChanged += (o, e) =>
             {
                 if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
@@ -1100,8 +1109,8 @@ namespace QPlayer.ViewModels
                 Cue c = showFile.cues[i];
                 try
                 {
-                    var vm = CueViewModel.FromModel(c, this);
-                    vm.Bind(c);
+                    var vm = CueFactory.CreateViewModelForCue(c, this)
+                        ?? throw new Exception($"Couldn't create view model for cue of type {c.GetType().Name}, qid: {c.qid}!");
                     Cues.Add(vm);
                 }
                 catch (Exception ex)
@@ -1139,7 +1148,8 @@ namespace QPlayer.ViewModels
                     else
                     {
                         var q = value;
-                        vm.ToModel(q);
+                        vm.Bind(q);
+                        vm.SyncToModel();
                     }
                 }
             }
@@ -1149,14 +1159,18 @@ namespace QPlayer.ViewModels
                 showFile.cues.Clear();
                 foreach (var vm in Cues)
                 {
-                    vm.UnBind();
-                    var cue = Cue.CreateCue(vm.Type);
-                    vm.Bind(cue);
-                    vm.ToModel(cue);
+                    vm.Bind(null);
+                    var cue = CueFactory.CreateCueForViewModel(vm);
+                    if (cue == null)
+                    {
+                        Log($"Failed to create model for cue of type '{vm.GetType().Name}' (qid = {vm.QID}).", LogLevel.Warning);
+                        continue;
+                    }
                     showFile.cues.Add(cue);
                 }
             }
-            ProjectSettings.ToModel(showFile.showSettings);
+            ProjectSettings.Bind(showFile.showSettings);
+            ProjectSettings.SyncToModel();
             showFile.columnWidths = [.. ColumnWidths.Select(x => x.Value)];
             showFile.fileFormatVersion = ShowFile.FILE_FORMAT_VERSION;
         }
@@ -1247,6 +1261,8 @@ namespace QPlayer.ViewModels
                     ProgressBoxViewModel.Progress = 0.5f;
                 }, null);
 
+                PluginLoader.OnSave(path);
+
                 using var f = File.OpenWrite(path);
                 f.SetLength(0);
                 using var ms = new MemoryStream();
@@ -1292,6 +1308,8 @@ namespace QPlayer.ViewModels
                 EnsureShowfileModelSync();
 
                 ProgressBoxViewModel.Progress = 0.5f;
+
+                PluginLoader.OnSave(path);
 
                 using var f = File.OpenWrite(path);
                 f.SetLength(0);
@@ -1343,6 +1361,8 @@ namespace QPlayer.ViewModels
                 {
                     EnsureShowfileModelSync();
                 }, null);
+
+                PluginLoader.OnSave(path);
 
                 string mediaDir = Path.Combine(path, "Media");
                 Directory.CreateDirectory(mediaDir);
@@ -1455,30 +1475,33 @@ namespace QPlayer.ViewModels
             }, null);
         }
 
-        public CueViewModel? CreateCue(string? type)
+        public CueViewModel? CreateCue(string? type, bool beforeCurrent = false, bool afterLast = false, CueViewModel? src = null)
         {
-            if (Enum.TryParse<CueType>(type, true, out var cueType))
-                return CreateCue(cueType);
-            return null;
-        }
+            if (string.IsNullOrEmpty(type))
+                return null;
 
-        public CueViewModel CreateCue(CueType type, bool beforeCurrent = false, bool afterLast = false, CueViewModel? src = null)
-        {
             int insertAfterInd = SelectedCueInd;
             if (beforeCurrent)
                 insertAfterInd--;
             if (afterLast)
                 insertAfterInd = Cues.Count - 1;
 
-            var model = Cue.CreateCue(type);
+            Cue? model;
+            if (src != null)
+                model = CueFactory.CreateCueForViewModel(src);
+            else
+                model = CueFactory.CreateCue(type);
 
-            src?.ToModel(model);
+            if (model == null)
+                return null;
 
             decimal newId = ChooseQID(insertAfterInd);
 
             model.qid = newId;
-            var ret = CueViewModel.FromModel(model, this);
-            ret.Bind(model);
+            var ret = CueFactory.CreateViewModelForCue(model, this);//CueViewModel.FromModel(model, this);
+            if (ret == null)
+                return null;
+
             if (insertAfterInd + 1 <= Cues.Count - 1)
             {
                 showFile.cues.Insert(insertAfterInd + 1, model);

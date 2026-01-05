@@ -42,29 +42,29 @@
         </DataTemplate.Triggers>
     </DataTemplate>
     
-    <DataTemplate x:Key="CueTypeTemplate" DataType="model:CueType">
+    <DataTemplate x:Key="CueTypeTemplate" DataType="vm:CueViewModel">
         <Image x:Name="IconImg" Source="{StaticResource IconPlay}" MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
             <Image.ToolTip>
-                <ToolTip Content="{Binding Mode=OneWay}"/>
+                <ToolTip Content="{Binding TypeName, Mode=OneWay}"/>
             </Image.ToolTip>
         </Image>
         <DataTemplate.Triggers>
-            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.GroupCue}">
+            <DataTrigger Binding="{Binding TypeName}" Value="GroupCue">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconGroupCue}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.StopCue}">
+            <DataTrigger Binding="{Binding TypeName}" Value="StopCue">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconStopCue}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.DummyCue}">
+            <DataTrigger Binding="{Binding TypeName}" Value="DummyCue">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconDummyCue}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.SoundCue}">
+            <DataTrigger Binding="{Binding TypeName}" Value="SoundCue">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconSoundCue}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.TimeCodeCue}">
+            <DataTrigger Binding="{Binding TypeName}" Value="TimeCodeCue">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconTimeCodeCue}"/>
             </DataTrigger>
-            <DataTrigger Binding="{Binding}" Value="{x:Static model:CueType.VolumeCue}">
+            <DataTrigger Binding="{Binding TypeName}" Value="VolumeCue">
                 <Setter TargetName="IconImg" Property="Source" Value="{StaticResource IconVolumeCue}"/>
             </DataTrigger>
         </DataTemplate.Triggers>

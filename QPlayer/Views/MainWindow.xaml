@@ -63,7 +63,7 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Image Source="{StaticResource IconImage}" HorizontalAlignment="Left" Grid.Column="0"/>
-            <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center">
+            <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center" x:Name="MainMenu">
                 <MenuItem Header="File" Height="30">
                     <MenuItem.Resources>
                         <Style x:Key="RecentItemStyle" TargetType="MenuItem">
@@ -249,7 +249,7 @@
             <TabControl x:Name="CueEditor" Grid.Column="2" Margin="5,0,0,0">
                 <TabItem Header="Selected Cue">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <local:CueEditor DataContext="{Binding SelectedCue}"/>
+                        <local:CueEditor x:Name="CueEditorInst" DataContext="{Binding SelectedCue}"/>
                     </ScrollViewer>
                 </TabItem>
                 <TabItem Header="Project Setup">

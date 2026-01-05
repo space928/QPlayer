@@ -8,10 +8,9 @@ using System.Text.Json.Serialization;
 
 namespace QPlayer.Models;
 
-[Serializable]
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 5;
+    public const int FILE_FORMAT_VERSION = 6;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
     public ShowSettings showSettings = new();
@@ -19,7 +18,6 @@ public record ShowFile
     public List<Cue> cues = [];
 }
 
-[Serializable]
 public record ShowSettings
 {
     public string title = "Untitled";
@@ -49,17 +47,15 @@ public record ShowSettings
     public int mscPage = -1;
 }
 
-[Serializable]
 public record struct RemoteNode(string name, string address)
 {
     public string name = name;
     public string address = address;
 }
 
-[Serializable]
 public record struct ShaderParameter(string name, float value);
 
-public enum CueType
+/*public enum CueType
 {
     None,
     GroupCue,
@@ -68,7 +64,7 @@ public enum CueType
     TimeCodeCue,
     StopCue,
     VolumeCue
-}
+}*/
 
 public enum LoopMode
 {
@@ -91,18 +87,9 @@ public enum TriggerMode
     AfterLast
 }
 
-[Serializable]
-[JsonPolymorphic(IgnoreUnrecognizedTypeDiscriminators = true, UnknownDerivedTypeHandling = JsonUnknownDerivedTypeHandling.FallBackToNearestAncestor)]
-[JsonDerivedType(typeof(Cue), typeDiscriminator: nameof(Cue))]
-[JsonDerivedType(typeof(GroupCue), typeDiscriminator: nameof(GroupCue))]
-[JsonDerivedType(typeof(DummyCue), typeDiscriminator: nameof(DummyCue))]
-[JsonDerivedType(typeof(SoundCue), typeDiscriminator: nameof(SoundCue))]
-[JsonDerivedType(typeof(TimeCodeCue), typeDiscriminator: nameof(TimeCodeCue))]
-[JsonDerivedType(typeof(StopCue), typeDiscriminator: nameof(StopCue))]
-[JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
 public record Cue
 {
-    public CueType type;
+    //public CueType type;
     public decimal qid;
     public decimal? parent;
     public SerializedColour colour = SerializedColour.Black;
@@ -115,42 +102,18 @@ public record Cue
     public LoopMode loopMode;
     public int loopCount = 1;
     public string remoteNode = string.Empty;
-
-    public static Cue CreateCue(CueType type) => type switch
-    {
-        CueType.GroupCue => new GroupCue(),
-        CueType.DummyCue => new DummyCue(),
-        CueType.SoundCue => new SoundCue(),
-        CueType.TimeCodeCue => new TimeCodeCue(),
-        CueType.StopCue => new StopCue(),
-        CueType.VolumeCue => new VolumeCue(),
-        CueType.None => new Cue(),
-        _ => throw new NotImplementedException(),
-    };
 }
 
-[Serializable]
-[JsonDerivedType(typeof(GroupCue), typeDiscriminator: nameof(GroupCue))]
 public record GroupCue : Cue
 {
-    public GroupCue() : base()
-    {
-        type = CueType.GroupCue;
-    }
+    public GroupCue() : base() { }
 }
 
-[Serializable]
-[JsonDerivedType(typeof(DummyCue), typeDiscriminator: nameof(DummyCue))]
 public record DummyCue : Cue
 {
-    public DummyCue() : base()
-    {
-        type = CueType.DummyCue;
-    }
+    public DummyCue() : base() { }
 }
 
-[Serializable]
-[JsonDerivedType(typeof(SoundCue), typeDiscriminator: nameof(SoundCue))]
 public record SoundCue : Cue
 {
     public string path = string.Empty;
@@ -162,27 +125,17 @@ public record SoundCue : Cue
     public FadeType fadeType = FadeType.SCurve;
     public EQSettings? eq;
 
-    public SoundCue() : base()
-    {
-        type = CueType.SoundCue;
-    }
+    public SoundCue() : base() { }
 }
 
-[Serializable]
-[JsonDerivedType(typeof(TimeCodeCue), typeDiscriminator: nameof(TimeCodeCue))]
 public record TimeCodeCue : Cue
 {
     public TimeSpan startTime;
     public TimeSpan duration;
 
-    public TimeCodeCue() : base()
-    {
-        type = CueType.TimeCodeCue;
-    }
+    public TimeCodeCue() : base() { }
 }
 
-[Serializable]
-[JsonDerivedType(typeof(StopCue), typeDiscriminator: nameof(StopCue))]
 public record StopCue : Cue
 {
     public decimal stopQid;
@@ -190,14 +143,9 @@ public record StopCue : Cue
     public float fadeOutTime;
     public FadeType fadeType = FadeType.SCurve;
 
-    public StopCue() : base()
-    {
-        type = CueType.StopCue;
-    }
+    public StopCue() : base() { }
 }
 
-[Serializable]
-[JsonDerivedType(typeof(VolumeCue), typeDiscriminator: nameof(VolumeCue))]
 public record VolumeCue : Cue
 {
     public decimal soundQid;
@@ -205,8 +153,5 @@ public record VolumeCue : Cue
     public float volume;
     public FadeType fadeType = FadeType.SCurve;
 
-    public VolumeCue() : base()
-    {
-        type = CueType.VolumeCue;
-    }
+    public VolumeCue() : base() { }
 }

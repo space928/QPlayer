@@ -169,16 +169,15 @@ public class StringDict<T> : IDictionary<string, T>, IDictionary, IReadOnlyDicti
         Initialise(capacity);
     }
 
-    public StringDict(ICollection<KeyValuePair<string, T>> keyValuePairs)
-    {
-        Initialise(keyValuePairs.Count);
-
-        throw new NotImplementedException();
-    }
-
     public StringDict(IEnumerable<KeyValuePair<string, T>> keyValuePairs)
     {
-        throw new NotImplementedException();
+        if (keyValuePairs is ICollection<KeyValuePair<string, T>> keyValuePairsCollection)
+            Initialise(keyValuePairsCollection.Count);
+        else
+            Initialise(8);
+
+        foreach (var pair in keyValuePairs)
+            TryAdd(pair.Key, pair.Value);
     }
 
     public StringDict(IDictionary<string, T> other) : this(other as ICollection<KeyValuePair<string, T>>) { }

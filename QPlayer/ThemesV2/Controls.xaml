@@ -434,6 +434,10 @@
         <Setter Property="Foreground" Value="{DynamicResource Window.Static.Foreground}" />
         <Setter Property="BorderThickness" Value="1" />
         <Setter Property="ResizeMode" Value="CanResizeWithGrip" />
+        <Setter Property="TextOptions.TextFormattingMode" Value="Display" />
+        <Setter Property="TextOptions.TextRenderingMode" Value="ClearType" />
+        <Setter Property="TextOptions.TextHintingMode" Value="Auto" />
+        <Setter Property="UseLayoutRounding" Value="True" />
         <Setter Property="WindowStyle" Value="SingleBorderWindow" />
         <Setter Property="WindowChrome.WindowChrome">
             <Setter.Value>
@@ -2630,7 +2634,7 @@
             </Trigger>
         </ControlTemplate.Triggers>
     </ControlTemplate>
-    
+
     <Style TargetType="{x:Type Slider}">
         <Setter Property="Stylus.IsPressAndHoldEnabled" Value="false" />
         <Setter Property="Background" Value="Transparent" />
