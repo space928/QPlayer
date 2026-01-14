@@ -4,10 +4,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace QPlayer.Views
-{
-    public partial class CueDataTemplates
-    {
+namespace QPlayer.Views;
 
-    }
+public partial class CueDataTemplates
+{
+
 }

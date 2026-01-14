@@ -1,4 +1,5 @@
 ﻿using QPlayer.Models;
+using QPlayer.SourceGenerator;
 using QPlayer.Views;
 
 namespace QPlayer.ViewModels;

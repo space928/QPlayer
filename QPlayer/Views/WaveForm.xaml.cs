@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using QPlayer.ViewModels;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -10,7 +10,6 @@ using System.Runtime.InteropServices;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Input;
-using System.Windows.Shapes;
 using static QPlayer.Views.LibraryImports;
 
 namespace QPlayer.Views;
@@ -35,13 +34,12 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
     private double timeHandleMouseOffset = 0;
     private TimeSpan timeOutStart = TimeSpan.Zero;
 
-    [Reactive] public bool Enabled => waveFormWindow == null || waveFormWindow == window || waveFormWindow.DataContext != SoundCue;
-    [Reactive] public Visibility WaveFormVisible => Enabled ? Visibility.Visible : Visibility.Hidden;
-    [Reactive] public Visibility InvWaveFormVisible => Enabled ? Visibility.Hidden : Visibility.Visible;
-    [Reactive] public Visibility WaveFormLoading => (WaveFormRenderer?.PeakFile != null && Enabled) ? Visibility.Hidden : Visibility.Visible;
-    [Reactive] public RelayCommand PopupCommand { get; private set; }
-    [Reactive, ReactiveDependency(nameof(NavBarHeight))] public double TimeStampFontSize => NavBarHeight / 2;
-    [Reactive]
+    [Reactive("Enabled")] private bool Enabled_Template => waveFormWindow == null || waveFormWindow == window || waveFormWindow.DataContext != SoundCue;
+    public Visibility WaveFormVisible => Enabled ? Visibility.Visible : Visibility.Hidden;
+    public Visibility InvWaveFormVisible => Enabled ? Visibility.Hidden : Visibility.Visible;
+    public Visibility WaveFormLoading => (WaveFormRenderer?.PeakFile != null && Enabled) ? Visibility.Hidden : Visibility.Visible;
+    public RelayCommand PopupCommand { get; private set; }
+    public double TimeStampFontSize => NavBarHeight / 2;
     public Thickness PlaybackMarkerPos
     {
         get
@@ -51,8 +49,8 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
             return new((SoundCue.SamplePlaybackTime - WaveFormRenderer.ViewStart/* + SoundCue.StartTime*/) / WaveFormRenderer.ViewSpan * Graph.ActualWidth - PlaybackMarker.Width, 0, 0, 0);
         }
     }
-    [Reactive] public Thickness TimeInMarkerPos => new(timeInMarkerPos,0,0,0);
-    [Reactive] public Thickness TimeOutMarkerPos => new(timeOutMarkerPos,0,0,0);
+    public Thickness TimeInMarkerPos => new(timeInMarkerPos,0,0,0);
+    public Thickness TimeOutMarkerPos => new(timeOutMarkerPos,0,0,0);
 
     #region Dependency Properties
 
@@ -68,7 +66,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
     public double NavBarHeight
     {
         get { return (double)GetValue(NavBarHeightProperty); }
-        set { SetValue(NavBarHeightProperty, value); }
+        set { SetValue(NavBarHeightProperty, value); OnPropertyChanged(nameof(TimeStampFontSize)); }
     }
 
     public static readonly DependencyProperty NavBarHeightProperty =
@@ -82,6 +80,9 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
 
     public static readonly DependencyProperty WaveFormRendererProperty =
         DependencyProperty.Register("WaveFormRenderer", typeof(WaveFormRenderer), typeof(WaveForm), new PropertyMetadata(WaveFormRendererUpdated));
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangedEventHandler? PropertyChanging;
 
     #endregion
 

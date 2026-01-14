@@ -1,5 +1,4 @@
-﻿using PropertyChanged;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Collections.Specialized;
@@ -21,7 +20,6 @@ public class ReactiveCollection<T> : ObservableCollection<T>
     // A fairly rubbish solution to the problem of needing to know the index of the item which has changed
     private readonly Dictionary<T, int> indexCache = [];
 
-    [SuppressPropertyChangedWarnings]
     private void OnItemChanged(object? item, PropertyChangedEventArgs args)
     {
         if (item is T obj && indexCache.TryGetValue(obj, out int index))
@@ -98,13 +96,11 @@ public class ReactiveCollection<T> : ObservableCollection<T>
     /// <summary>
     /// Helper to raise a PropertyChanged event for the Count property
     /// </summary>
-    [SuppressPropertyChangedWarnings]
     private void OnCountPropertyChanged() => OnPropertyChanged(EventArgsCache.CountPropertyChanged);
 
     /// <summary>
     /// Helper to raise a PropertyChanged event for the Indexer property
     /// </summary>
-    [SuppressPropertyChangedWarnings]
     private void OnIndexerPropertyChanged() => OnPropertyChanged(EventArgsCache.IndexerPropertyChanged);
 
     internal static class EventArgsCache

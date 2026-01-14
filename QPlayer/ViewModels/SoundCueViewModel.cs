@@ -4,7 +4,7 @@ using NAudio.Wave;
 using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.Views;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -15,12 +15,11 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(SoundCue))]
 [View(typeof(CueEditor))]
-public class SoundCueViewModel : CueViewModel
+public partial class SoundCueViewModel : CueViewModel
 {
-    [Reactive, ModelCustomBinding(nameof(VM2M_Path), null)] public string Path { get; set; } = string.Empty;
-    [Reactive] public TimeSpan StartTime { get; set; }
-    [Reactive, ModelBindsTo(nameof(SoundCue.duration))] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
-    [Reactive]
+    [Reactive, ModelCustomBinding(nameof(VM2M_Path), null)] private string path = string.Empty;
+    [Reactive, ChangesProp(nameof(Duration))] private TimeSpan startTime;
+    [Reactive, ModelBindsTo(nameof(SoundCue.duration)), ChangesProp(nameof(Duration))] private TimeSpan playbackDuration = TimeSpan.Zero;
     public override TimeSpan Duration
     {
         get
@@ -31,8 +30,6 @@ public class SoundCueViewModel : CueViewModel
             return (loopingAudioStream?.TotalTime ?? TimeSpan.Zero);
         }
     }
-
-    [Reactive]
     public override TimeSpan PlaybackTime
     {
         get => IsAudioFileValid ? loopingAudioStream.CurrentTime : TimeSpan.Zero;
@@ -40,18 +37,19 @@ public class SoundCueViewModel : CueViewModel
         {
             if (IsAudioFileValid)
                 loopingAudioStream.CurrentTime = value;
+            base.PlaybackTime = value;
         }
     }
-    [Reactive] public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
-    [Reactive] public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
-    [Reactive] public float Volume { get; set; }
-    [Reactive] public float FadeIn { get; set; }
-    [Reactive] public float FadeOut { get; set; }
-    [Reactive] public FadeType FadeType { get; set; }
+    public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
+    public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
+    [Reactive] private float volume;
+    [Reactive] private float fadeIn;
+    [Reactive] private float fadeOut;
+    [Reactive] private FadeType fadeType;
 
-    [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
-    [Reactive] public EQViewModel EQ { get; init; }
-    [Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
+    [Reactive, PrivateSetter, ModelSkip] private RelayCommand openMediaFileCommand;
+    [Reactive("EQ"), PrivateSetter] private EQViewModel eq;
+    public WaveFormRenderer WaveForm => waveFormRenderer;
 
     private bool shouldSendRemoteStatus;
     private string? thisNodeName;
@@ -91,12 +89,10 @@ public class SoundCueViewModel : CueViewModel
                         loopingAudioStream.StartTime = StartTime;
                         loopingAudioStream.EndTime = PlaybackDuration + StartTime;
                     }
-                    OnPropertyChanged(nameof(Duration));
                     break;
                 case nameof(PlaybackDuration):
                     if (loopingAudioStream != null)
                         loopingAudioStream.EndTime = PlaybackDuration + StartTime;
-                    OnPropertyChanged(nameof(Duration));
                     break;
                 case nameof(LoopMode):
                 case nameof(LoopCount):
@@ -113,8 +109,6 @@ public class SoundCueViewModel : CueViewModel
                     break;
                 case nameof(PlaybackTime):
                     OnPropertyChanged(nameof(SamplePlaybackTime));
-                    OnPropertyChanged(nameof(PlaybackTimeString));
-                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
                     break;
             }
         };

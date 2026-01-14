@@ -1,7 +1,7 @@
 ﻿using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.Views;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
 using System;
 using System.Linq;
 using System.Timers;
@@ -10,14 +10,13 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(StopCue))]
 [View(typeof(CueEditor))]
-public class StopCueViewModel : CueViewModel
+public partial class StopCueViewModel : CueViewModel
 {
-    [Reactive, ReactiveDependency(nameof(FadeOutTime))] 
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeOutTime);
-    [Reactive, ModelBindsTo(nameof(StopCue.stopQid))] public decimal StopTarget { get; set; }
-    [Reactive] public StopMode StopMode { get; set; }
-    [Reactive] public float FadeOutTime { get; set; }
-    [Reactive] public FadeType FadeType { get; set; }
+    [Reactive, ModelBindsTo(nameof(StopCue.stopQid))] private decimal stopTarget;
+    [Reactive] private StopMode stopMode;
+    [Reactive, ChangesProp(nameof(Duration))] private float fadeOutTime;
+    [Reactive] private FadeType fadeType;
 
     private DateTime startTime;
 
@@ -29,8 +28,6 @@ public class StopCueViewModel : CueViewModel
             {
                 case nameof(FadeOutTime):
                     OnPropertyChanged(nameof(Duration));
-                    OnPropertyChanged(nameof(PlaybackTimeString));
-                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
                     break;
             }
         };

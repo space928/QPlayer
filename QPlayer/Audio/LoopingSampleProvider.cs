@@ -143,7 +143,7 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         set
         {
             totalPosition = value;
-            var srcLen = TrimmedSrcLength;
+            var srcLen = Math.Max(1, TrimmedSrcLength);
             SrcPosition = value % srcLen + startTime;
             playedLoops = value / srcLen;
         }

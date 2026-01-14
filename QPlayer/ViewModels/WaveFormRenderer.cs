@@ -1,29 +1,19 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
-using DynamicData;
-using NAudio.Wave;
-using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.IO;
-using System.IO.Compression;
 using System.Linq;
-using System.Reflection;
-using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
 using System.Windows;
 using System.Windows.Media;
 using QPlayer.Models;
+using QPlayer.SourceGenerator;
 using QPlayer.Utilities;
 
 namespace QPlayer.ViewModels;
 
-public class WaveFormRenderer : ObservableObject
+public partial class WaveFormRenderer : ObservableObject
 {
-    [Reactive]
-    public PeakFile? PeakFile
+    [Reactive("PeakFile"), ChangesProp(nameof(FileName)), ChangesProp(nameof(WindowTitle)), SkipEqualityCheck]
+    private PeakFile? PeakFile_Template
     {
         set
         {
@@ -34,16 +24,16 @@ public class WaveFormRenderer : ObservableObject
         }
         get => peakFile;
     }
-    [Reactive] public SoundCueViewModel SoundCueViewModel { get; init; }
-    [Reactive] public Drawing WaveFormDrawing => drawingGroup;
-    [Reactive]
-    public double Width
+    [Reactive, PrivateSetter] private SoundCueViewModel soundCueViewModel;
+    [Reactive("WaveFormDrawing"), PrivateSetter] private DrawingGroup drawingGroup;
+    [Reactive("Width")]
+    private double Width_Template
     {
         get => width;
         set { var prev = width; width = (int)value; if (prev != value) InternalUpdate(); }
     }
-    [Reactive]
-    public double Height
+    [Reactive("Height")]
+    private double Height_Template
     {
         get => height;
         set { var prev = height; height = (int)value; if (prev != value) InternalUpdate(); }
@@ -71,21 +61,21 @@ public class WaveFormRenderer : ObservableObject
                 InternalUpdate();
         }
     }
-    [Reactive]
-    public TimeSpan ViewStart
+    [Reactive("ViewStart")]
+    private TimeSpan ViewStart_Template
     {
         get => TimeSpan.FromSeconds(startTime * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
         set { startTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); InternalUpdate(); }
     }
-    [Reactive]
-    public TimeSpan ViewEnd
+    [Reactive("ViewEnd")]
+    private TimeSpan ViewEnd_Template
     {
         get => TimeSpan.FromSeconds(endTime * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
         set { endTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); InternalUpdate(); }
     }
-    // This property exists for users which need to set both the start and end times at tthe same time without triggering two separate renders.
-    [Reactive]
-    public (TimeSpan start, TimeSpan end) ViewBounds
+    // This property exists for users which need to set both the start and end times at the same time without triggering two separate renders.
+    [Reactive("ViewBounds")]
+    private (TimeSpan start, TimeSpan end) ViewBounds_Template
     {
         get
         {
@@ -100,12 +90,10 @@ public class WaveFormRenderer : ObservableObject
             InternalUpdate();
         }
     }
-    [Reactive]
     public TimeSpan ViewSpan => TimeSpan.FromSeconds((endTime - startTime) * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
-    [Reactive]
     public TimeSpan Duration => TimeSpan.FromSeconds((peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
-    [Reactive, ReactiveDependency(nameof(PeakFile))] public string FileName => peakFile?.sourceName ?? string.Empty;
-    [Reactive, ReactiveDependency(nameof(PeakFile))] public string WindowTitle => $"QPlayer - Waveform - {peakFile?.sourceName ?? string.Empty}";
+    public string FileName => peakFile?.sourceName ?? string.Empty;
+    public string WindowTitle => $"QPlayer - Waveform - {peakFile?.sourceName ?? string.Empty}";
 
     /// <summary>
     /// This is the name of a special property change notification which the view listens to so that it knows to
@@ -118,7 +106,6 @@ public class WaveFormRenderer : ObservableObject
     private readonly Pen peakPen;
     private readonly Brush rmsBrush = new SolidColorBrush(Color.FromArgb(200, 10, 30, 220));
     private readonly Pen rmsPen;
-    private readonly DrawingGroup drawingGroup;
     private readonly GeometryDrawing geometryDrawingPeak;
     private readonly PathGeometry geometryPeak;
     private readonly PathFigure figurePeak;
@@ -137,11 +124,11 @@ public class WaveFormRenderer : ObservableObject
     // Lowering this lowers the amount of detail in the waveforms, which is good for performance.
     private const float WAVEFORM_DETAIL_FACTOR = 0.75f;
 
-    private PeakFile? peakFile = null;
-    private int width = 2;
-    private int height = 2;
+    private PeakFile? peakFile;
     private float startTime = 0;
     private float endTime = 1;
+    private float width;
+    private float height;
 
     public WaveFormRenderer(SoundCueViewModel soundCue)
     {
@@ -208,16 +195,19 @@ public class WaveFormRenderer : ObservableObject
             clipGeometry.Rect = new Rect(0, 0, width, height);
         }
 
+        float w = (float)width;
+        float h = (float)height;
+
         peakPoints.Clear();
         rmsPoints.Clear();
-        figurePeak.StartPoint = new Point(0, height);
-        figureRMS.StartPoint = new Point(0, height);
+        figurePeak.StartPoint = new Point(0, h);
+        figureRMS.StartPoint = new Point(0, h);
         //peakPoints.Add(new Point(0, height));
         //rmsPoints.Add(new Point(0, height));
 
         float viewSpan = endTime - startTime;
         // Find a pyramid with slightly fewer points than the width in pixels of the final waveform.
-        float targetLength = Math.Min(width * WAVEFORM_DETAIL_FACTOR, MAX_DISPLAYED_POINTS) / viewSpan;
+        float targetLength = Math.Min(w * WAVEFORM_DETAIL_FACTOR, MAX_DISPLAYED_POINTS) / viewSpan;
         var buff = peakFile.Value.peakDataPyramid.LastOrDefault(
             x => x.samples.Length <= targetLength,
             peakFile.Value.peakDataPyramid[0]);
@@ -232,7 +222,7 @@ public class WaveFormRenderer : ObservableObject
         float prevRms = 0;
         for (int i = sampleStart; i < sampleEnd + 1; i++)
         {
-            float x = (j * width) / (float)samples;
+            float x = (j * w) / (float)samples;
             float peakVal = buff.samples[i].peak / (float)ushort.MaxValue;
             float rmsVal = buff.samples[i].rms / (float)ushort.MaxValue;
 
@@ -241,16 +231,16 @@ public class WaveFormRenderer : ObservableObject
             prevPeak = peakVal;
             prevRms = rmsVal;
 
-            float peak = height - MathF.Sqrt(peakLerped) * height;
-            float rms = height - MathF.Sqrt(rmsLerped) * height;
+            float peak = h - MathF.Sqrt(peakLerped) * h;
+            float rms = h - MathF.Sqrt(rmsLerped) * h;
 
             peakPoints.Add(new Point(x, peak));
             rmsPoints.Add(new Point(x, rms));
             j++;
         }
 
-        peakPoints.Add(new Point(width, height));
-        rmsPoints.Add(new Point(width, height));
+        peakPoints.Add(new Point(w, h));
+        rmsPoints.Add(new Point(w, h));
 
         peakPoly.Points.Clear();
         rmsPoly.Points.Clear();

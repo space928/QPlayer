@@ -76,6 +76,17 @@ public static partial class ExtensionMethods
         list[index] = value;
     }
 
+    public static int IndexOf<TList, TItem>(this IList<TList> list, Func<TList, TItem> selector, TItem value)
+    {
+        for (int i = 0; i < list.Count; i++)
+        {
+            var sel = selector(list[i]);
+            if (EqualityComparer<TItem>.Default.Equals(sel, value))
+                return i;
+        }
+        return -1;
+    }
+
     /// <summary>
     /// Sets the translation component of this matrix.
     /// </summary>

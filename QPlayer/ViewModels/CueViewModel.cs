@@ -1,14 +1,13 @@
 ﻿using ColorPicker.Models;
-using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using PropertyChanged;
 using QPlayer.Audio;
 using QPlayer.Models;
+using QPlayer.SourceGenerator;
 using QPlayer.Utilities;
-using ReactiveUI.Fody.Helpers;
 using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 using System.Threading;
@@ -43,11 +42,12 @@ public enum CueState
     Paused,
 }
 
-public abstract class CueViewModel : BindableViewModel<Cue>
+public abstract partial class CueViewModel : BindableViewModel<Cue>
 {
     #region Bindable Properties
-    [Reactive]
-    public decimal QID
+    [Reactive("QID"), TemplateProp(nameof(QID_Template))]
+    protected decimal qid;
+    private decimal QID_Template
     {
         get => qid;
         set
@@ -56,43 +56,27 @@ public abstract class CueViewModel : BindableViewModel<Cue>
             qid = value;
         }
     }
-    [Reactive, ModelBindsTo(nameof(Cue.parent))] public decimal? ParentId { get; set; }
-    [Reactive] public CueViewModel? Parent => ParentId != null ? (parent ??= mainViewModel?.Cues.FirstOrDefault(x => x.QID == ParentId)) : null;
-    [Reactive] [ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour))] public ColorState Colour { get; set; }
-    [Reactive] public string Name { get; set; } = string.Empty;
-    [Reactive] public string Description { get; set; } = string.Empty;
-    [Reactive] public string RemoteNode { get; set; } = string.Empty;
-    [Reactive] public TriggerMode Trigger { get; set; }
-    [Reactive] public bool Enabled { get; set; } = true;
-    [Reactive] public TimeSpan Delay { get; set; }
-    [Reactive] public virtual TimeSpan Duration { get; }
-    [Reactive] public LoopMode LoopMode { get; set; }
-    [Reactive] public int LoopCount { get; set; }
+    [Reactive, ModelBindsTo(nameof(Cue.parent))] private decimal? parentId;
+    public CueViewModel? Parent => ParentId != null ? (parent ??= mainViewModel?.Cues.FirstOrDefault(x => x.QID == ParentId)) : null;
+    [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush))] 
+    private ColorState colour;
+    [Reactive] private string name = string.Empty;
+    [Reactive] private string description = string.Empty;
+    [Reactive] private string remoteNode = string.Empty;
+    [Reactive] private TriggerMode trigger;
+    [Reactive] private bool enabled = true;
+    [Reactive] private TimeSpan delay;
+    [Reactive, CustomAccessibility("public virtual"), ModelSkip, SkipEqualityCheck] private TimeSpan duration;
+    [Reactive, ChangesProp(nameof(UseLoopCount))] private LoopMode loopMode;
+    [Reactive] public int loopCount;
 
-    [Reactive] public MainViewModel? MainViewModel => mainViewModel;
-    [Reactive] public bool IsSelected => mainViewModel?.SelectedCue == this;
-    [Reactive, ModelSkip] public CueState State { get; set; }
-    [Reactive, ModelSkip] public virtual TimeSpan PlaybackTime { get; set; }
-    [Reactive]
-    [ReactiveDependency(nameof(LoopMode))]
+    [Reactive, PrivateSetter, ModelSkip] protected MainViewModel? mainViewModel;
+    public bool IsSelected => mainViewModel?.SelectedCue == this;
+    [Reactive, ModelSkip] private CueState state;
+    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip] 
+    private TimeSpan playbackTime;
     public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
-    [Reactive]
-    [ReactiveDependency(nameof(PlaybackTime))]
-    public string PlaybackTimeString => State switch
-    {
-        CueState.Delay => $"WAIT {Delay:mm\\:ss\\.ff}",
-        CueState.Playing or CueState.PlayingLooped or CueState.Paused => $"{PlaybackTime:mm\\:ss} / {Duration:mm\\:ss}",
-        _ => $"{Duration:mm\\:ss\\.ff}",
-    };
-    [Reactive]
-    [ReactiveDependency(nameof(PlaybackTime))]
-    public string PlaybackTimeStringShort => State switch
-    {
-        CueState.Delay => $"WAIT",
-        CueState.Playing or CueState.PlayingLooped or CueState.Paused => $"-{PlaybackTime - Duration:mm\\:ss}",
-        _ => $"{Duration:mm\\:ss}",
-    };
-    [Reactive, ReactiveDependency(nameof(Colour))]
+    
     public SolidColorBrush ColourBrush
     {
         get
@@ -101,35 +85,30 @@ public abstract class CueViewModel : BindableViewModel<Cue>
             return colourBrush;
         }
     }
-    [Reactive]
     public string TypeName => typeName;
 
-    [Reactive] public RelayCommand GoCommand { get; private set; }
-    [Reactive] public RelayCommand PauseCommand { get; private set; }
-    [Reactive] public RelayCommand StopCommand { get; private set; }
-    [Reactive] public RelayCommand SelectCommand { get; private set; }
+    [Reactive, PrivateSetter, ModelSkip] private RelayCommand goCommand;
+    [Reactive, PrivateSetter, ModelSkip] private RelayCommand pauseCommand;
+    [Reactive, PrivateSetter, ModelSkip] private RelayCommand stopCommand;
+    [Reactive, PrivateSetter, ModelSkip] private RelayCommand selectCommand;
+    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<LoopMode>? loopModeVals;
+    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<StopMode>? stopModeVals;
+    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
+    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
 
-    [Reactive] public static ObservableCollection<LoopMode>? LoopModeVals { get; private set; }
-    [Reactive] public static ObservableCollection<StopMode>? StopModeVals { get; private set; }
-    [Reactive] public static ObservableCollection<FadeType>? FadeTypeVals { get; private set; }
-    [Reactive] public static ObservableCollection<string>? TriggerModeVals { get; private set; }
-
-    [Reactive] public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
+    public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
         && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
 
-    // Suppress warnings, this property will have it's notifications handled by the implementor.
     /// <summary>
     /// The duration of this cue, as received from a remote node.
     /// </summary>
-    [SuppressPropertyChangedWarnings] public virtual TimeSpan RemoteDuration { set { } }
+    public virtual TimeSpan RemoteDuration { set { } }
     #endregion
 
     public event EventHandler? OnCompleted;
 
-    protected decimal qid;
     protected SynchronizationContext? synchronizationContext;
     protected CueViewModel? parent;
-    protected MainViewModel? mainViewModel;
     protected Timer goTimer;
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
@@ -153,10 +132,10 @@ public abstract class CueViewModel : BindableViewModel<Cue>
         };
         goTimer.Elapsed += (o, e) => synchronizationContext?.Post((x) => Go(), null);
 
-        GoCommand = new(Go);
-        PauseCommand = new(Pause);
-        StopCommand = new(Stop);
-        SelectCommand = new(SelectExecute);
+        goCommand = new(Go);
+        pauseCommand = new(Pause);
+        stopCommand = new(Stop);
+        selectCommand = new(SelectExecute);
 
         LoopModeVals ??= new ObservableCollection<LoopMode>(Enum.GetValues<LoopMode>());
         StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
@@ -172,7 +151,7 @@ public abstract class CueViewModel : BindableViewModel<Cue>
 
     }
 
-    private void MainViewModel_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)
+    private void MainViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         switch (e.PropertyName)
         {
@@ -181,11 +160,6 @@ public abstract class CueViewModel : BindableViewModel<Cue>
                 break;
             case nameof(RemoteDuration):
                 OnPropertyChanged(nameof(Duration));
-                break;
-            case nameof(State):
-            case nameof(Duration):
-                OnPropertyChanged(nameof(PlaybackTimeString));
-                OnPropertyChanged(nameof(PlaybackTimeStringShort));
                 break;
         }
     }
@@ -307,8 +281,6 @@ public abstract class CueViewModel : BindableViewModel<Cue>
         {
             PlaybackTime = startTime;
             State = CueState.Paused;
-            OnPropertyChanged(nameof(PlaybackTimeString));
-            OnPropertyChanged(nameof(PlaybackTimeStringShort));
 
             if (IsRemoteControlling)
                 mainViewModel?.OSCManager.SendRemotePreload(RemoteNode, qid, (float)startTime.TotalSeconds);

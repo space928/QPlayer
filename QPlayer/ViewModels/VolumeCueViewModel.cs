@@ -1,4 +1,4 @@
-﻿using ReactiveUI.Fody.Helpers;
+﻿using QPlayer.SourceGenerator;
 using System;
 using System.Linq;
 using System.Timers;
@@ -10,14 +10,13 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(VolumeCue))]
 [View(typeof(CueEditor))]
-public class VolumeCueViewModel : CueViewModel
+public partial class VolumeCueViewModel : CueViewModel
 {
-    [Reactive, ReactiveDependency(nameof(FadeTime))] 
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeTime);
-    [Reactive, ModelBindsTo(nameof(VolumeCue.soundQid))] public decimal Target { get; set; }
-    [Reactive] public float Volume { get; set; }
-    [Reactive] public float FadeTime { get; set; }
-    [Reactive] public FadeType FadeType { get; set; }
+    [Reactive, ModelBindsTo(nameof(VolumeCue.soundQid))] private decimal target;
+    [Reactive] private float volume;
+    [Reactive, ChangesProp(nameof(Duration))] private float fadeTime;
+    [Reactive] private FadeType fadeType;
 
     private DateTime startTime;
 
@@ -29,8 +28,6 @@ public class VolumeCueViewModel : CueViewModel
             {
                 case nameof(FadeTime):
                     OnPropertyChanged(nameof(Duration));
-                    OnPropertyChanged(nameof(PlaybackTimeString));
-                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
                     break;
             }
         };

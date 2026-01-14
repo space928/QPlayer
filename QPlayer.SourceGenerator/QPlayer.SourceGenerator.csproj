@@ -1,0 +1,53 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>netstandard2.0</TargetFramework>
+	<LangVersion>12.0</LangVersion>
+	<Nullable>enable</Nullable>
+	<EnforceExtendedAnalyzerRules>true</EnforceExtendedAnalyzerRules>
+	<AnalyzerLanguage>cs</AnalyzerLanguage>
+	<IsRoslynComponent>true</IsRoslynComponent>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+	<Title>QPlayer.SourceGenerator</Title>
+	<Version>0.1.34-pre</Version>
+	<Authors>Thomas Mathieson</Authors>
+	<Copyright>Copyright © Thomas Mathieson 2026</Copyright>
+	<PackageProjectUrl>https://github.com/space928/QPlayer</PackageProjectUrl>
+	<PackageReadmeFile>README.md</PackageReadmeFile>
+	<RepositoryUrl>https://github.com/space928/QPlayer.git</RepositoryUrl>
+	<RepositoryType>git</RepositoryType>
+	<PackageTags>audio;sound;show;wpf</PackageTags>
+	<PackageLicenseExpression>MIT</PackageLicenseExpression>
+	<PackageRequireLicenseAcceptance>True</PackageRequireLicenseAcceptance>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include=".\README.md">
+		<Pack>True</Pack>
+		<PackagePath>\</PackagePath>
+	</None>
+  </ItemGroup>
+
+	<ItemGroup>
+		<PackageReference Include="IndexRange" Version="1.0.3" />
+		<PackageReference Include="Microsoft.Bcl.HashCode" Version="6.0.0" />
+		<PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.10.0" PrivateAssets="all" />
+		<PackageReference Include="Microsoft.CodeAnalysis.Analyzers" Version="3.11.0" PrivateAssets="all" />
+	</ItemGroup>
+
+	<!--https://github.com/dotnet/roslyn/blob/main/docs/features/source-generators.cookbook.md#package-a-generator-as-a-nuget-package-->
+	<PropertyGroup>
+		<GeneratePackageOnBuild>true</GeneratePackageOnBuild>
+		<!-- Generates a package at build -->
+		<IncludeBuildOutput>false</IncludeBuildOutput>
+		<!-- Do not include the generator as a lib dependency -->
+		<NoWarn>$(NoWarn);NU5128</NoWarn>
+		<PackAsTool>False</PackAsTool>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<!-- Package the generator in the analyzer directory of the nuget package -->
+		<None Include="$(OutputPath)\$(AssemblyName).dll" Pack="true" PackagePath="analyzers/dotnet/cs" Visible="false" />
+	</ItemGroup>
+
+</Project>

@@ -17,6 +17,8 @@ Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "QPlayerDocs", "docs\QPlayer
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.OSCCuePlugin", "QPlayer.OSCCuePlugin\QPlayer.OSCCuePlugin.csproj", "{A25C5F5B-1110-4B50-82EC-634A10359835}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.SourceGenerator", "QPlayer.SourceGenerator\QPlayer.SourceGenerator.csproj", "{14595F73-7F5B-75E8-8CC0-72EDE6963639}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -101,6 +103,26 @@ Global
 		{A25C5F5B-1110-4B50-82EC-634A10359835}.Release|x64.Build.0 = Release|Any CPU
 		{A25C5F5B-1110-4B50-82EC-634A10359835}.Release|x86.ActiveCfg = Release|Any CPU
 		{A25C5F5B-1110-4B50-82EC-634A10359835}.Release|x86.Build.0 = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|ARM.Build.0 = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|x64.Build.0 = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Debug|x86.Build.0 = Debug|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|Any CPU.Build.0 = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|ARM.ActiveCfg = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|ARM.Build.0 = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|ARM64.Build.0 = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x64.ActiveCfg = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x64.Build.0 = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x86.ActiveCfg = Release|Any CPU
+		{14595F73-7F5B-75E8-8CC0-72EDE6963639}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

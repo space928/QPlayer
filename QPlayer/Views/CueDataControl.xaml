@@ -44,7 +44,8 @@
         <Label Content="{Binding Parent}" Grid.Column="0" VerticalContentAlignment="Center"/>
         <local:HiddenTextbox Text="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
         <Label Content="{Binding}" ContentTemplate="{StaticResource CueTypeTemplate}" VerticalContentAlignment="Center" Grid.Column="2"/>
-        <ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>
+        <!--<ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>-->
+        <local:PlaybackProgressBar Grid.Column="3" Focusable="False"/>
         <local:HiddenTextbox Text="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center" Focusable="True" KeyboardNavigation.TabIndex="100"/>
         <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5"/>
         <!--<CheckBox IsChecked="{Binding Halt}" IsEnabled="{Binding IsSelected}" Grid.Column="6"/>-->

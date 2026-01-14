@@ -1,4 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
+using QPlayer.SourceGenerator;
 using QPlayer.Utilities;
 using System;
 using System.Collections.Concurrent;
@@ -31,16 +32,67 @@ public abstract class BindableViewModel<Model> : ObservableObject
     where Model : class
 {
     protected Model? boundModel;
-    private BindingsCollection? modelBindings;
-
-    private static readonly ConcurrentDictionary<Type, BindingsCollection> typeBindingsCache = [];
 
     /// <summary>
     /// Binds this <see cref="ObservableObject"/> to the specified model instance. Automatically propagates proeprties 
     /// changes from this object to the model, but not the other way around.
+    /// <br/>
+    /// When using the source generator, this method is automatically implemented so long as the deriving 
+    /// class defines at least one reactive property (see <see cref="ReactiveAttribute"/>).
     /// </summary>
     /// <param name="model">The model to bind to, or <see langword="null"/> to unbind.</param>
-    public void Bind(Model? model)
+    public virtual void Bind(Model? model)
+    {
+        if (model == boundModel)
+            return;
+        boundModel = model;
+    }
+
+    /// <summary>
+    /// Copies all bound property values on this instance from the bound model.
+    /// <br/>
+    /// When using the source generator, this method is automatically implemented so long as the deriving 
+    /// class defines at least one reactive property (see <see cref="ReactiveAttribute"/>).
+    /// </summary>
+    public virtual void SyncFromModel()
+    {
+        OnSyncFromModel();
+    }
+
+    /// <summary>
+    /// Copies all bound property values on this instance to the bound model.
+    /// <br/>
+    /// When using the source generator, this method is automatically implemented so long as the deriving 
+    /// class defines at least one reactive property (see <see cref="ReactiveAttribute"/>).
+    /// </summary>
+    public virtual void SyncToModel()
+    {
+        OnSyncToModel();
+    }
+
+    /// <summary>
+    /// When using a source generator, this metthod is automatically implemented and should be called in <see cref="SyncFromModel"/>.
+    /// </summary>
+    protected virtual void OnSyncFromModel() { }
+    /// <summary>
+    /// When using a source generator, this metthod is automatically implemented and should be called in <see cref="SyncToModel"/>.
+    /// </summary>
+    protected virtual void OnSyncToModel() { }
+}
+
+/// <summary>
+/// IL generation based automatic bindings generation implementation of <see cref="BindableViewModel{Model}"/>. 
+/// The source generation approach is recommended instead of this.
+/// </summary>
+/// <typeparam name="Model"></typeparam>
+public abstract class BindableViewModelIL<Model> : BindableViewModel<Model>
+    where Model : class
+{
+    private BindingsCollection? modelBindings;
+
+    private static readonly ConcurrentDictionary<Type, BindingsCollection> typeBindingsCache = [];
+
+    public override void Bind(Model? model)
     {
         if (model == boundModel)
             return;
@@ -80,7 +132,7 @@ public abstract class BindableViewModel<Model> : ObservableObject
     /// <summary>
     /// Copies all bound property values on this instance from the bound model.
     /// </summary>
-    public virtual void SyncFromModel()
+    public override void SyncFromModel()
     {
         if (boundModel == null || modelBindings == null)
             return;
@@ -92,7 +144,7 @@ public abstract class BindableViewModel<Model> : ObservableObject
     /// <summary>
     /// Copies all bound property values on this instance to the bound model.
     /// </summary>
-    public virtual void SyncToModel()
+    public override void SyncToModel()
     {
         if (boundModel == null || modelBindings == null)
             return;
@@ -148,10 +200,10 @@ public abstract class BindableViewModel<Model> : ObservableObject
             }
 
             /*
-             propToModel = (vm, m) => m.xx = vm.xx;
-             modelToProp = (vm, m) => vm.xx = m.xx;
+            propToModel = (vm, m) => m.xx = vm.xx;
+            modelToProp = (vm, m) => vm.xx = m.xx;
 
-                            case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
+            case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
 
             if (scue.eq == null)
             {
@@ -166,9 +218,9 @@ public abstract class BindableViewModel<Model> : ObservableObject
 
             model.band1 = new(LowFreq, LowGain, .7f, EQBandShape.LowShelf);
 
-                        case nameof(Colour): cueModel.colour = (SerializedColour)Colour; break;
+            case nameof(Colour): cueModel.colour = (SerializedColour)Colour; break;
 
-                    cue.parent = Parent?.QID;
+            cue.parent = Parent?.QID;
 
              */
 
@@ -299,55 +351,3 @@ public sealed class ModelConverterAttribute<TFrom, TTo>(Func<TFrom, TTo>? vmToMo
     public Func<TFrom, TTo>? VMToModel => vmToModel;
     public Func<TTo, TFrom>? ModelToVM => modelToVM;
 }*/
-
-/// <summary>
-/// Indicates that, for the annotated property, the provided delegates should be called to synchronise 
-/// data to and from the model for this property.
-/// </summary>
-/// <param name="vmToModel">The name of a static method in this class to copy this property's value from this instance to the model.</param>
-/// <param name="modelToVM">The name of a static method in this class to copy this property's value from the model to this instance.</param>
-[AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
-public sealed class ModelCustomBindingAttribute(string? vmToModel, string? modelToVM) : Attribute
-{
-    public string? VMToModel => vmToModel;
-    public string? ModelToVM => modelToVM;
-}
-
-/// <summary>
-/// Specifies the name of the field of the model this property should be bound to.
-/// </summary>
-/// <param name="modelPath"></param>
-[AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
-public sealed class ModelBindsToAttribute(string modelPath) : Attribute
-{
-    public string ModelPath => modelPath;
-}
-
-/// <summary>
-/// Indicates that this property should not be automatically bound to a corresponding model property.
-/// </summary>
-[System.AttributeUsage(AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
-public sealed class ModelSkipAttribute : Attribute
-{
-
-}
-
-/// <summary>
-/// Specifies the model type associated with this view model.
-/// </summary>
-/// <param name="modelType"></param>
-[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class ModelAttribute(Type modelType) : Attribute
-{
-    public Type ModelType => modelType;
-}
-
-/// <summary>
-/// Specifies the view type associated with this view model.
-/// </summary>
-/// <param name="viewType"></param>
-[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
-public sealed class ViewAttribute(Type viewType) : Attribute
-{
-    public Type ViewType => viewType;
-}

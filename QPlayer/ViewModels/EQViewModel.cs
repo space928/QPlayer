@@ -1,6 +1,6 @@
 ﻿using QPlayer.Audio;
 using QPlayer.Models;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -10,19 +10,18 @@ using System.Threading.Tasks;
 namespace QPlayer.ViewModels;
 
 [Model(typeof(EQSettings))]
-public class EQViewModel : BindableViewModel<EQSettings>
+public partial class EQViewModel : BindableViewModel<EQSettings>
 {
-    [Reactive] public bool Enabled { get; set; }
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band1)}.{nameof(EQBand.freq)}")] public float LowFreq { get; set; } = 200;
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band1)}.{nameof(EQBand.gain)}")] public float LowGain { get; set; }
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band2)}.{nameof(EQBand.freq)}")] public float LowMidFreq { get; set; } = 500;
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band2)}.{nameof(EQBand.gain)}")] public float LowMidGain { get; set; }
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band3)}.{nameof(EQBand.freq)}")] public float HighMidFreq { get; set; } = 2500;
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band3)}.{nameof(EQBand.gain)}")] public float HighMidGain { get; set; }
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band4)}.{nameof(EQBand.freq)}")] public float HighFreq { get; set; } = 8000;
-    [Reactive, ModelBindsTo($"{nameof(EQSettings.band4)}.{nameof(EQBand.gain)}")] public float HighGain { get; set; }
+    [Reactive] private bool enabled;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band1)}.{nameof(EQBand.freq)}")] private float lowFreq = 200;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band1)}.{nameof(EQBand.gain)}")] private float lowGain;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band2)}.{nameof(EQBand.freq)}")] private float lowMidFreq = 500;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band2)}.{nameof(EQBand.gain)}")] private float lowMidGain;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band3)}.{nameof(EQBand.freq)}")] private float highMidFreq = 2500;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band3)}.{nameof(EQBand.gain)}")] private float highMidGain;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band4)}.{nameof(EQBand.freq)}")] private float highFreq = 8000;
+    [Reactive, ModelBindsTo($"{nameof(EQSettings.band4)}.{nameof(EQBand.gain)}")] private float highGain;
 
-    [ModelSkip]
     public ISamplePositionProvider? InputSampleProvider
     {
         get => inputSampleProvider;
