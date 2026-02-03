@@ -2,9 +2,11 @@
 using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
 using static QPlayer.ViewModels.CueFactory;
@@ -22,8 +24,9 @@ namespace QPlayer.Models;
 public static class PluginLoader
 {
     private readonly static Dictionary<Assembly, LoadedPlugin> loadedPlugins = [];
+    private readonly static ReadOnlyDictionary<Assembly, LoadedPlugin> loadedPluginsRO = new(loadedPlugins);
 
-    public static int LoadedPlugins => loadedPlugins.Count;
+    public static ReadOnlyDictionary<Assembly, LoadedPlugin> LoadedPlugins => loadedPluginsRO;
 
     public static void LoadPlugins(MainViewModel mainViewModel)
     {
@@ -46,16 +49,27 @@ public static class PluginLoader
 
                 try
                 {
-                    var pluginAssembly = Assembly.LoadFile(fname);
-                    if (pluginAssembly == null) 
+                    var loadContext = new PluginLoadContext(fname);
+                    var pluginAssembly = loadContext.LoadFromAssemblyName(new(Path.GetFileNameWithoutExtension(fname))); //Assembly.LoadFile(fname);
+                    if (pluginAssembly == null)
                         continue;
 
-                    var cueTypes = CueFactory.RegisterAssembly(pluginAssembly);
                     QPlayerPlugin? pluginInst = null;
                     if (pluginAssembly.GetTypes().FirstOrDefault(typeof(QPlayerPlugin).IsAssignableFrom) is Type pluginType)
                         pluginInst = Activator.CreateInstance(pluginType) as QPlayerPlugin;
+                    else
+                        continue; // Fail silently here, as we may be accidentally loading a plugin dependency DLL which should not be loaded as a plugin.
+                        // throw new Exception("Couldn't load plugin as no class was found implementing QPlayerPlugin!");
 
-                    loadedPlugins.Add(pluginAssembly, new(pluginAssembly.FullName ?? fname, pluginAssembly, pluginInst, cueTypes));
+                    var cueTypes = CueFactory.RegisterAssembly(pluginAssembly);
+
+                    var assName = pluginAssembly.GetName();
+                    string version = assName.Version?.ToString() ?? "0.0";
+                    string author = pluginType.GetCustomAttribute<PluginAuthorAttribute>()?.Name ?? string.Empty;
+                    string name = pluginType.GetCustomAttribute<PluginNameAttribute>()?.Name ?? pluginAssembly.FullName ?? fname;
+                    string description = pluginType.GetCustomAttribute<PluginDescriptionAttribute>()?.Description ?? "No description provided.";
+
+                    loadedPlugins.Add(pluginAssembly, new(name, author, version, description, pluginAssembly, pluginInst, cueTypes));
 
                     pluginInst?.OnLoad(mainViewModel);
                 }
@@ -65,72 +79,75 @@ public static class PluginLoader
                 }
             }
         }
-        catch (Exception ex) 
+        catch (Exception ex)
         {
             MainViewModel.Log($"Error occurred while loading plugins: {ex}", MainViewModel.LogLevel.Error);
         }
     }
 
-    internal static void OnUnload() 
+    internal static void OnUnload()
     {
         foreach (var plugin in loadedPlugins)
             plugin.Value.pluginInst?.OnUnload();
     }
-    
-    internal static void OnSave(string path) 
+
+    internal static void OnSave(string path)
     {
         foreach (var plugin in loadedPlugins)
             plugin.Value.pluginInst?.OnSave(path);
     }
-    
+
     internal static void OnGo(CueViewModel cue)
     {
         foreach (var plugin in loadedPlugins)
             plugin.Value.pluginInst?.OnGo(cue);
     }
-    
-    internal static void OnSlowUpdate() 
+
+    internal static void OnSlowUpdate()
     {
         foreach (var plugin in loadedPlugins)
             plugin.Value.pluginInst?.OnSlowUpdate();
     }
 
-    private readonly struct LoadedPlugin(string name, Assembly assembly, QPlayerPlugin? pluginInst, CueFactory.RegisteredCueType[] registeredCueTypes)
+    public readonly struct LoadedPlugin(string name, string author, string version, string description, 
+        Assembly assembly, QPlayerPlugin? pluginInst, RegisteredCueType[] registeredCueTypes)
     {
         public readonly string Name = name;
+        public readonly string Author = author;
+        public readonly string Version = version;
+        public readonly string Description = description;
         public readonly Assembly assembly = assembly;
         public readonly QPlayerPlugin? pluginInst = pluginInst;
         public readonly RegisteredCueType[] registeredCueTypes = registeredCueTypes;
     }
 }
 
-public abstract class QPlayerPlugin
+/// <summary>
+/// Loads a plugin and it's dependencies in a load context to avoid depedency conflicts.
+/// </summary>
+/// <remarks>
+/// Taken from: https://learn.microsoft.com/en-us/dotnet/core/tutorials/creating-app-with-plugin-support
+/// </remarks>
+/// <param name="pluginPath"></param>
+class PluginLoadContext(string pluginPath) : AssemblyLoadContext
 {
-    /// <summary>
-    /// Called at startup when the plugin is loaded by QPlayer.
-    /// </summary>
-    /// <param name="mainViewModel"></param>
-    public virtual void OnLoad(MainViewModel mainViewModel) { }
-    /// <summary>
-    /// Called just before QPlayer exits.
-    /// </summary>
-    public virtual void OnUnload() { }
-    /// <summary>
-    /// Called just before QPlayer saves a show file.
-    /// </summary>
-    /// <param name="path"></param>
-    public virtual void OnSave(string path) { }
-    /// <summary>
-    /// Called every time QPlayer starts a cue.
-    /// </summary>
-    /// <param name="cue"></param>
-    public virtual void OnGo(CueViewModel cue) { }
-    /// <summary>
-    /// Called every 250 ms on the UI thread.
-    /// </summary>
-    public virtual void OnSlowUpdate() { }
-    /// <summary>
-    /// Called every 40 ms on the UI thread.
-    /// </summary>
-    //public void OnFastUpdate();
+    private readonly AssemblyDependencyResolver resolver = new(pluginPath);
+
+    protected override Assembly? Load(AssemblyName assemblyName)
+    {
+        string? assemblyPath = resolver.ResolveAssemblyToPath(assemblyName);
+        if (assemblyPath != null)
+            return LoadFromAssemblyPath(assemblyPath);
+
+        return null;
+    }
+
+    protected override IntPtr LoadUnmanagedDll(string unmanagedDllName)
+    {
+        string? libraryPath = resolver.ResolveUnmanagedDllToPath(unmanagedDllName);
+        if (libraryPath != null)
+            return LoadUnmanagedDllFromPath(libraryPath);
+
+        return IntPtr.Zero;
+    }
 }

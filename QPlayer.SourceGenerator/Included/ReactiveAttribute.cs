@@ -46,7 +46,7 @@ public sealed class SkipEqualityCheckAttribute : Attribute
 /// </summary>
 /// <param name="propName">The name of the property to generate a change notifcation for.</param>
 [System.AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = true)]
-sealed class ChangesPropAttribute(string propName) : Attribute
+public sealed class ChangesPropAttribute(string propName) : Attribute
 {
     public string PropName => propName;
 }
@@ -58,7 +58,7 @@ sealed class ChangesPropAttribute(string propName) : Attribute
 /// </summary>
 /// <param name="propName">The name of the property to use to implement this reactive property.</param>
 [System.AttributeUsage(AttributeTargets.Field, Inherited = false, AllowMultiple = false)]
-sealed class TemplatePropAttribute(string propName) : Attribute
+public sealed class TemplatePropAttribute(string propName) : Attribute
 {
     public string PropName => propName;
 }
@@ -69,7 +69,7 @@ sealed class TemplatePropAttribute(string propName) : Attribute
 /// Requires a <see cref="ReactiveAttribute"/> on this same property.
 /// </summary>
 [System.AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
-public sealed class PrivateSetterAttribute : Attribute
+public sealed class ReadonlyAttribute : Attribute
 {
 
 }
@@ -164,4 +164,30 @@ public sealed class ModelAttribute(Type modelType) : Attribute
 public sealed class ViewAttribute(Type viewType) : Attribute
 {
     public Type ViewType => viewType;
+}
+
+/// <summary>
+/// Specifies the display name of a given cue type.
+/// </summary>
+/// <param name="name"></param>
+[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+public sealed class DisplayNameAttribute(string name) : Attribute
+{
+    public string Name => name;
+}
+
+/// <summary>
+/// Specifies the icon for a given cue type. 
+/// <para/>
+/// The icon is defined as a <see cref="System.Windows.Media.DrawingImage"/> in a <see cref="System.Windows.ResourceDictionary"/> (in xaml).
+/// The plugin loader automatically creates an instance of the given resource dictionary and binds it to the app if one doesn't already exist.
+/// The <paramref name="name"/> parameter should refer to a given <c>x:Key="name"</c> attribute on the <see cref="System.Windows.Media.DrawingImage"/> in xaml.
+/// </summary>
+/// <param name="name">The key of the <see cref="System.Windows.Media.ImageSource"/> in the given resource dictionary to use as the icon.</param>
+/// <param name="resourceDictionary">The type of the resource dictionary which contains the given icon.</param>
+[System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]
+public sealed class IconAttribute(string name, Type resourceDictionary) : Attribute
+{
+    public string Name => name;
+    public Type ResourceDictionary => resourceDictionary;
 }

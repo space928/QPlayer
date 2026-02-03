@@ -1,15 +1,18 @@
-﻿using QPlayer.SourceGenerator;
+﻿using QPlayer.Audio;
+using QPlayer.Models;
+using QPlayer.SourceGenerator;
+using QPlayer.ThemesV2;
+using QPlayer.Views;
 using System;
 using System.Linq;
 using System.Timers;
-using QPlayer.Audio;
-using QPlayer.Models;
-using QPlayer.Views;
 
 namespace QPlayer.ViewModels;
 
 [Model(typeof(VolumeCue))]
 [View(typeof(CueEditor))]
+[DisplayName("Volume Cue")]
+[Icon("IconVolumeCue", typeof(Icons))]
 public partial class VolumeCueViewModel : CueViewModel
 {
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeTime);

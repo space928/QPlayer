@@ -18,6 +18,15 @@ public partial class LibraryImports
         //public POINT() : this(0,0) { }
     }
 
+    [StructLayout(LayoutKind.Sequential)]
+    public struct SIZE(int w, int h)
+    {
+        public int w = w;
+        public int h = h;
+
+        //public POINT() : this(0,0) { }
+    }
+
     [LibraryImport("user32.dll", EntryPoint = "SetCursorPos")]
     public static partial long SetCursorPos(int x, int y);
 

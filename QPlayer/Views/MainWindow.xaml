@@ -94,7 +94,7 @@
                     <MenuItem Header="Move Cue Down" InputGestureText="Ctrl+Down" Command="{Binding MoveCueDownCommand}"/>
                     <MenuItem Header="Duplicate Cue" InputGestureText="Ctrl+D" Command="{Binding DuplicateCueCommand}"/>
                     <MenuItem Header="Delete Cue" InputGestureText="Del" Command="{Binding DeleteCueCommand}"/>
-                    <MenuItem Header="Create Cue" InputGestureText="Ctrl+T">
+                    <MenuItem Header="Create Cue" InputGestureText="Ctrl+T" x:Name="EditMenuCreateCueMenu">
                         <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                         <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
@@ -106,6 +106,7 @@
                 <MenuItem Header="Window" Height="30">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
                     <MenuItem Header="Remote Nodes" Command="{Binding OpenRemoteNodesCommand}"/>
+                    <MenuItem Header="Plugins" Command="{Binding OpenPluginManagerCommand}"/>
                     <MenuItem Header="Settings" Command="{Binding OpenSetttingsCommand}"/>
                 </MenuItem>
                 <MenuItem Header="Help" Height="30">
@@ -213,7 +214,7 @@
                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst"
                               PreviewKeyDown="Consume_PreviewKeyDown" AllowDrop="True" Drop="CueList_Drop" GiveFeedback="CueList_GiveFeedback">
                     <ScrollViewer.ContextMenu>
-                        <ContextMenu>
+                        <ContextMenu x:Name="CueListContextMenu">
                             <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
                             <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                             <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>

@@ -3,8 +3,8 @@ using Microsoft.Win32;
 using NAudio.Wave;
 using QPlayer.Audio;
 using QPlayer.Models;
-using QPlayer.Views;
 using QPlayer.SourceGenerator;
+using QPlayer.Views;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
@@ -15,6 +15,8 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(SoundCue))]
 [View(typeof(CueEditor))]
+[Icon("IconSoundCue", typeof(ThemesV2.Icons))]
+[DisplayName("Sound Cue")]
 public partial class SoundCueViewModel : CueViewModel
 {
     [Reactive, ModelCustomBinding(nameof(VM2M_Path), null)] private string path = string.Empty;
@@ -47,8 +49,8 @@ public partial class SoundCueViewModel : CueViewModel
     [Reactive] private float fadeOut;
     [Reactive] private FadeType fadeType;
 
-    [Reactive, PrivateSetter, ModelSkip] private RelayCommand openMediaFileCommand;
-    [Reactive("EQ"), PrivateSetter] private EQViewModel eq;
+    [Reactive, Readonly, ModelSkip] private RelayCommand openMediaFileCommand;
+    [Reactive("EQ"), Readonly] private EQViewModel eq;
     public WaveFormRenderer WaveForm => waveFormRenderer;
 
     private bool shouldSendRemoteStatus;

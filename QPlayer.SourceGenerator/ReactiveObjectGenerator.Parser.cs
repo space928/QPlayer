@@ -248,7 +248,7 @@ public partial class ReactiveObjectGenerator
                         if (args.Length >= 1)
                             accessibility = (string)args[0].Value!;
                         break;
-                    case nameof(PrivateSetterAttribute):
+                    case nameof(ReadonlyAttribute):
                         privateSet = true;
                         break;
                     case nameof(SkipEqualityCheckAttribute):

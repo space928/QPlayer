@@ -70,7 +70,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive, ChangesProp(nameof(UseLoopCount))] private LoopMode loopMode;
     [Reactive] public int loopCount;
 
-    [Reactive, PrivateSetter, ModelSkip] protected MainViewModel? mainViewModel;
+    [Reactive, Readonly, ModelSkip] protected MainViewModel? mainViewModel;
     public bool IsSelected => mainViewModel?.SelectedCue == this;
     [Reactive, ModelSkip] private CueState state;
     [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip] 
@@ -86,15 +86,16 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         }
     }
     public string TypeName => typeName;
+    public string TypeDisplayName => typeDisplayName;
 
-    [Reactive, PrivateSetter, ModelSkip] private RelayCommand goCommand;
-    [Reactive, PrivateSetter, ModelSkip] private RelayCommand pauseCommand;
-    [Reactive, PrivateSetter, ModelSkip] private RelayCommand stopCommand;
-    [Reactive, PrivateSetter, ModelSkip] private RelayCommand selectCommand;
-    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<LoopMode>? loopModeVals;
-    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<StopMode>? stopModeVals;
-    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
-    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
+    [Reactive, Readonly, ModelSkip] private RelayCommand goCommand;
+    [Reactive, Readonly, ModelSkip] private RelayCommand pauseCommand;
+    [Reactive, Readonly, ModelSkip] private RelayCommand stopCommand;
+    [Reactive, Readonly, ModelSkip] private RelayCommand selectCommand;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<LoopMode>? loopModeVals;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<StopMode>? stopModeVals;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
 
     public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
         && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
@@ -113,6 +114,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
     private readonly string typeName;
+    private readonly string typeDisplayName;
 
     public CueViewModel(MainViewModel mainViewModel)
     {
@@ -121,9 +123,15 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         synchronizationContext = SynchronizationContext.Current;
 
         if (CueFactory.ViewModelToCueType.TryGetValue(GetType(), out var registered))
+        {
             typeName = registered.name;
+            typeDisplayName = registered.displayName;
+        }
         else
+        {
             typeName = GetType().Name;
+            typeDisplayName = typeName;
+        }
 
         mainViewModel.PropertyChanged += MainViewModel_PropertyChanged;
         goTimer = new()

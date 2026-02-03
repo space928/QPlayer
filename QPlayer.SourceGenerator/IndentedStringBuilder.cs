@@ -33,7 +33,7 @@ public class IndentedStringBuilder
     /// increases the indent when created, and appends a closing brace and unindents when disposed.
     /// </summary>
     /// <example>
-    /// using (sb.EnterCurlyBrace()
+    /// using (sb.EnterCurlyBrace())
     /// {
     ///     sb.AppendLine("HelloWorld();");
     /// }
@@ -47,6 +47,59 @@ public class IndentedStringBuilder
     public IndentedCurlyBracket EnterCurlyBracket()
     {
         return new IndentedCurlyBracket(this);
+    }
+
+    /// <summary>
+    /// Creates a new <see cref="XMLElement"/> instance which appends an xml element with the given 
+    /// attributes and increases the indent when created, and appends a closing tag and unindents 
+    /// when disposed.
+    /// </summary>
+    /// <example>
+    /// using (sb.CreateXMLElement("StackPanel", "Orientation=\"Horizontal\"", "Name=\"MyStackPanel\""))
+    /// {
+    ///     sb.CreateXMLElement("Button");
+    /// }
+    /// 
+    /// // Results in:
+    /// // <!--<StackPanel Orientation="Horizontal"
+    /// //             Name="MyStackPanel">
+    /// //     <Button></Button>
+    /// // </StackPanel>-->
+    /// </example>
+    /// <param name="elementName">The name of the element to create.</param>
+    /// <param name="attributes">A collection of attributes to add to the created element.</param>
+    /// <returns></returns>
+    public XMLElement CreateXMLElement(string elementName, params Span<string> attributes)
+    {
+        return new XMLElement(this, elementName, attributes);
+    }
+
+    public IndentedStringBuilder AppendXMLElement(string elementName, params Span<string> attributes)
+    {
+        AppendIndent();
+        Append('<').Append(elementName);
+        int lineLen = elementName.Length + 1;
+
+        if (attributes.Length > 0)
+        {
+            indent += elementName.Length + 1;
+            //AppendIndent();
+
+            for (int i = 0; i < attributes.Length; i++)
+            {
+                if (lineLen > 120)
+                {
+                    AppendLine();
+                    AppendIndent();
+                    lineLen = indent;
+                }
+
+                Append(' ').Append(attributes[i]);
+                lineLen += attributes[i].Length + 1;
+            }
+            indent -= elementName.Length + 1;
+        }
+        return Append(" />").AppendLine();
     }
 
     /// <summary>
@@ -164,6 +217,38 @@ public class IndentedStringBuilder
         public readonly void Dispose()
         {
             sb.UnIndent().AppendLine("}");
+        }
+    }
+
+    public readonly struct XMLElement : IDisposable
+    {
+        private readonly IndentedStringBuilder sb;
+        private readonly string elementName;
+
+        internal XMLElement(IndentedStringBuilder sb, string elementName, params Span<string> attributes)
+        {
+            this.sb = sb;
+            this.elementName = elementName;
+            sb.AppendIndent().Append('<').Append(elementName).Append(' ');
+
+            if (attributes.Length > 0)
+                sb.Append(attributes[0]).AppendLine();
+            if (attributes.Length > 1)
+            {
+                sb.indent += elementName.Length + 2;
+                for (int i = 1; i < attributes.Length; i++)
+                    sb.AppendLine(attributes[i]);
+                sb.indent -= elementName.Length + 2;
+            }
+            sb.pos--;
+            sb.Append(">").AppendLine().Indent();
+        }
+
+        public readonly void Dispose()
+        {
+            sb.UnIndent()
+                .AppendIndent().Append("</").Append(elementName).Append(">")
+                .AppendLine();
         }
     }
 }

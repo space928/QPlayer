@@ -15,13 +15,13 @@ namespace QPlayer.ViewModels;
 public partial class RemoteNodesWindowViewModel : ObservableObject
 {
     #region Bindable Properties
-    [Reactive, PrivateSetter] private readonly ReadOnlyObservableCollection<RemoteNodeGroupViewModel> cueRemoteNodes;
+    [Reactive, Readonly] private readonly ReadOnlyObservableCollection<RemoteNodeGroupViewModel> cueRemoteNodes;
 
-    [Reactive, PrivateSetter] private ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodes;
-    [Reactive, PrivateSetter] private ProjectSettingsViewModel projectSettings;
+    [Reactive, Readonly] private ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodes;
+    [Reactive, Readonly] private ProjectSettingsViewModel projectSettings;
     //[Reactive] public string RemoteNode { get; set; }
 
-    [Reactive, PrivateSetter] private readonly RelayCommand refreshCueListCommand;
+    [Reactive, Readonly] private readonly RelayCommand refreshCueListCommand;
 
     public MainViewModel MainViewModel => mainViewModel;
     #endregion
@@ -104,7 +104,7 @@ public partial class RemoteNodeGroupViewModel : ObservableObject, IDisposable
     [Reactive] private string remoteNode;
     public bool IsLocalNode => RemoteNode == mainViewModel.ProjectSettings.NodeName;
     public bool IsActiveNode => mainViewModel.ProjectSettings.IsRemoteNodeActive(RemoteNode);
-    [Reactive, PrivateSetter] private ReadOnlyCollection<CueViewModel> cues;
+    [Reactive, Readonly] private ReadOnlyCollection<CueViewModel> cues;
 
     private readonly MainViewModel mainViewModel;
 

@@ -1,7 +1,8 @@
 ﻿using QPlayer.Audio;
 using QPlayer.Models;
-using QPlayer.Views;
 using QPlayer.SourceGenerator;
+using QPlayer.ThemesV2;
+using QPlayer.Views;
 using System;
 using System.Linq;
 using System.Timers;
@@ -10,6 +11,8 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(StopCue))]
 [View(typeof(CueEditor))]
+[DisplayName("Stop Cue")]
+[Icon("IconStopCue", typeof(Icons))]
 public partial class StopCueViewModel : CueViewModel
 {
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeOutTime);

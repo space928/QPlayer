@@ -31,7 +31,7 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
     [Reactive, ModelCustomBinding(nameof(VM2M_AudioOutputDevice), nameof(M2VM_AudioOutputDevice))]
     public int selectedAudioOutputDeviceIndex;
 
-    [Reactive, PrivateSetter, ModelSkip] private static ObservableCollection<AudioOutputDriver>? audioOutputDriverValues;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<AudioOutputDriver>? audioOutputDriverValues;
 
     public ObservableCollection<string> AudioOutputDevices
     {

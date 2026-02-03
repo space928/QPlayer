@@ -126,6 +126,12 @@ public struct TemporaryList<T> : IList<T>, IDisposable
             throw new ArgumentOutOfRangeException(nameof(index));
     }
 
+    /// <summary>
+    /// Gets a span of the elements in this temporary list, valid as long as the list count isn't changed.
+    /// </summary>
+    /// <returns></returns>
+    public readonly Span<T> AsSpan() => items == null ? [] : items.AsSpan(0, count);
+
     public void Add(T item)
     {
         EnsureCapacity(count + 1);

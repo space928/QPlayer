@@ -22,7 +22,6 @@ public static class CueFactory
     static CueFactory()
     {
         viewModelToCueTypeRO = new(viewModelToCueType);
-        RegisterAssembly(Assembly.GetExecutingAssembly());
     }
 
     public static ICollection<RegisteredCueType> RegisteredCueTypes => registeredCueTypes.Values;
@@ -92,15 +91,26 @@ public static class CueFactory
             if (vmType.GetCustomAttribute<ViewAttribute>() is ViewAttribute viewAttr)
             {
                 viewType = viewAttr.ViewType;
-            } 
+            }
+            /*else if (vmType.GetCustomAttribute<GenerateViewAttribute>() is GenerateViewAttribute generateViewAttr)
+            {
+                viewType = vmType.Assembly.GetType(generateViewAttr.TypeName ?? (vmType.Name + "View"), true) ?? throw new Exception();
+            }*/
             else
             {
-                viewType = ViewGenerator.GenerateView(vmType);
+                throw new Exception();
             }
 
             modelType = modelAttr.ModelType;
+            string name = modelType.Name;
+            string displayName = name;
 
-            RegisteredCueType cueDetails = new(modelType.Name, modelType, vmType, viewType);
+            if (vmType.GetCustomAttribute<DisplayNameAttribute>() is DisplayNameAttribute displayNameAttr)
+                displayName = displayNameAttr.Name;
+
+            var icon = vmType.GetCustomAttribute<IconAttribute>();
+
+            RegisteredCueType cueDetails = new(modelType.Name, displayName, modelType, vmType, viewType, assembly.FullName ?? string.Empty, icon?.Name, icon?.ResourceDictionary);
 
             registeredCueTypes.Add(cueDetails.name, cueDetails);
             viewModelToCueType.Add(cueDetails.viewModelType, cueDetails);
@@ -111,20 +121,16 @@ public static class CueFactory
         return registered.ToArray();
     }
 
-    public readonly struct RegisteredCueType(string name, Type modelType, Type viewModelType, Type viewType)
+    public readonly struct RegisteredCueType(string name, string displayName, Type modelType, Type viewModelType, 
+        Type viewType, string assembly, string? iconName, Type? iconResourceDict)
     {
         public readonly string name = name;
+        public readonly string displayName = displayName;
         public readonly Type modelType = modelType;
         public readonly Type viewModelType = viewModelType;
         public readonly Type viewType = viewType;
-    }
-}
-
-internal static class ViewGenerator
-{
-    public static Type GenerateView(Type vmType)
-    {
-        //Xam
-        return typeof(object);
+        public readonly string assembly = assembly;
+        public readonly string? iconName = iconName;
+        public readonly Type? iconResourceDict = iconResourceDict;
     }
 }

@@ -24,8 +24,8 @@ public partial class WaveFormRenderer : ObservableObject
         }
         get => peakFile;
     }
-    [Reactive, PrivateSetter] private SoundCueViewModel soundCueViewModel;
-    [Reactive("WaveFormDrawing"), PrivateSetter] private DrawingGroup drawingGroup;
+    [Reactive, Readonly] private SoundCueViewModel soundCueViewModel;
+    [Reactive("WaveFormDrawing"), Readonly] private DrawingGroup drawingGroup;
     [Reactive("Width")]
     private double Width_Template
     {

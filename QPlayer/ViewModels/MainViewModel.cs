@@ -67,7 +67,7 @@ public partial class MainViewModel : ObservableObject
     [Reactive] private readonly ObservableCollection<CueViewModel> draggingCues;
     [Reactive] private bool enableAutosave = true;
 
-    [Reactive, PrivateSetter] private ProjectSettingsViewModel projectSettings;
+    [Reactive, Readonly] private ProjectSettingsViewModel projectSettings;
 
     [Reactive] private TimeSpan preloadTime;
 
@@ -82,6 +82,7 @@ public partial class MainViewModel : ObservableObject
     [Reactive] private readonly RelayCommand openSetttingsCommand;
     [Reactive] private readonly RelayCommand openOnlineManualCommand;
     [Reactive] private readonly RelayCommand openAboutCommand;
+    [Reactive] private readonly RelayCommand openPluginManagerCommand;
 
     [Reactive] private readonly RelayCommand createCueMenuCommand;
 
@@ -105,8 +106,8 @@ public partial class MainViewModel : ObservableObject
     [Reactive] private string statusText = "Ready";
     [Reactive] private SolidColorBrush statusTextColour = StatusInfoBrush;
 
-    [Reactive, PrivateSetter] private readonly ProgressBoxViewModel progressBoxViewModel;
-    [Reactive, PrivateSetter] private readonly AudioMeterViewModel mainAudioMeter;
+    [Reactive, Readonly] private readonly ProgressBoxViewModel progressBoxViewModel;
+    [Reactive, Readonly] private readonly AudioMeterViewModel mainAudioMeter;
 
     public static ObservableCollection<string> LogList
     {
@@ -142,6 +143,7 @@ public partial class MainViewModel : ObservableObject
     }
     public string Clock => $"{DateTime.Now:HH:mm:ss}";
     public ObservableCollection<RecentFile> RecentFiles => persistantDataManager.RecentFiles;
+    public event Action? OnRegisterCueTypes;
     #endregion
 
     /// <summary>
@@ -162,6 +164,7 @@ public partial class MainViewModel : ObservableObject
     private Dictionary<string, string>? packedPaths;
     private int autoBackInd = 0;
     private static ObservableCollection<string> logList = [];
+    private static List<Window> openWindows = [];
     private static LogWindow? logWindow;
     private static RemoteNodesWindow? remoteNodesWindow;
     private static SettingsWindow? settingsWindow;
@@ -209,11 +212,14 @@ public partial class MainViewModel : ObservableObject
 
         LogList = logList;
         Log("Starting QPlayer...");
-        Log("  Copyright Thomas Mathieson 2025");
+        Log("  Copyright Thomas Mathieson 2026");
 
+        CueFactory.RegisterAssembly(Assembly.GetExecutingAssembly());
         Log("Loading plugins...");
         PluginLoader.LoadPlugins(this);
-        Log($"Loaded {PluginLoader.LoadedPlugins}");
+        Log($"{PluginLoader.LoadedPlugins.Count} plugins loaded");
+
+        OnRegisterCueTypes?.Invoke();
 
         // Configure the json serializer, make sure that the polymorphic type resolver is resolved after the plugins (and cue types) have been loaded.
         jsonSerializerOptions = new()
@@ -221,7 +227,7 @@ public partial class MainViewModel : ObservableObject
             IncludeFields = true,
             AllowTrailingCommas = true,
             WriteIndented = true,
-            TypeInfoResolver = new PolymorphicTypeResolver() 
+            TypeInfoResolver = new PolymorphicTypeResolver()
         };
 
         //foreach (FontFamily fontFamily in Fonts.GetFontFamilies(new Uri("pack://application:,,,/"), "./Resources/"))
@@ -237,8 +243,8 @@ public partial class MainViewModel : ObservableObject
         mainAudioMeter = new(dispatcher);
 
         // Bind commands
-        openLogCommand = new(OpenLogExecute);
-        openRemoteNodesCommand = new(OpenRemoteNodesExecute);
+        openLogCommand = new(() => OpenWindow<LogWindow>());
+        openRemoteNodesCommand = new(() => OpenWindow<RemoteNodesWindow>());
         newProjectCommand = new(NewProjectExecute);
         openProjectCommand = new(OpenProjectExecute);
         openSpecificProjectCommand = new(OpenSpecificProjectExecute);
@@ -246,8 +252,9 @@ public partial class MainViewModel : ObservableObject
         saveProjectAsCommand = new(() => SaveProjectAsExecute());
         packProjectCommand = new(PackProjectExecute);
         openOnlineManualCommand = new(OpenOnlineManualExecute);
-        openAboutCommand = new(OpenAboutExecute);
-        openSetttingsCommand = new(OpenSettingsExecute);
+        openAboutCommand = new(() => OpenWindow<AboutWindow>());
+        openSetttingsCommand = new(() => OpenWindow<SettingsWindow>());
+        openPluginManagerCommand = new(() => OpenWindow<PluginManagerWindow>());
 
         createCueMenuCommand = new(ShowCreateCueMenuExecute);
         createCueCommand = new(type => CreateCue(type));
@@ -395,10 +402,7 @@ public partial class MainViewModel : ObservableObject
 
         Log("Shutting down...");
         PluginLoader.OnUnload();
-        CloseAboutExecute();
-        CloseSettingsExecute();
-        CloseLogExecute();
-        CloseRemoteNodesExecute();
+        CloseAllWindows();
         slowUpdateTimer.Stop();
         fastUpdateTimer.Stop();
         autosaveTimer.Stop();
@@ -596,77 +600,66 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
-    public void OpenLogExecute()
+    /// <summary>
+    /// Opens or activates a window of the given type.
+    /// </summary>
+    /// <typeparam name="T">The type of the window to open.</typeparam>
+    /// <param name="singleton">When <see langword="true"/>, activates an existing window of the type if it already exists.</param>
+    /// <returns>The opened/activated window.</returns>
+    public T? OpenWindow<T>(bool singleton = true)
+        where T : Window
     {
-        if (logWindow != null)
+        if (singleton && openWindows.FirstOrDefault(x => x is T) is Window openWindow)
         {
-            logWindow.Activate();
-            return;
+            openWindow.Activate();
+            return (T)openWindow;
         }
 
-        logWindow = new(this);
-        //logWindow.Owner = ((Window)e.Source);
-        //Log("Opening log...");
-        logWindow.Closed += (e, x) => { logWindow = null; };
-        logWindow.Show();
-    }
-
-    public void CloseLogExecute()
-    {
-        logWindow?.Close();
-        logWindow = null;
-    }
-
-    public void OpenRemoteNodesExecute()
-    {
-        if (remoteNodesWindow != null)
+        try
         {
-            remoteNodesWindow.Activate();
-            return;
+            var window = (T)Activator.CreateInstance(typeof(T), this)!;
+            window.Closed += (o, e) => openWindows.Remove((Window)o!);
+            window.Show();
+            openWindows.Add(window);
+            return window;
         }
-
-        remoteNodesWindow = new(new(this));
-        //logWindow.Owner = ((Window)e.Source);
-        //Log("Opening log...");
-        remoteNodesWindow.Closed += (e, x) => { remoteNodesWindow = null; };
-        remoteNodesWindow.Show();
+        catch (Exception ex)
+        {
+            Log($"Couldn't open window: {ex}", LogLevel.Error);
+        }
+        return null;
     }
 
-    public void CloseRemoteNodesExecute()
+    /// <summary>
+    /// Closes a window of the given type.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <returns><see langword="true"/> if a window of the given type was closed.</returns>
+    public bool CloseWindow<T>()
     {
-        remoteNodesWindow?.Close();
-        remoteNodesWindow = null;
+        if (openWindows.Find(x => x is T) is Window openWindow)
+        {
+            openWindows.Remove(openWindow);
+            openWindow.Close();
+            return true;
+        }
+        return false;
     }
 
-    public void OpenSettingsExecute()
+    /// <summary>
+    /// Closes all active windows, excluding the main window.
+    /// </summary>
+    public void CloseAllWindows()
     {
-        settingsWindow = new(this);
-        settingsWindow.Closed += (e, x) => { settingsWindow = null; };
-        settingsWindow.Show();
-    }
-
-    public void CloseSettingsExecute()
-    {
-        settingsWindow?.Close();
-        settingsWindow = null;
+        var toClose = openWindows.ToArray();
+        foreach (var wnd in toClose)
+            wnd.Close();
+        openWindows.Clear();
     }
 
     public void OpenOnlineManualExecute()
     {
         Process.Start(new ProcessStartInfo("https://space928.github.io/QPlayer/reference/") { UseShellExecute = true });
-    }
-
-    public void OpenAboutExecute()
-    {
-        aboutWindow = new(this);
-        aboutWindow.Closed += (e, x) => { aboutWindow = null; };
-        aboutWindow.Show();
-    }
-
-    public void CloseAboutExecute()
-    {
-        aboutWindow?.Close();
-        aboutWindow = null;
     }
 
     public void GoExecute()
@@ -794,10 +787,10 @@ public partial class MainViewModel : ObservableObject
         menu.IsOpen = true;
         foreach (var qtypeObj in CueFactory.RegisteredCueTypes)
         {
-            var qtype = qtypeObj.name;
+            var qtype = qtypeObj.displayName;
             menu.Items.Add(new MenuItem()
             {
-                Header = $"Create {qtype.ToString()[..^3]} Cue",
+                Header = $"Create {qtype}",
                 Command = new RelayCommand(() => CreateCue(qtype))
             });
         }

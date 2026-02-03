@@ -43,7 +43,17 @@
         <Rectangle x:Name="ColourSwatch" Grid.Column="0" Fill="{Binding ColourBrush}" StrokeThickness="0"/>
         <Label Content="{Binding Parent}" Grid.Column="0" VerticalContentAlignment="Center"/>
         <local:HiddenTextbox Text="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
-        <Label Content="{Binding}" ContentTemplate="{StaticResource CueTypeTemplate}" VerticalContentAlignment="Center" Grid.Column="2"/>
+        <Label Content="{Binding}" VerticalContentAlignment="Center" Grid.Column="2">
+            <Label.ContentTemplate>
+                <DataTemplate>
+                    <Image x:Name="IconImg" Source="{Binding CueIcon, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
+                        <Image.ToolTip>
+                            <ToolTip Content="{Binding TypeName, Mode=OneWay}"/>
+                        </Image.ToolTip>
+                    </Image>
+                </DataTemplate>
+            </Label.ContentTemplate>
+        </Label>
         <!--<ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>-->
         <local:PlaybackProgressBar Grid.Column="3" Focusable="False"/>
         <local:HiddenTextbox Text="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center" Focusable="True" KeyboardNavigation.TabIndex="100"/>
