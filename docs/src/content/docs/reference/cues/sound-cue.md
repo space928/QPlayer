@@ -89,3 +89,10 @@ fade curves are available:
                  quadaratic hermite spline)
  - **Square** -- a square-law fade, with a slow start and fast end.
  - **InverseSquare** -- an inverse square-law fade, with a fast start and a slow end.
+
+### Enable EQ
+This enables the 4-band semi-parametric equaliser for this cue.
+
+The four columns of knobs below represent the 4 bands of the equaliser. For each band
+the centre frequency of the EQ can be adjusted, and the gain of the band can be adjusted.
+Each band is implemented as a second order bell filter with a Q of 0.7.

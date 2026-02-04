@@ -74,7 +74,7 @@ public partial class WaveFormRenderer : ObservableObject
         set { endTime = Math.Clamp(((float)value.TotalSeconds) / ((peakFile?.length ?? 0) / (float)(peakFile?.fs ?? 1)), 0, 1); InternalUpdate(); }
     }
     // This property exists for users which need to set both the start and end times at the same time without triggering two separate renders.
-    [Reactive("ViewBounds")]
+    [Reactive("ViewBounds"), ChangesProp(nameof(ViewStart)), ChangesProp(nameof(ViewEnd))]
     private (TimeSpan start, TimeSpan end) ViewBounds_Template
     {
         get
@@ -93,7 +93,7 @@ public partial class WaveFormRenderer : ObservableObject
     public TimeSpan ViewSpan => TimeSpan.FromSeconds((endTime - startTime) * (peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
     public TimeSpan Duration => TimeSpan.FromSeconds((peakFile?.length ?? 0) / (double)(peakFile?.fs ?? 1));
     public string FileName => peakFile?.sourceName ?? string.Empty;
-    public string WindowTitle => $"QPlayer - Waveform - {peakFile?.sourceName ?? string.Empty}";
+    public string WindowTitle => $"QPlayer – Waveform – {peakFile?.sourceName ?? string.Empty}";
 
     /// <summary>
     /// This is the name of a special property change notification which the view listens to so that it knows to

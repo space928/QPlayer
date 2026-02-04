@@ -7,7 +7,7 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
         d:DataContext="{d:DesignInstance Type=vm:RemoteNodesWindowViewModel}"
         mc:Ignorable="d"
-        Title="QPlayer - Remote Nodes" Height="400" Width="700" 
+        Title="QPlayer – Remote Nodes" Height="400" Width="700" 
         Style="{DynamicResource CustomWindowStyle}" 
         ResizeMode="CanResizeWithGrip" WindowStartupLocation="CenterScreen" 
         Icon="{StaticResource IconImage}">

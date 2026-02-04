@@ -32,7 +32,7 @@
             <Button Command="{Binding PauseCommand}" Grid.Column="2" ToolTip="Pauses this cue">
                 <Image Source="{StaticResource IconPause}" Margin="2"/>
             </Button>
-            <TextBlock Text="{Binding PlaybackTimeString, FallbackValue=00:00:00}" Margin="8,0" VerticalAlignment="Center" Grid.Column="3"/>
+            <TextBlock Text="{Binding PlaybackTime, StringFormat=mm\\:ss\\.ff, FallbackValue=00:00:00}" Margin="8,0" VerticalAlignment="Center" Grid.Column="3"/>
         </Grid>
     </Grid>
 </Window>

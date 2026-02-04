@@ -7,7 +7,7 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
-        Title="QPlayer - Log Window" Height="450" Width="800" 
+        Title="QPlayer – Log Window" Height="450" Width="800" 
         Style="{DynamicResource CustomWindowStyle}" 
         Icon="{StaticResource IconImage}">
     <Grid>

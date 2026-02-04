@@ -152,7 +152,7 @@
                         </Button.ToolTip>
                     </Button>
                     <Label Content="{Binding Clock}" 
-                           HorizontalAlignment="Center" 
+                           HorizontalAlignment="Center" Margin="0,2,0,0"
                            FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
                            BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
                            DockPanel.Dock="Top"/>
@@ -237,11 +237,14 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Rectangle Height="{Binding 
+                        <Grid MaxWidth="200" Margin="80" Height="{Binding 
                             RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
                             Path=ActualHeight,
                             Converter={StaticResource MultiplyByConverter},
-                            ConverterParameter=0.5}"/>
+                            ConverterParameter=0.5}" Opacity="0.5" RowDefinitions="*,65,65,*">
+                            <Button Content="Create Cue" Height="30" Grid.Row="1" Command="{Binding CreateCueMenuCommand}"/>
+                            <TextBlock Text="Or drag media files here" FontStyle="Italic" TextAlignment="Center" Grid.Row="2"/>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>

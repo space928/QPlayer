@@ -7,7 +7,7 @@
         xmlns:vm="clr-namespace:QPlayer.ViewModels" 
         d:DataContext="{d:DesignInstance Type=vm:MainViewModel}"
         mc:Ignorable="d"
-        Title="QPlayer - About" Height="350" Width="400" 
+        Title="QPlayer – About" Height="350" Width="400" 
         Style="{DynamicResource CustomWindowStyle}" 
         ResizeMode="NoResize" WindowStartupLocation="CenterScreen" 
         Icon="{StaticResource IconImage}">

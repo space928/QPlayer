@@ -8,8 +8,8 @@
              mc:Ignorable="d" 
              Focusable="True" IsTabStop="True" GotKeyboardFocus="HiddenTextboxInst_GotKeyboardFocus" KeyboardNavigation.TabNavigation="Local"
              d:DesignHeight="30" d:DesignWidth="200">
-    <Grid>
-        <Label Name="Label" MouseDown="Label_MouseDown" MouseDoubleClick="Label_MouseDoubleClick" Content="{Binding Text, ElementName=HiddenTextboxInst}"/>
+    <Grid Height="{Binding ActualHeight, Mode=OneWay, RelativeSource={RelativeSource AncestorType=local:HiddenTextbox}}">
+        <Label Name="Label" VerticalContentAlignment="Center" MouseDown="Label_MouseDown" MouseDoubleClick="Label_MouseDoubleClick" Content="{Binding Text, ElementName=HiddenTextboxInst}"/>
         <local:TextField x:Name="TextFieldInst" ReturnValidates="True" LostKeyboardFocus="TextBox_LostKeyboardFocus" Visibility="Collapsed" Text="{Binding Text, ElementName=HiddenTextboxInst}"/>
     </Grid>
 </UserControl>

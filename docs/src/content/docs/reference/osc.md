@@ -31,7 +31,16 @@ An OSC message is comprised of an *address*, which may be made up of multiple pa
 separated by `/` characters. This is followed by any number of *arguments* which
 may be an integer, a decimal, a string, or one of the other types specified 
 [here](https://opensoundcontrol.stanford.edu/spec-1_0.html#osc-type-tag-string).
-(For developpers) Note that this description is a slight simplification of the 
+Please note that different software may use different conventions for separating 
+OSC *addresses* from *arguments* for instance, here is how the following OSC command 
+would be written for a few different applications:
+
+ - In QPlayer: `/qplayer/test,1,"banana"`
+ - In QLab: `/qplayer/test 1 "banana"`
+ - In EOS: `/qplayer/test=1,"banana"`
+ - In MagicQ/MA3: `/qplayer/test,1,"banana"`
+
+(For developers) Note that this description is a slight simplification of the 
 format, please read the [specification](https://opensoundcontrol.stanford.edu/spec-1_0.html) 
 for more information on implementing OSC yourself.
 
@@ -47,7 +56,8 @@ fired.
 #### Arguments:
 `[qid]` *(optional, string or float)* the cue ID to trigger.  
 `[select]` *(optional, any type)* when this argument is present, the specified cue 
-is selected before pressing GO.
+is selected before pressing GO, this is useful to keep the selected cue in sync 
+with the fired cue.
 
 ### Pause
 ```
@@ -127,7 +137,11 @@ Saves current QPlayer project under the same name.
 
 ## Sent Messages
 
-*None so far.*
+Using the included OSC Cue plugin, custom OSC messages can be sent in cues.
+To do this, create an [OSC Cue](../cues/osc-cue), specify and OSC command
+to send, and fire it.
+
+No other OSC messages are sent by QPlayer by default.
 
 # OSC Remote
 
@@ -144,10 +158,6 @@ details). When a cue is designated as a remote cue, triggering it results in
 an OSC message being sent to the specified remote client. The remote client is 
 in turn expected to reply with playback status messages. Remote clients can be
 viewed and configured from the [Project Setup](../project-setup) tab.
-
-:::note
-When a client 
-:::
 
 ## Messages Sent To Remote Clients
 

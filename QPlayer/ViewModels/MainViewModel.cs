@@ -787,11 +787,10 @@ public partial class MainViewModel : ObservableObject
         menu.IsOpen = true;
         foreach (var qtypeObj in CueFactory.RegisteredCueTypes)
         {
-            var qtype = qtypeObj.displayName;
             menu.Items.Add(new MenuItem()
             {
-                Header = $"Create {qtype}",
-                Command = new RelayCommand(() => CreateCue(qtype))
+                Header = $"Create {qtypeObj.displayName}",
+                Command = new RelayCommand(() => CreateCue(qtypeObj.name))
             });
         }
     }
@@ -1079,13 +1078,13 @@ public partial class MainViewModel : ObservableObject
 
         showFile = show;
         ProjectSettings = new ProjectSettingsViewModel(this);
-        ProjectSettings.Bind(show.showSettings);
-        ProjectSettings.SyncFromModel();
         ProjectSettings.PropertyChanged += (o, e) =>
         {
             if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
                 OnPropertyChanged(nameof(WindowTitle));
         };
+        ProjectSettings.Bind(show.showSettings);
+        ProjectSettings.SyncFromModel();
 
         for (int i = 0; i < Math.Min(showFile.columnWidths.Count, ColumnWidths.Count); i++)
             ColumnWidths[i].Value = showFile.columnWidths[i];

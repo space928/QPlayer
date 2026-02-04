@@ -9,7 +9,10 @@
              d:DataContext="{d:DesignInstance Type=vm:DummyCueViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded">
-    <Grid x:Name="MainGrid" IsHitTestVisible="True"
+    <UserControl.Resources>
+        <util:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
+    </UserControl.Resources>
+    <Grid x:Name="MainGrid" IsHitTestVisible="True" HorizontalAlignment="Left"
         MouseDown="Grid_MouseDown" PreviewMouseDown="Grid_PreviewMouseDown" AllowDrop="True"
           MouseMove="Grid_MouseMove" GiveFeedback="Grid_GiveFeedback" Drop="Grid_Drop" 
           DragEnter="Grid_DragEnter" DragLeave="Grid_DragLeave">
@@ -27,17 +30,17 @@
             </Style>
         </Grid.Style>
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[0].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[1].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[2].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[3].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[4].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[5].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[6].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[7].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[8].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[9].Value}"/>
-            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[10].Value}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[0].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[1].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[2].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[3].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[4].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[5].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[6].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[7].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[8].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[9].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
+            <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[10].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
         </Grid.ColumnDefinitions>
         <Rectangle x:Name="InsertMarker" Visibility="Hidden" Panel.ZIndex="999" Height="3" VerticalAlignment="Top" Grid.ColumnSpan="99" Fill="#FF4242CC"/>
         <Rectangle x:Name="ColourSwatch" Grid.Column="0" Fill="{Binding ColourBrush}" StrokeThickness="0"/>

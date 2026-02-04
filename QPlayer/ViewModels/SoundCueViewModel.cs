@@ -82,8 +82,7 @@ public partial class SoundCueViewModel : CueViewModel
                     LoadAudioFile();
                     break;
                 case nameof(Volume):
-                    if (fadeInOutProvider != null)
-                        fadeInOutProvider.Volume = Volume;
+                    fadeInOutProvider?.Volume = Volume;
                     break;
                 case nameof(StartTime):
                     if (loopingAudioStream != null)
@@ -93,8 +92,7 @@ public partial class SoundCueViewModel : CueViewModel
                     }
                     break;
                 case nameof(PlaybackDuration):
-                    if (loopingAudioStream != null)
-                        loopingAudioStream.EndTime = PlaybackDuration + StartTime;
+                    loopingAudioStream?.EndTime = PlaybackDuration + StartTime;
                     break;
                 case nameof(LoopMode):
                 case nameof(LoopCount):
