@@ -44,9 +44,9 @@ export default defineConfig({
 				src: './src/assets/Splash.png',
 				replacesTitle: true,
 			},
-			social: {
-				github: 'https://github.com/space928/QPlayer',
-			},
+			social: [
+				{ icon: 'github', label: 'GitHub', href: 'https://github.com/space928/QPlayer' }
+			],
 			sidebar: [
 				{
 					label: 'Guides',
