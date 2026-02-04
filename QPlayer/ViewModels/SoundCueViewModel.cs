@@ -1,25 +1,27 @@
 ﻿using CommunityToolkit.Mvvm.Input;
 using Microsoft.Win32;
 using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 using QPlayer.Audio;
 using QPlayer.Models;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
+using QPlayer.Views;
 using System;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading.Tasks;
 using System.Timers;
-using Cue = QPlayer.Models.Cue;
 
 namespace QPlayer.ViewModels;
 
-public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>, IDisposable
+[Model(typeof(SoundCue))]
+[View(typeof(CueEditor))]
+[Icon("IconSoundCue", typeof(ThemesV2.Icons))]
+[DisplayName("Sound Cue")]
+public partial class SoundCueViewModel : CueViewModel
 {
-    [Reactive] public string Path { get; set; } = string.Empty;
-    [Reactive] public TimeSpan StartTime { get; set; }
-    [Reactive] public TimeSpan PlaybackDuration { get; set; } = TimeSpan.Zero;
-    [Reactive]
+    [Reactive, ModelCustomBinding(nameof(VM2M_Path), null)] private string path = string.Empty;
+    [Reactive, ChangesProp(nameof(Duration))] private TimeSpan startTime;
+    [Reactive, ModelBindsTo(nameof(SoundCue.duration)), ChangesProp(nameof(Duration))] private TimeSpan playbackDuration = TimeSpan.Zero;
     public override TimeSpan Duration
     {
         get
@@ -30,8 +32,6 @@ public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
             return (loopingAudioStream?.TotalTime ?? TimeSpan.Zero);
         }
     }
-
-    [Reactive]
     public override TimeSpan PlaybackTime
     {
         get => IsAudioFileValid ? loopingAudioStream.CurrentTime : TimeSpan.Zero;
@@ -39,18 +39,19 @@ public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         {
             if (IsAudioFileValid)
                 loopingAudioStream.CurrentTime = value;
+            base.PlaybackTime = value;
         }
     }
-    [Reactive] public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
-    [Reactive] public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
-    [Reactive] public float Volume { get; set; }
-    [Reactive] public float FadeIn { get; set; }
-    [Reactive] public float FadeOut { get; set; }
-    [Reactive] public FadeType FadeType { get; set; }
-    [Reactive] public RelayCommand OpenMediaFileCommand { get; private set; }
-    [Reactive] public EQViewModel EQ { get; init; }
+    public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
+    public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
+    [Reactive] private float volume;
+    [Reactive] private float fadeIn;
+    [Reactive] private float fadeOut;
+    [Reactive] private FadeType fadeType;
 
-    [Reactive] public WaveFormRenderer WaveForm => waveFormRenderer;
+    [Reactive, Readonly, ModelSkip] private RelayCommand openMediaFileCommand;
+    [Reactive("EQ"), Readonly] private EQViewModel eq;
+    public WaveFormRenderer WaveForm => waveFormRenderer;
 
     private bool shouldSendRemoteStatus;
     private string? thisNodeName;
@@ -81,8 +82,7 @@ public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
                     LoadAudioFile();
                     break;
                 case nameof(Volume):
-                    if (fadeInOutProvider != null)
-                        fadeInOutProvider.Volume = Volume;
+                    fadeInOutProvider?.Volume = Volume;
                     break;
                 case nameof(StartTime):
                     if (loopingAudioStream != null)
@@ -90,12 +90,9 @@ public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
                         loopingAudioStream.StartTime = StartTime;
                         loopingAudioStream.EndTime = PlaybackDuration + StartTime;
                     }
-                    OnPropertyChanged(nameof(Duration));
                     break;
                 case nameof(PlaybackDuration):
-                    if (loopingAudioStream != null)
-                        loopingAudioStream.EndTime = PlaybackDuration + StartTime;
-                    OnPropertyChanged(nameof(Duration));
+                    loopingAudioStream?.EndTime = PlaybackDuration + StartTime;
                     break;
                 case nameof(LoopMode):
                 case nameof(LoopCount):
@@ -112,8 +109,6 @@ public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
                     break;
                 case nameof(PlaybackTime):
                     OnPropertyChanged(nameof(SamplePlaybackTime));
-                    OnPropertyChanged(nameof(PlaybackTimeString));
-                    OnPropertyChanged(nameof(PlaybackTimeStringShort));
                     break;
             }
         };
@@ -396,64 +391,5 @@ public class SoundCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewMod
         }
     }
 
-    public override void ToModel(string propertyName)
-    {
-        base.ToModel(propertyName);
-        if (cueModel is SoundCue scue)
-        {
-            switch (propertyName)
-            {
-                case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
-                case nameof(StartTime): scue.startTime = StartTime; break;
-                case nameof(PlaybackDuration): scue.duration = PlaybackDuration; break;
-                case nameof(Volume): scue.volume = Volume; break;
-                case nameof(FadeIn): scue.fadeIn = FadeIn; break;
-                case nameof(FadeOut): scue.fadeOut = FadeOut; break;
-                case nameof(FadeType): scue.fadeType = FadeType; break;
-            }
-        }
-    }
-
-    public override void ToModel(Cue cue)
-    {
-        base.ToModel(cue);
-        if (cue is SoundCue scue)
-        {
-            scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path;
-            scue.startTime = StartTime;
-            scue.duration = PlaybackDuration;
-            scue.volume = Volume;
-            scue.fadeIn = FadeIn;
-            scue.fadeOut = FadeOut;
-            scue.fadeType = FadeType;
-            scue.eq ??= new();
-            EQ.ToModel(scue.eq);
-        }
-    }
-
-    public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-    {
-        SoundCueViewModel vm = new(mainViewModel);
-        if (cue is SoundCue scue)
-        {
-            vm.Path = scue.path;
-            vm.StartTime = scue.startTime;
-            vm.PlaybackDuration = scue.duration;
-            vm.Volume = scue.volume;
-            vm.FadeIn = scue.fadeIn;
-            vm.FadeOut = scue.fadeOut;
-            vm.FadeType = scue.fadeType;
-            if (scue.eq == null)
-            {
-                scue.eq = new();
-                // Use the default values from the vm
-                vm.EQ.ToModel(scue.eq);
-            }
-            else
-            {
-                vm.EQ.FromModel(scue.eq);
-            }
-        }
-        return vm;
-    }
+    private static void VM2M_Path(SoundCueViewModel vm, SoundCue m) => m.path = vm.MainViewModel?.ResolvePath(vm.MainViewModel.ResolvePath(vm.Path), false) ?? vm.Path;
 }

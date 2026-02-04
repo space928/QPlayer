@@ -1,27 +1,18 @@
 ﻿using QPlayer.Models;
-using Cue = QPlayer.Models.Cue;
+using QPlayer.SourceGenerator;
+using QPlayer.ThemesV2;
+using QPlayer.Views;
 
-namespace QPlayer.ViewModels
+namespace QPlayer.ViewModels;
+
+[Model(typeof(DummyCue))]
+[View(typeof(CueEditor))]
+[DisplayName("Dummy Cue")]
+[Icon("IconDummyCue", typeof(Icons))]
+public class DummyCueViewModel : CueViewModel
 {
-    public class DummyCueViewModel : CueViewModel, IConvertibleModel<Cue, CueViewModel>
+    public DummyCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
     {
-        public DummyCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-        {
-        }
 
-        public override void ToModel(Cue cue)
-        {
-            base.ToModel(cue);
-        }
-
-        public static new CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-        {
-            DummyCueViewModel vm = new(mainViewModel);
-            if (cue is DummyCue dcue)
-            {
-                //
-            }
-            return vm;
-        }
     }
 }

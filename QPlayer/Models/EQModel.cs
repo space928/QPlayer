@@ -2,7 +2,6 @@
 
 namespace QPlayer.Models;
 
-[Serializable]
 public record EQSettings
 {
     public bool enabled;

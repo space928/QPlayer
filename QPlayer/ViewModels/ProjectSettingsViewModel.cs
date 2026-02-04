@@ -1,38 +1,38 @@
-﻿using CommunityToolkit.Mvvm.ComponentModel;
+﻿using CommunityToolkit.Mvvm.Input;
+using QPlayer.Audio;
 using QPlayer.Models;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.Utilities;
+using QPlayer.Views;
+using QPlayer.SourceGenerator;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Linq;
+using System.Net;
 using System.Net.NetworkInformation;
 using System.Net.Sockets;
-using System.Net;
 using System.Text;
-using System.Threading.Tasks;
-using QPlayer.Audio;
-using CommunityToolkit.Mvvm.Input;
-using PropertyChanged;
-using QPlayer.Utilities;
 using System.Threading;
-using DynamicData;
 
 namespace QPlayer.ViewModels;
 
-public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<ShowSettings, ProjectSettingsViewModel>
+[Model(typeof(ShowSettings))]
+[View(typeof(ProjectSettingsEditor))]
+public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
 {
     #region Bindable Properties
-    [Reactive] public string Title { get; set; } = "Untitled";
-    [Reactive] public string Description { get; set; } = string.Empty;
-    [Reactive] public string Author { get; set; } = string.Empty;
-    [Reactive] public DateTime Date { get; set; }
+    [Reactive] private string title = "Untitled";
+    [Reactive] private string description = string.Empty;
+    [Reactive] private string author = string.Empty;
+    [Reactive] private DateTime date;
 
-    [Reactive] public int AudioLatency { get; set; }
-    [Reactive] public AudioOutputDriver AudioOutputDriver { get; set; }
-    [Reactive] public int SelectedAudioOutputDeviceIndex { get; set; }
+    [Reactive] private int audioLatency;
+    [Reactive] private AudioOutputDriver audioOutputDriver;
+    [Reactive, ModelCustomBinding(nameof(VM2M_AudioOutputDevice), nameof(M2VM_AudioOutputDevice))]
+    public int selectedAudioOutputDeviceIndex;
 
-    [Reactive] public static ObservableCollection<AudioOutputDriver>? AudioOutputDriverValues { get; private set; }
-    [Reactive]
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<AudioOutputDriver>? audioOutputDriverValues;
+
     public ObservableCollection<string> AudioOutputDevices
     {
         get
@@ -50,28 +50,29 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         }
     }
 
-    [Reactive] public ObservableCollection<string> NICs => nics;
-    [Reactive] public int SelectedNIC { get; set; }
-    [Reactive] public int OSCRXPort { get; set; } = 9000;
-    [Reactive] public int OSCTXPort { get; set; } = 8000;
-    [Reactive] public bool MonitorOSCMessages { get; set; } = false;
+    [Reactive("NICs")] private readonly ObservableCollection<string> nics = [];
+    [Reactive, ModelCustomBinding(nameof(VM2M_OSCNic), nameof(M2VM_OSCNic))]
+    private int selectedNIC;
+    [Reactive("OSCRXPort")] private int oscRXPort = 9000;
+    [Reactive("OSCTXPort")] private int oscTXPort = 8000;
+    [Reactive, ModelSkip] private bool monitorOSCMessages = false;
 
-    [Reactive] public bool EnableRemoteControl { get; set; }
-    [Reactive] public bool IsRemoteHost { get; set; }
-    [Reactive] public bool SyncShowFileOnSave { get; set; }
-    [Reactive] public string NodeName { get; set; } = string.Empty;
-    [Reactive] public ReadOnlyObservableCollection<RemoteNodeViewModel> RemoteNodes => remoteNodesRO;
+    [Reactive] private bool enableRemoteControl;
+    [Reactive] private bool isRemoteHost;
+    [Reactive] private bool syncShowFileOnSave;
+    [Reactive] private string nodeName = string.Empty;
+    [Reactive] private readonly ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodes;
 
-    [Reactive] public int MAMSCRXPort { get; set; } = 6004;
-    [Reactive] public int MAMSCTXPort { get; set; } = 6004;
-    [Reactive] public int MAMSCRXDevice { get; set; } = 0x70;
-    [Reactive] public int MAMSCTXDevice { get; set; } = 0x71;
-    [Reactive] public int MAMSCPage { get; set; } = -1;
-    [Reactive] public int MAMSCExecutor { get; set; } = -1;
-    [Reactive] public bool MonitorMSCMessages { get; set; } = false;
+    [Reactive, ModelBindsTo(nameof(ShowSettings.mscRXPort))] private int mAMSCRXPort = 6004;
+    [Reactive, ModelBindsTo(nameof(ShowSettings.mscTXPort))] private int mAMSCTXPort = 6004;
+    [Reactive, ModelBindsTo(nameof(ShowSettings.mscRXDevice))] private int mAMSCRXDevice = 0x70;
+    [Reactive, ModelBindsTo(nameof(ShowSettings.mscTXDevice))] private int mAMSCTXDevice = 0x71;
+    [Reactive, ModelBindsTo(nameof(ShowSettings.mscPage))] private int mAMSCPage = -1;
+    [Reactive, ModelBindsTo(nameof(ShowSettings.mscExecutor))] private int mAMSCExecutor = -1;
+    [Reactive, ModelSkip] private bool monitorMSCMessages = false;
 
-    [Reactive] public RelayCommand<RemoteNodeViewModel> RemoveRemoteNodeCommand { get; private set; }
-    [Reactive] public MainViewModel MainViewModel => mainViewModel;
+    [Reactive] private readonly RelayCommand<RemoteNodeViewModel> removeRemoteNodeCommand;
+    [Reactive] private readonly MainViewModel mainViewModel;
     #endregion
 
     public IPAddress OSCNic => (SelectedNIC >= 0 && SelectedNIC < nicAddresses.Count) ? nicAddresses[SelectedNIC].addr : (nicAddresses.FirstOrDefault().addr ?? IPAddress.Any);
@@ -91,20 +92,16 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
 
     private (object? key, string identifier)[] audioOutputDevices = [];
     private volatile bool suppressAudioDeviceQuery = false;
-    private readonly MainViewModel mainViewModel;
-    private ShowSettings? projectSettings;
-    private readonly ObservableCollection<string> nics = [];
     private readonly List<(IPAddress addr, IPAddress subnet)> nicAddresses = [];
 
     private readonly StringDict<RemoteNodeViewModel> remoteNodesDict = [];
-    private readonly ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodesRO;
-    private readonly ObservableCollection<RemoteNodeViewModel> remoteNodes = [];
+    private readonly ObservableCollection<RemoteNodeViewModel> remoteNodesOb = [];
 
     public ProjectSettingsViewModel(MainViewModel mainViewModel)
     {
-        remoteNodesRO = new(remoteNodes);
+        remoteNodes = new(remoteNodesOb);
         this.mainViewModel = mainViewModel;
-        AudioOutputDriverValues ??= new(Enum.GetValues<AudioOutputDriver>());
+        audioOutputDriverValues ??= new(Enum.GetValues<AudioOutputDriver>());
         PropertyChanged += (o, e) =>
         {
             switch (e.PropertyName)
@@ -169,7 +166,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         //if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
         //    mainViewModel.OpenAudioDevice();
 
-        RemoveRemoteNodeCommand = new(item =>
+        removeRemoteNodeCommand = new(item =>
         {
             if (item != null)
                 RemoveRemoteNode(item.Name);
@@ -178,185 +175,57 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         QueryNICs();
     }
 
-    public static ProjectSettingsViewModel FromModel(ShowSettings model, MainViewModel mainViewModel)
+    public override void SyncFromModel()
     {
-        ProjectSettingsViewModel ret = new(mainViewModel);
-        ret.Title = model.title;
-        ret.Description = model.description;
-        ret.Author = model.author;
-        ret.Date = model.date;
+        suppressAudioDeviceQuery = true;
+        base.SyncFromModel();
+        suppressAudioDeviceQuery = false;
 
-        // Prevent needlessly querying the audio driver while loading parameters
-        ret.suppressAudioDeviceQuery = true;
-        ret.AudioLatency = model.audioLatency;
-        ret.AudioOutputDriver = model.audioOutputDriver;
-        ret.suppressAudioDeviceQuery = false;
-        //ret.SelectedAudioOutputDeviceIndex = ret.AudioOutputDevices.IndexOf(model.audioOutputDevice);
+        if (boundModel == null)
+            return;
 
         // The audio device list gets populated asynchronously, defer selecting the device until the list is populated.
         var sc = SynchronizationContext.Current;
-        mainViewModel.AudioPlaybackManager.GetOutputDevices(model.audioOutputDriver).ContinueWith(x =>
+        mainViewModel.AudioPlaybackManager.GetOutputDevices(AudioOutputDriver).ContinueWith(x =>
         {
-            ret.audioOutputDevices = x.Result;
-            int ind = ret.audioOutputDevices.Select(x => x.identifier).IndexOf(model.audioOutputDevice);
-            sc?.Post(x => { 
-                ret.OnPropertyChanged(nameof(AudioOutputDevices));
-                ret.SelectedAudioOutputDeviceIndex = ind;
+            audioOutputDevices = x.Result;
+            int ind = audioOutputDevices.IndexOf(x => x.identifier, boundModel.audioOutputDevice);
+            sc?.Post(x => {
+                OnPropertyChanged(nameof(AudioOutputDevices));
+                SelectedAudioOutputDeviceIndex = ind;
             }, null);
         });
 
-        ret.OSCRXPort = model.oscRXPort;
-        ret.OSCTXPort = model.oscTXPort;
-        if (IPAddress.TryParse(model.oscNIC, out var oscIP))
-            ret.SelectedNIC = ret.nicAddresses.FindIndex(x => x.addr.Equals(oscIP));//.IndexOf(oscIP);
-
-        ret.EnableRemoteControl = model.enableRemoteControl;
-        ret.SyncShowFileOnSave = model.syncShowFileOnSave;
-        ret.IsRemoteHost = model.isRemoteHost;
-        ret.NodeName = model.nodeName;
-        foreach (var node in model.remoteNodes)
+        foreach (var node in boundModel.remoteNodes)
         {
-            RemoteNodeViewModel remote = new(node, ret);
-            if (ret.remoteNodesDict.TryAdd(remote.Name, remote))
-                ret.remoteNodes.Add(remote);
+            RemoteNodeViewModel remote = new(node, this);
+            if (remoteNodesDict.TryAdd(remote.Name, remote))
+                remoteNodesOb.Add(remote);
         }
-
-        ret.MAMSCRXPort = model.mscRXPort;
-        ret.MAMSCTXPort = model.mscTXPort;
-        ret.MAMSCRXDevice = model.mscRXDevice;
-        ret.MAMSCTXDevice = model.mscTXDevice;
-        ret.MAMSCPage = model.mscPage;
-        ret.MAMSCExecutor = model.mscExecutor;
-
-        return ret;
     }
 
-    public void Bind(ShowSettings model)
+    public override void SyncToModel()
     {
-        projectSettings = model;
-        PropertyChanged += (o, e) =>
-        {
-            ProjectSettingsViewModel vm = (ProjectSettingsViewModel)(o ?? throw new NullReferenceException(nameof(ProjectSettingsViewModel)));
-            if (e.PropertyName != null)
-                vm.ToModel(e.PropertyName);
-        };
-    }
+        base.SyncToModel();
 
-    public void ToModel(ShowSettings model)
-    {
-        model.title = Title;
-        model.description = Description;
-        model.author = Author;
-        model.date = Date;
-
-        model.audioLatency = AudioLatency;
-        model.audioOutputDriver = AudioOutputDriver;
-        var devices = AudioOutputDevices;
-        model.audioOutputDevice = devices.Count == 0 ? string.Empty : devices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, devices.Count)];
-
-        model.oscRXPort = OSCRXPort;
-        model.oscTXPort = OSCTXPort;
-        model.oscNIC = OSCNic.ToString();
-
-        model.enableRemoteControl = EnableRemoteControl;
-        model.isRemoteHost = IsRemoteHost;
-        model.syncShowFileOnSave = SyncShowFileOnSave;
-        model.nodeName = NodeName;
-        model.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).ToList();
-
-        model.mscRXPort = MAMSCRXPort;
-        model.mscTXPort = MAMSCTXPort;
-        model.mscRXDevice = MAMSCRXDevice;
-        model.mscTXDevice = MAMSCTXDevice;
-        model.mscPage = MAMSCPage;
-        model.mscExecutor = MAMSCExecutor;
-    }
-
-    public void ToModel(string propertyName)
-    {
-        if (projectSettings == null)
+        if (boundModel == null)
             return;
-        switch (propertyName)
-        {
-            case nameof(Title):
-                projectSettings.title = Title;
-                break;
-            case nameof(Description):
-                projectSettings.description = Description;
-                break;
-            case nameof(Author):
-                projectSettings.author = Author;
-                break;
-            case nameof(Date):
-                projectSettings.date = Date;
-                break;
-            case nameof(AudioLatency):
-                projectSettings.audioLatency = AudioLatency;
-                break;
-            case nameof(AudioOutputDriver):
-                projectSettings.audioOutputDriver = AudioOutputDriver;
-                break;
-            case nameof(SelectedAudioOutputDeviceIndex):
-                var outputDevices = AudioOutputDevices;
-                projectSettings.audioOutputDevice = outputDevices.Count > 0 ? outputDevices[Math.Clamp(SelectedAudioOutputDeviceIndex, 0, outputDevices.Count - 1)] : string.Empty;
-                break;
-            case nameof(AudioOutputDevices):
-            case nameof(AudioOutputDriverValues):
-                break;
-            case nameof(OSCRXPort):
-                projectSettings.oscRXPort = OSCRXPort;
-                break;
-            case nameof(OSCTXPort):
-                projectSettings.oscTXPort = OSCTXPort;
-                break;
-            case nameof(SelectedNIC):
-                projectSettings.oscNIC = OSCNic.ToString();
-                break;
-            case nameof(EnableRemoteControl):
-                projectSettings.enableRemoteControl = EnableRemoteControl;
-                break;
-            case nameof(IsRemoteHost):
-                projectSettings.isRemoteHost = IsRemoteHost;
-                break;
-            case nameof(SyncShowFileOnSave):
-                projectSettings.syncShowFileOnSave = SyncShowFileOnSave;
-                break;
-            case nameof(NodeName):
-                projectSettings.nodeName = NodeName;
-                break;
-            case nameof(RemoteNodes):
-                projectSettings.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).Distinct().ToList();
-                break;
-            case nameof(MAMSCRXPort):
-                projectSettings.mscRXPort = MAMSCRXPort;
-                break;
-            case nameof(MAMSCTXPort):
-                projectSettings.mscTXPort = MAMSCTXPort;
-                break;
-            case nameof(MAMSCRXDevice):
-                projectSettings.mscRXDevice = MAMSCRXDevice;
-                break;
-            case nameof(MAMSCTXDevice):
-                projectSettings.mscTXDevice = MAMSCTXDevice;
-                break;
-            case nameof(MAMSCPage):
-                projectSettings.mscPage = MAMSCPage;
-                break;
-            case nameof(MAMSCExecutor):
-                projectSettings.mscExecutor = MAMSCExecutor;
-                break;
-
-            case nameof(NICs):
-            case nameof(MonitorOSCMessages):
-            case nameof(MonitorMSCMessages):
-            case nameof(OSCNic):
-            case nameof(SelectedAudioOutputDeviceKey):
-            case nameof(OSCSubnet):
-                break;
-            default:
-                throw new ArgumentException($"Couldn't convert property {propertyName} to model!", nameof(propertyName));
-        }
+        boundModel.remoteNodes = remoteNodes.Select(x => new RemoteNode(x.Name, x.Address)).Distinct().ToList();
     }
+
+    private static void M2VM_AudioOutputDevice(ProjectSettingsViewModel vm, ShowSettings m) { }
+    private static void VM2M_AudioOutputDevice(ProjectSettingsViewModel vm, ShowSettings m)
+    { 
+        var devices = vm.AudioOutputDevices;
+        m.audioOutputDevice = devices.Count == 0 ? string.Empty : devices[Math.Clamp(vm.SelectedAudioOutputDeviceIndex, 0, devices.Count)];
+    }
+
+    private static void M2VM_OSCNic(ProjectSettingsViewModel vm, ShowSettings m)
+    {
+        if (IPAddress.TryParse(m.oscNIC, out var ip))
+            vm.SelectedNIC = vm.nicAddresses.FindIndex(x => x.addr.Equals(ip));
+    }
+    private static void VM2M_OSCNic(ProjectSettingsViewModel vm, ShowSettings m) => m.oscNIC = vm.OSCNic.ToString();
 
     /// <summary>
     /// Removes a remote node from the collection of remote nodes.
@@ -369,7 +238,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         lock (remoteNodesDict)
         {
             if (remoteNodesDict.Remove(name, out var node))
-                ret = remoteNodes.Remove(node);
+                ret = remoteNodesOb.Remove(node);
         }
         return ret;
     }
@@ -390,7 +259,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
             var nameStr = new string(name);
             node = new RemoteNodeViewModel(nameStr, this);
             remoteNodesDict.Add(nameStr, node);
-            remoteNodes.Add(node);
+            remoteNodesOb.Add(node);
             return true;
         }
     }
@@ -405,7 +274,7 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
 
             node = new RemoteNodeViewModel(name, this);
             remoteNodesDict.Add(name, node);
-            remoteNodes.Add(node);
+            remoteNodesOb.Add(node);
             return true;
         }
     }
@@ -425,7 +294,6 @@ public class ProjectSettingsViewModel : ObservableObject, IConvertibleModel<Show
         return false;
     }
 
-    [SuppressPropertyChangedWarnings]
     internal void OnRemoteNodeStatusChanged(RemoteNodeViewModel remoteNode)
     {
         RemoteNodeStatusChanged?.Invoke(remoteNode);

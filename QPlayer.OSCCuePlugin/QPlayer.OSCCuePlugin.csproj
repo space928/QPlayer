@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<UseWPF>true</UseWPF>
+
+		<Title>QPlayer OSC Cue Plugin</Title>
+		<Version>0.1.0</Version>
+		<Authors>Thomas Mathieson</Authors>
+		<Company>Thomas Mathieson</Company>
+		<Copyright>©️ Thomas Mathieson 2026</Copyright>
+		<PackageProjectUrl>https://github.com/space928/QPlayer</PackageProjectUrl>
+		<RepositoryUrl>https://github.com/space928/QPlayer</RepositoryUrl>
+		<PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
+		<!--<UseWPF>true</UseWPF>-->
+	</PropertyGroup>
+	<PropertyGroup>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>
+	</PropertyGroup>
+	<ItemGroup>
+		<ProjectReference Include="..\QPlayer\QPlayer.csproj">
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</ProjectReference>
+		<ProjectReference Include="..\QPlayer.SourceGenerator\QPlayer.SourceGenerator.csproj">
+		  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		  <OutputItemType>Analyzer</OutputItemType>
+	  </ProjectReference>
+	</ItemGroup>
+</Project>

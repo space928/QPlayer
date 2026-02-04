@@ -1,4 +1,5 @@
-﻿using QPlayer.Utilities;
+﻿using QPlayer.SourceGenerator;
+using QPlayer.Utilities;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -17,13 +18,16 @@ namespace QPlayer.Views;
 /// <summary>
 /// Interaction logic for Knob.xaml
 /// </summary>
-public partial class Knob : UserControl, INotifyPropertyChanged
+public partial class Knob : UserControl, INotifyPropertyChanged, INotifyPropertyChanging
 {
     private bool isCapturingMouse;
     private POINT mouseStartPos;
     private double delta;
 
-    public string ValueText => string.Format(ValueFormat, Value);
+    [Reactive("ValueText")]
+    private string ValueText_Template => string.Format(ValueFormat, Value);
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangingEventHandler? PropertyChanging;
 
     public Knob()
     {

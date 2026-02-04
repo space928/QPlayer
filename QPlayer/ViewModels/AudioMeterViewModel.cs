@@ -1,17 +1,17 @@
-﻿using QPlayer.Audio;
-using ReactiveUI;
-using ReactiveUI.Fody.Helpers;
+﻿using CommunityToolkit.Mvvm.ComponentModel;
+using QPlayer.Audio;
+using QPlayer.SourceGenerator;
 using System;
 using System.Windows.Threading;
 
 namespace QPlayer.ViewModels;
 
-public class AudioMeterViewModel : ReactiveObject
+public partial class AudioMeterViewModel : ObservableObject
 {
-    [Reactive] public float PeakL { get; set; }
-    [Reactive] public float PeakR { get; set; }
-    [Reactive] public float RMSL { get; set; }
-    [Reactive] public float RMSR { get; set; }
+    [Reactive] private float peakL;
+    [Reactive] private float peakR;
+    [Reactive] private float rMSL;
+    [Reactive] private float rMSR;
 
     private readonly Dispatcher dispatcher;
     private DispatcherOperation? prevOperation;

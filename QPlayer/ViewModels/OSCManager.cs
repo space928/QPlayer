@@ -83,6 +83,17 @@ public class OSCManager
         }
     }
 
+    public void SendMessage(in OscMessage msg)
+    {
+        oscDriver.SendMessage(msg);
+    }
+
+    public void SendMessage(string msg)
+    {
+        var (addr, args) = OSCMessageParser.ParseOSCMessage(msg);
+        oscDriver.SendMessage(new(addr, args));
+    }
+
     public void SendRemoteGo(string target, decimal qid)
     {
         OscMessage msg = new("/qplayer/remote/go", [target, qid.ToString()]);
@@ -302,7 +313,7 @@ public class OSCManager
         oscDriver.Subscribe("/qplayer/remote/go", msg =>
         {
             if (FindRemoteMessageCue(msg, out var cue))
-                cue.Go();
+                cue.DelayedGo();
         }, syncContext);
         oscDriver.Subscribe("/qplayer/remote/pause", msg =>
         {

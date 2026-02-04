@@ -63,7 +63,7 @@
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
             <Image Source="{StaticResource IconImage}" HorizontalAlignment="Left" Grid.Column="0"/>
-            <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center">
+            <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center" x:Name="MainMenu">
                 <MenuItem Header="File" Height="30">
                     <MenuItem.Resources>
                         <Style x:Key="RecentItemStyle" TargetType="MenuItem">
@@ -94,7 +94,7 @@
                     <MenuItem Header="Move Cue Down" InputGestureText="Ctrl+Down" Command="{Binding MoveCueDownCommand}"/>
                     <MenuItem Header="Duplicate Cue" InputGestureText="Ctrl+D" Command="{Binding DuplicateCueCommand}"/>
                     <MenuItem Header="Delete Cue" InputGestureText="Del" Command="{Binding DeleteCueCommand}"/>
-                    <MenuItem Header="Create Cue" InputGestureText="Ctrl+T">
+                    <MenuItem Header="Create Cue" InputGestureText="Ctrl+T" x:Name="EditMenuCreateCueMenu">
                         <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
                         <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                         <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
@@ -106,6 +106,7 @@
                 <MenuItem Header="Window" Height="30">
                     <MenuItem Header="Log Window" Command="{Binding OpenLogCommand}"/>
                     <MenuItem Header="Remote Nodes" Command="{Binding OpenRemoteNodesCommand}"/>
+                    <MenuItem Header="Plugins" Command="{Binding OpenPluginManagerCommand}"/>
                     <MenuItem Header="Settings" Command="{Binding OpenSetttingsCommand}"/>
                 </MenuItem>
                 <MenuItem Header="Help" Height="30">
@@ -151,7 +152,7 @@
                         </Button.ToolTip>
                     </Button>
                     <Label Content="{Binding Clock}" 
-                           HorizontalAlignment="Center" 
+                           HorizontalAlignment="Center" Margin="0,2,0,0"
                            FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
                            BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
                            DockPanel.Dock="Top"/>
@@ -213,7 +214,7 @@
                               HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" PanningMode="VerticalFirst"
                               PreviewKeyDown="Consume_PreviewKeyDown" AllowDrop="True" Drop="CueList_Drop" GiveFeedback="CueList_GiveFeedback">
                     <ScrollViewer.ContextMenu>
-                        <ContextMenu>
+                        <ContextMenu x:Name="CueListContextMenu">
                             <MenuItem Header="Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue"/>
                             <MenuItem Header="Add Stop Cue" Command="{Binding CreateCueCommand}" CommandParameter="StopCue"/>
                             <MenuItem Header="Add Volume Cue" Command="{Binding CreateCueCommand}" CommandParameter="VolumeCue"/>
@@ -236,11 +237,14 @@
                                 </DataTemplate>
                             </ItemsControl.ItemTemplate>
                         </ItemsControl>
-                        <Rectangle Height="{Binding 
+                        <Grid MaxWidth="200" Margin="80" Height="{Binding 
                             RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
                             Path=ActualHeight,
                             Converter={StaticResource MultiplyByConverter},
-                            ConverterParameter=0.5}"/>
+                            ConverterParameter=0.5}" Opacity="0.5" RowDefinitions="*,65,65,*">
+                            <Button Content="Create Cue" Height="30" Grid.Row="1" Command="{Binding CreateCueMenuCommand}"/>
+                            <TextBlock Text="Or drag media files here" FontStyle="Italic" TextAlignment="Center" Grid.Row="2"/>
+                        </Grid>
                     </StackPanel>
                 </ScrollViewer>
             </DockPanel>
@@ -249,7 +253,7 @@
             <TabControl x:Name="CueEditor" Grid.Column="2" Margin="5,0,0,0">
                 <TabItem Header="Selected Cue">
                     <ScrollViewer HorizontalScrollBarVisibility="Disabled" VerticalScrollBarVisibility="Auto">
-                        <local:CueEditor DataContext="{Binding SelectedCue}"/>
+                        <local:CueEditor x:Name="CueEditorInst" DataContext="{Binding SelectedCue}"/>
                     </ScrollViewer>
                 </TabItem>
                 <TabItem Header="Project Setup">

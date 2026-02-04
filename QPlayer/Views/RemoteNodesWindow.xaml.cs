@@ -20,9 +20,9 @@ namespace QPlayer.Views;
 /// </summary>
 public partial class RemoteNodesWindow : Window
 {
-    public RemoteNodesWindow(RemoteNodesWindowViewModel viewModel)
+    public RemoteNodesWindow(MainViewModel viewModel)
     {
-        this.DataContext = viewModel;
+        this.DataContext = new RemoteNodesWindowViewModel(viewModel);
         InitializeComponent();
     }
 }

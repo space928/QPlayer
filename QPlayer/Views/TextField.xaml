@@ -8,7 +8,7 @@
              x:Name="TextFieldInst"
              d:DesignHeight="30" d:DesignWidth="200">
     <Grid>
-        <TextBox x:Name="TextBox" KeyUp="TextBox_KeyUp" Visibility="Visible" Text="{Binding Text, ElementName=TextFieldInst}"/>
+        <TextBox x:Name="TextBox" KeyUp="TextBox_KeyUp" Visibility="Visible" Text="{Binding Text, ElementName=TextFieldInst}" VerticalContentAlignment="Center"/>
         <Grid x:Name="Spinner" Background="{StaticResource AREghZyBrush.Primary.1.Background.Static}" 
               Width="20" HorizontalAlignment="Right" VerticalAlignment="Stretch" Cursor="SizeNS"
               MouseDown="Spinner_MouseDown" MouseUp="Spinner_MouseUp" MouseMove="Spinner_MouseMove" MouseLeave="Spinner_MouseLeave" Loaded="Spinner_Loaded">

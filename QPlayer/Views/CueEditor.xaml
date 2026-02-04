@@ -70,8 +70,8 @@
             <Label Content="Loop Count"/>
             <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.2" MinValue="1" MaxValue="999" ClampValue="True" Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <Label Content="{Binding TypeName}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <ContentControl Content="{Binding}">
+        <Label Content="{Binding TypeDisplayName}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <ContentControl Content="{Binding}" x:Name="CueEditorContentControl">
             <ContentControl.Resources>
                 <DataTemplate DataType="{x:Type vm:DummyCueViewModel}">
                     <Label Content="No additional properties" FontStyle="Italic"/>

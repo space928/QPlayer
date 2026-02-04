@@ -23,6 +23,6 @@ played. Media playback is handled by NAudio, providing a large range of supporte
 ![Application screenshot](https://github.com/space928/QPlayer/assets/15130114/1a63eaaa-2c13-48e4-be0e-e33b5921bb41)
 
 ## Building
-QPlayer can be built with Visual Studio 2022 using the .NET SDK 7.
+QPlayer can be built with Visual Studio 2026 using the .NET SDK 10.
 
 Only Windows is officially supported for now.

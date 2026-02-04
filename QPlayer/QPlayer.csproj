@@ -2,14 +2,14 @@
 
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
-    <TargetFramework>net8.0-windows</TargetFramework>
+    <TargetFramework>net10.0-windows</TargetFramework>
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.10.3</Version>
+    <Version>1.11.2</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
-	<Copyright>©️ Thomas Mathieson 2025</Copyright>
+	<Copyright>©️ Thomas Mathieson 2026</Copyright>
     <PackageProjectUrl>https://github.com/space928/QPlayer</PackageProjectUrl>
     <RepositoryUrl>https://github.com/space928/QPlayer</RepositoryUrl>
     <PackageLicenseExpression>GPL-3.0-or-later</PackageLicenseExpression>
@@ -40,6 +40,12 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="..\QPlayer.SourceGenerator\Included\ReactiveAttribute.cs" Link="SourceGenerator\ReactiveAttribute.cs" />
+    <Compile Include="..\QPlayer.SourceGenerator\Included\UIClonableAttribute.cs" Link="SourceGenerator\UIClonableAttribute.cs" />
+    <Compile Include="..\QPlayer.SourceGenerator\Included\ViewAttributes.cs" Link="SourceGenerator\ViewAttributes.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
 	<Resource Include="Resources\CascadiaMono-Regular.ttf" />
     <Resource Include="Resources\Icon.ico" />
     <Resource Include="Resources\Icons\arrow-right-long-solid.svg" />
@@ -61,6 +67,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="Resources\IconM.png" />
+	<EmbeddedResource Include="Resources\SplashV2.png" />
   </ItemGroup>
 
   <ItemGroup>
@@ -68,14 +75,22 @@
     <PackageReference Include="JetBrains.Profiler.Api" Version="1.4.10" />
     <PackageReference Include="NAudio" Version="2.2.1" />
     <PackageReference Include="OscCoreNetStd2" Version="1.1.4" />
-    <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2" />
-    <PackageReference Include="PropertyChanged.Fody" Version="4.1.0" />
-    <PackageReference Include="ReactiveUI.Fody" Version="19.5.41" />
-    <PackageReference Include="System.Text.Json" Version="8.0.6" />
+    <PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2.2" />
   </ItemGroup>
 
   <ItemGroup>
-    <SplashScreen Include="Resources\SplashV2.png" />
+    <!--<SplashScreen Include="Resources\SplashV2.png" />-->
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="SourceGenerator\" />
+  </ItemGroup>
+
+  <ItemGroup>
+	  <ProjectReference Include="..\QPlayer.SourceGenerator\QPlayer.SourceGenerator.csproj">
+		  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+		  <OutputItemType>Analyzer</OutputItemType>
+	  </ProjectReference>
   </ItemGroup>
 
 </Project>

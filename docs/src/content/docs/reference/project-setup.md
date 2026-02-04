@@ -6,7 +6,7 @@ order: 20
 From this panel, global settings related to the QPlayer project can be 
 configured. All settings in this panel are saved to the project file.
 
-![Cue Stack](../../../assets/project-setup.png)
+![Project Setup](../../../assets/project-setup.png)
 
 ## Project Metadata
 

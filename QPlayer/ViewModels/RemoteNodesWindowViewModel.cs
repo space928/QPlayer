@@ -1,6 +1,6 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
 using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
@@ -12,27 +12,27 @@ using System.Threading.Tasks;
 
 namespace QPlayer.ViewModels;
 
-public class RemoteNodesWindowViewModel : ObservableObject
+public partial class RemoteNodesWindowViewModel : ObservableObject
 {
     #region Bindable Properties
-    [Reactive] public ReadOnlyObservableCollection<RemoteNodeGroupViewModel> CueRemoteNodes { get; private set; }
+    [Reactive, Readonly] private readonly ReadOnlyObservableCollection<RemoteNodeGroupViewModel> cueRemoteNodes;
 
-    [Reactive] public ReadOnlyObservableCollection<RemoteNodeViewModel> RemoteNodes { get; private set; }
-    [Reactive] public ProjectSettingsViewModel ProjectSettings { get; private set; }
+    [Reactive, Readonly] private ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodes;
+    [Reactive, Readonly] private ProjectSettingsViewModel projectSettings;
     //[Reactive] public string RemoteNode { get; set; }
 
-    [Reactive] public RelayCommand RefreshCueListCommand { get; private set; }
+    [Reactive, Readonly] private readonly RelayCommand refreshCueListCommand;
 
     public MainViewModel MainViewModel => mainViewModel;
     #endregion
 
     private readonly MainViewModel mainViewModel;
-    private readonly ObservableCollection<RemoteNodeGroupViewModel> cueRemoteNodes = [];
+    private readonly ObservableCollection<RemoteNodeGroupViewModel> cueRemoteNodesCollection = [];
 
     public RemoteNodesWindowViewModel(MainViewModel mainViewModel)
     {
         this.mainViewModel = mainViewModel;
-        CueRemoteNodes = new(cueRemoteNodes);
+        cueRemoteNodes = new(cueRemoteNodesCollection);
 
         mainViewModel.PropertyChanged += (o, e) =>
         {
@@ -43,11 +43,11 @@ public class RemoteNodesWindowViewModel : ObservableObject
         };
         BindProjectSettings(mainViewModel.ProjectSettings);
 
-        RefreshCueListCommand = new(RefreshCueListExecute);
+        refreshCueListCommand = new(RefreshCueListExecute);
         RefreshCueListExecute();
     }
 
-    [MemberNotNull(nameof(ProjectSettings), nameof(RemoteNodes))]
+    [MemberNotNull(nameof(projectSettings), nameof(remoteNodes))]
     private void BindProjectSettings(ProjectSettingsViewModel projectSettings)
     {
         UnbindProjectSettings();
@@ -79,32 +79,32 @@ public class RemoteNodesWindowViewModel : ObservableObject
 
     private void HandleRemoteNodeStatusChanged(RemoteNodeViewModel remoteNode)
     {
-        foreach (var vm in cueRemoteNodes)
+        foreach (var vm in cueRemoteNodesCollection)
             if (vm.RemoteNode == remoteNode.Name)
                 vm.NotifyActiveNodeChanged();
     }
 
     private void RefreshCueListExecute()
     {
-        foreach (var cue in cueRemoteNodes) 
+        foreach (var cue in cueRemoteNodesCollection) 
             cue.Dispose();
-        cueRemoteNodes.Clear();
+        cueRemoteNodesCollection.Clear();
 
         var vms = mainViewModel.Cues
             .GroupBy(x => x.RemoteNode)
             .Select(x => new RemoteNodeGroupViewModel(mainViewModel, x.Key, x));
 
         foreach (var vm in vms)
-            cueRemoteNodes.Add(vm);
+            cueRemoteNodesCollection.Add(vm);
     }
 }
 
-public class RemoteNodeGroupViewModel : ObservableObject, IDisposable
+public partial class RemoteNodeGroupViewModel : ObservableObject, IDisposable
 {
-    [Reactive] public string RemoteNode { get; set; }
-    [Reactive] public bool IsLocalNode => RemoteNode == mainViewModel.ProjectSettings.NodeName;
-    [Reactive] public bool IsActiveNode => mainViewModel.ProjectSettings.IsRemoteNodeActive(RemoteNode);
-    [Reactive] public ReadOnlyCollection<CueViewModel> Cues { get; private set; }
+    [Reactive] private string remoteNode;
+    public bool IsLocalNode => RemoteNode == mainViewModel.ProjectSettings.NodeName;
+    public bool IsActiveNode => mainViewModel.ProjectSettings.IsRemoteNodeActive(RemoteNode);
+    [Reactive, Readonly] private ReadOnlyCollection<CueViewModel> cues;
 
     private readonly MainViewModel mainViewModel;
 

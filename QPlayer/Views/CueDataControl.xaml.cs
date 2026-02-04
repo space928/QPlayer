@@ -1,9 +1,11 @@
-﻿using QPlayer.ViewModels;
+﻿using QPlayer.SourceGenerator;
+using QPlayer.Utilities;
+using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -21,11 +23,40 @@ namespace QPlayer.Views;
 /// <summary>
 /// Interaction logic for CueDataControl.xaml
 /// </summary>
-public partial class CueDataControl : UserControl
+public partial class CueDataControl : UserControl, INotifyPropertyChanged, INotifyPropertyChanging
 {
+    [Reactive("CueIcon")]
+    private DrawingImage? CueIcon_Template
+    {
+        get
+        {
+            if (DataContext is not CueViewModel vm)
+                return DefaultCueIcon;
+
+            if (cueIcons.TryGetValue(vm.TypeName, out var icon))
+                return icon;
+
+            return DefaultCueIcon;
+        }
+    }
+
     const int DragDeadzone = 10;
 
     private Point startPos;
+
+    internal static readonly StringDict<DrawingImage> cueIcons = [];
+    internal static DrawingImage? DefaultCueIcon
+    {
+        get
+        {
+            if (App.Current.Resources.Contains("IconPlay"))
+                return (DrawingImage)App.Current.Resources["IconPlay"];
+            return null;
+        }
+    }
+
+    public event PropertyChangedEventHandler? PropertyChanged;
+    public event PropertyChangingEventHandler? PropertyChanging;
 
     public CueDataControl()
     {

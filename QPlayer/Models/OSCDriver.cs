@@ -1,5 +1,4 @@
-﻿using DynamicData;
-using OscCore;
+﻿using OscCore;
 using QPlayer.Utilities;
 using System;
 using System.Buffers;
@@ -292,26 +291,27 @@ public static class OSCMessageParser
                 {
                     if (strArg.Length > 1 && strArg[^1] == '\"')
                     {
+                        // Handle quoted strings with no spaces
                         args.Add(strArg[1..^1].ToString());
                     }
                     else
                     {
                         // String must have spaces in it, search for the next arg that ends in a double quote
-                        StringBuilder sb = new(strArg.Length - 1);
-                        sb.Append(strArg[1..]);
+                        Index start = split.Start;
+                        Index end = split.End;
                         do
                         {
                             i++;
                             split = splits[i];
                             strArg = msg[split];
-                            sb.Append(' ');
-                            sb.Append(strArg);
+                            end = split.End;
                         } while (i < nSplits && strArg[^1] != '\"');
 
                         if (strArg[^1] != '\"')
-                            throw new ArgumentException($"Unparsable OSC argument, string is not closed: {sb}");
+                            throw new ArgumentException($"Unparsable OSC argument, string is not closed: {msg[start..end].ToString()}");
 
-                        args.Add(sb.ToString());
+                        string s = msg[(start.Value + 1)..(end.Value - 1)].ToString();
+                        args.Add(s);
                     }
                 }
                 else if (strArg.Length > 3 && strArg[0] == '`' && strArg[^1] == '`')

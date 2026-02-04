@@ -24,4 +24,6 @@ public partial class CueEditor : UserControl
     {
         InitializeComponent();
     }
+
+    public ResourceDictionary CueEditorTemplates => CueEditorContentControl.Resources;
 }

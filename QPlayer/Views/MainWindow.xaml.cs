@@ -1,9 +1,13 @@
-﻿using System;
+﻿using QPlayer.Models;
+using QPlayer.ViewModels;
+using QPlayer.Views;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -15,8 +19,6 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
-using QPlayer.ViewModels;
-using QPlayer.Views;
 
 namespace QPlayer;
 
@@ -26,6 +28,7 @@ namespace QPlayer;
 public partial class MainWindow : Window
 {
     private readonly Dictionary<(Key key, ModifierKeys modifiers), KeyBinding> keyBindings = [];
+    private readonly object[] builtInCueTypes;
 
     public MainWindow()
     {
@@ -36,6 +39,83 @@ public partial class MainWindow : Window
         {
             CueListHeader.Margin = new Thickness(-e.HorizontalOffset, 0, 0, 0);
         };
+
+        builtInCueTypes = new object[CueEditorInst.CueEditorTemplates.Count];
+        CueEditorInst.CueEditorTemplates.Keys.CopyTo(builtInCueTypes, 0);
+        RegisterCueTypes();
+        // var vm = (MainViewModel)DataContext;
+        // vm.OnRegisterCueTypes += RegisterCueTypes;
+    }
+
+    private void RegisterCueTypes()
+    {
+        // Ugly way to clear existing cue types except for the built in ones, replace this with a clear once all cues use a separate cue type.
+        foreach (var template in new List<object>(CueEditorInst.CueEditorTemplates.Keys.Cast<object>()))
+            if (!builtInCueTypes.Contains(template))
+                CueEditorInst.CueEditorTemplates.Remove(template);
+
+        foreach (var t in CueFactory.RegisteredCueTypes)
+            RegisterCueType(t);
+    }
+
+    public void AddMenuItem(string menu, string? subMenu, MenuItem menuItem)
+    {
+        // TOOD: Check that x.Header is actually a string and not a label.
+        if (MainMenu.Items.OfType<MenuItem>().FirstOrDefault(x => x.Header is string text && text == menu) is MenuItem parentMenu)
+            parentMenu.Items.Add(menuItem);
+        else
+            MainMenu.Items.Add(menuItem);
+    }
+
+    public void RegisterCueType(CueFactory.RegisteredCueType cue)
+    {
+        // Create the cue icon
+        if (cue.iconName != null && cue.iconResourceDict != null)
+        {
+            try
+            {
+                if (!App.Current.Resources.MergedDictionaries.Any(x => cue.iconResourceDict.IsAssignableFrom(x.GetType())))
+                    App.Current.Resources.MergedDictionaries.Add((ResourceDictionary)Activator.CreateInstance(cue.iconResourceDict)!);
+
+                if (App.Current.TryFindResource(cue.iconName) is not DrawingImage img)
+                    throw new KeyNotFoundException($"Couldn't find cue icon with key '{cue.iconName}' in {cue.iconResourceDict.Name}");
+                CueDataControl.cueIcons.TryAdd(cue.name, img);
+            }
+            catch (Exception ex)
+            {
+                MainViewModel.Log($"Failed to create icon for cue type '{cue.name}': {ex}", MainViewModel.LogLevel.Warning);
+            }
+        }
+
+        // Skip built in cue types // At some point in the future we might remove this and unify cue registration
+        if (cue.viewType.Name == nameof(QPlayer.Views.CueEditor))
+            return;
+
+        DataTemplate dataTemplate;
+        if (cue.viewType.GetMethod(nameof(ICueView.CreateDataTemplate), BindingFlags.Public | BindingFlags.Static) is MethodInfo genView)
+            dataTemplate = (DataTemplate)genView.Invoke(null, null)!;
+        else
+            dataTemplate = (DataTemplate)Activator.CreateInstance(cue.viewType)!;
+
+        CueEditorInst.CueEditorTemplates.Add(new DataTemplateKey(cue.viewModelType), dataTemplate);
+
+        // Add the cue to the various context menus
+        // TODO: Tidy this up, it's a little ugly.
+        var menuItem = new MenuItem();
+        menuItem.Header = $"Add {cue.displayName}";
+        menuItem.SetBinding(MenuItem.CommandProperty, "CreateCueCommand");
+        menuItem.CommandParameter = cue.name;
+        var menuItem1 = new MenuItem();
+        menuItem1.Header = $"Add {cue.displayName}";
+        menuItem1.SetBinding(MenuItem.CommandProperty, "CreateCueCommand");
+        menuItem1.CommandParameter = cue.name;
+
+        EditMenuCreateCueMenu.Items.Add(menuItem);
+        int insertInd = 0;
+        for (; insertInd < CueListContextMenu.Items.Count; insertInd++)
+            if (CueListContextMenu.Items[insertInd] is Separator)
+                break;
+        CueListContextMenu.Items.Insert(insertInd, menuItem1);
     }
 
     public void Window_Loaded(object sender, RoutedEventArgs e)
@@ -161,7 +241,8 @@ public partial class MainWindow : Window
                         case ".ogg":
                         case ".wma":
                             {
-                                var cue = (SoundCueViewModel)vm.CreateCue(Models.CueType.SoundCue, afterLast: true);
+                                if (vm.CreateCue(nameof(SoundCue), afterLast: true) is not SoundCueViewModel cue)
+                                    break;
                                 cue.Path = file;
                                 cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
                                 vm.MoveCue(cue, dstIndex++);
@@ -216,7 +297,7 @@ public partial class MainWindow : Window
     private void StatusBarText_MouseDoubleClick(object sender, MouseButtonEventArgs e)
     {
         var vm = (MainViewModel)DataContext;
-        vm.OpenLogExecute();
+        vm.OpenWindow<LogWindow>();
     }
 
     private void ExitMenuItem_Click(object sender, RoutedEventArgs e)

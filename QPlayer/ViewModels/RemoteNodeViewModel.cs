@@ -1,16 +1,16 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using QPlayer.Models;
-using ReactiveUI.Fody.Helpers;
+using QPlayer.SourceGenerator;
 using System;
 using System.Net;
 
 namespace QPlayer.ViewModels;
 
-public class RemoteNodeViewModel : ObservableObject
+public partial class RemoteNodeViewModel : ObservableObject
 {
-    [Reactive] public string Name { get; set; } = string.Empty;
-    [Reactive] public string Address => IPAddress?.ToString() ?? string.Empty;
-    [Reactive] public bool IsActive => DateTime.UtcNow - LastDiscoveryTime < DiscoveryTimeout;
+    [Reactive] private string name = string.Empty;
+    public string Address => IPAddress?.ToString() ?? string.Empty;
+    public bool IsActive => DateTime.UtcNow - LastDiscoveryTime < DiscoveryTimeout;
 
     public IPAddress? IPAddress
     {
