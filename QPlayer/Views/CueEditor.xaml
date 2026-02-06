@@ -71,8 +71,9 @@
             <local:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.2" MinValue="1" MaxValue="999" ClampValue="True" Text="{Binding LoopCount}" IsEnabled="{Binding UseLoopCount, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <Label Content="{Binding TypeDisplayName}" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <ContentControl Content="{Binding}" x:Name="CueEditorContentControl">
-            <ContentControl.Resources>
+        <local:CachedContentControl VMContent="{Binding}" x:Name="CueEditorContentControl" ContentTemplateSelector="{DynamicResource CueEditorDataTemplateSelector}">
+            <local:CachedContentControl.Resources>
+                <local:CueEditorDataTemplateSelector x:Key="CueEditorDataTemplateSelector"/>
                 <DataTemplate DataType="{x:Type vm:DummyCueViewModel}">
                     <Label Content="No additional properties" FontStyle="Italic"/>
                 </DataTemplate>
@@ -101,16 +102,16 @@
                             ConverterParameter=False,
                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The playback volume of this cue. A value of 1 represents the sound file's full scale volume.">
-                            <Label Content="Volume"/>
-                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.05" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding Volume, UpdateSourceTrigger=Default}" Width="50" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                            <Slider Value="{Binding Volume}" VerticalAlignment="Center" 
-                                Minimum="0" Maximum="2" 
-                                AutoToolTipPlacement="TopLeft" 
-                                IsSnapToTickEnabled="False" 
-                                TickPlacement="BottomRight" TickFrequency="0.1" AutoToolTipPrecision="2"
-                                LargeChange="0.1" SmallChange="0.01"/>
-                        </DockPanel>
+                        <Grid>
+                            <Grid.ColumnDefinitions>
+                                <ColumnDefinition/>
+                                <ColumnDefinition/>
+                            </Grid.ColumnDefinitions>
+                            <local:Knob Grid.Column="0" MaxWidth="50" Value="{Binding Volume}" Label="Volume" ValueFormat="{}{0:F2} dB" MinValue="-32" MaxValue="32" Power="1"
+                                        ToolTip="The playback volume of this cue. A value of 0 represents the sound file's full scale volume."/>
+                            <local:Knob Grid.Column="1" MaxWidth="50" Value="{Binding Pan}" Label="Pan" ValueFormat="{}{0:F1}" MinValue="-1" MaxValue="1" Power="1"
+                                        ToolTip="The stereo panning of this cue. Where -1 pans the sample all the way to the left, 0 is centred, and 1 is panned all the way to the right."/>
+                        </Grid>
                         <DockPanel ToolTip="Fade in time in seconds.">
                             <Label Content="Fade In Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeIn, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
@@ -158,14 +159,14 @@
                     <StackPanel>
                         <DockPanel ToolTip="The timecode value this cue should start at.">
                             <Label Content="Start Time"/>
-                            <TextBox Text="{Binding StartTime, 
+                            <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding StartTime, 
                             Converter={StaticResource TimeSpanStringConverter},
                             ConverterParameter=True,
                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
                         <DockPanel ToolTip="The total duration of this timecode cue.">
                             <Label Content="Duration"/>
-                            <TextBox Text="{Binding TCDuration, 
+                            <local:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding TCDuration, 
                             Converter={StaticResource TimeSpanStringConverter}, 
                             ConverterParameter=True,
                             UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
@@ -198,10 +199,10 @@
                             <Label Content="Target Q ID"/>
                             <local:TextField Text="{Binding Target, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
                         </DockPanel>
-                        <DockPanel ToolTip="The volume to fade to.">
-                            <Label Content="Volume"/>
-                            <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.05" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding Volume, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                        </DockPanel>
+                        <Grid>
+                            <local:Knob Grid.Column="0" MaxWidth="50" Value="{Binding Volume}" Label="Volume" ValueFormat="{}{0:F2} dB" MinValue="-32" MaxValue="32" Power="1"
+                                    ToolTip="The volume to fade to. A value of 0 represents the sound file's full scale volume."/>
+                        </Grid>
                         <DockPanel ToolTip="Fade time in seconds.">
                             <Label Content="Fade Time"/>
                             <local:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
@@ -212,7 +213,7 @@
                         </DockPanel>
                     </StackPanel>
                 </DataTemplate>
-            </ContentControl.Resources>
-        </ContentControl>
+            </local:CachedContentControl.Resources>
+        </local:CachedContentControl>
     </StackPanel>
 </UserControl>

@@ -135,11 +135,13 @@ public class ShowFileConverter
     /// <inheritdoc cref="UpgradeShowFile(ShowFile, string)"/>
     public static void UpgradeShowFile(ShowFile showFile, JsonDocument json)
     {
-        // When the file format version is upgrade chain new format upgraders here.
+        // When the file format version is upgraded chain new format upgraders here.
         if (showFile.fileFormatVersion < 3)
             UpgradeV2ToV3(showFile, json);
         if (showFile.fileFormatVersion < 4)
             UpgradeV3ToV4(showFile, json);
+        if (showFile.fileFormatVersion < 7)
+            UpgradeV6ToV7(showFile, json);
     }
 
     private static void UpgradeV2ToV3(ShowFile showFile, JsonDocument json)
@@ -259,6 +261,20 @@ public class ShowFileConverter
                 }
             }
         }
+    }
+
+    private static void UpgradeV6ToV7(ShowFile showFile, JsonDocument json)
+    {
+        MainViewModel.Log($"Upgrading show file from V6 to V7...", MainViewModel.LogLevel.Info);
+
+        // This used to be enabled by default in older versions
+        showFile.showSettings.enableMSC = true;
+
+        foreach (var soundCue in showFile.cues.OfType<SoundCue>())
+            soundCue.volume = 20 * MathF.Log10(soundCue.volume);
+
+        foreach (var volCue in showFile.cues.OfType<VolumeCue>())
+            volCue.volume = 20 * MathF.Log10(volCue.volume);
     }
 
     private static ShowSettings LoadShowSettingsSafe(JsonElement json)

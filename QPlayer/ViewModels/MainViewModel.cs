@@ -1561,7 +1561,9 @@ public partial class MainViewModel : ObservableObject
         AudioPlaybackManager.OpenOutputDevice(
             ProjectSettings.AudioOutputDriver,
             ProjectSettings.SelectedAudioOutputDeviceKey,
-            ProjectSettings.AudioLatency);
+            ProjectSettings.AudioLatency,
+            ProjectSettings.ExclusiveMode,
+            ProjectSettings.ChannelOffset);
     }
 
     /// <summary>

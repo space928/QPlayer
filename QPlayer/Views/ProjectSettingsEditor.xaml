@@ -7,12 +7,13 @@
              xmlns:vm="clr-namespace:QPlayer.ViewModels"
              xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
              mc:Ignorable="d" 
-             d:DesignHeight="450" d:DesignWidth="800" d:DataContext="{d:DesignInstance Type=vm:ProjectSettingsViewModel}">
+             d:DesignHeight="450" d:DesignWidth="800" d:DataContext="{d:DesignInstance Type=vm:ProjectSettingsViewModel}"
+             Loaded="UserControl_Loaded">
     <StackPanel>
         <Label Content="Project Metadata" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
         <DockPanel>
             <Label Content="Project Name"/>
-            <TextBox Text="{Binding Title, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <local:TextField Text="{Binding Title, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <DockPanel>
             <Label Content="Description"/>
@@ -20,25 +21,34 @@
         </DockPanel>
         <DockPanel>
             <Label Content="Author"/>
-            <TextBox Text="{Binding Author, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <local:TextField Text="{Binding Author, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <DockPanel>
             <Label Content="Show Date"/>
             <DatePicker Text="{Binding Date}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
         </DockPanel>
         <Label Content="Audio Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <DockPanel ToolTip="Sets the desired latency of the audio driver. Some drivers may ignore or impose limits on this parameter.">
-            <Label Content="Audio Latency (ms)"/>
-            <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="1" MaxValue="500" SpinnerType="Int" ClampValue="True" Text="{Binding AudioLatency}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-        </DockPanel>
         <DockPanel>
             <Label Content="Sound Driver"/>
-            <ComboBox SelectedItem="{Binding AudioOutputDriver}" ItemsSource="{Binding AudioOutputDriverValues}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <ComboBox SelectedItem="{Binding AudioOutputDriver}" ItemsSource="{Binding AudioOutputDriverValues}" DockPanel.Dock="Right" Margin="8,2,2,2" SelectionChanged="AudioDriver_SelectionChanged"/>
         </DockPanel>
         <DockPanel>
             <Label Content="Output Device"/>
             <ComboBox SelectedIndex="{Binding SelectedAudioOutputDeviceIndex}" ItemsSource="{Binding AudioOutputDevices}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
+        <DockPanel ToolTip="Sets the desired latency of the audio driver. Some drivers may ignore or impose limits on this parameter." x:Name="AudioLatencyControl">
+            <Label Content="Audio Latency (ms)"/>
+            <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="1" MaxValue="500" SpinnerType="Int" ClampValue="True" Text="{Binding AudioLatency}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Uses this device in exclusive mode, this can lead to better performance, but it prevents any other application on this computer from using device." x:Name="ExclusiveModeControl">
+            <Label Content="Exclusive Mode"/>
+            <CheckBox IsChecked="{Binding ExclusiveMode}" Width="20" HorizontalAlignment="Right" VerticalContentAlignment="Center" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="For multichannel output devices, this specifies the first channel of the device that QPlayer will output to." x:Name="ChannelOffsetControl">
+            <Label Content="Channel Offset"/>
+            <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="0" MaxValue="128" SpinnerType="Int" ClampValue="True" Text="{Binding ChannelOffset}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <Button Content="Open Control Panel" Command="{Binding ShowAsioControlPanelCommand}" Margin="2" x:Name="ShowControlPanelControl"/>
         <Label Content="Network Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
         <DockPanel ToolTip="The network interface to listen to OSC messages on.">
             <Label Content="Network Adaptor" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
@@ -58,33 +68,39 @@
         </DockPanel>
         <local:RemoteSetupControl/>
         <Label Content="MA-MSC Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
-        <DockPanel ToolTip="The port to transmit MSC messages on (should be the same as MA's MSC RX port).">
-            <Label Content="MSC TX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-            <local:TextField Text="{Binding MAMSCTXPort}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+        <DockPanel ToolTip="When checked, MIDI Show Control messages can be received.">
+            <Label Content="Enable MSC" HorizontalAlignment="Left"/>
+            <CheckBox IsChecked="{Binding EnableMSC}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
         </DockPanel>
-        <DockPanel ToolTip="The port to receive MSC messages on (should be the same as MA's MSC TX port).">
-            <Label Content="MSC RX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-            <local:TextField Text="{Binding MAMSCRXPort}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="The device to receive MSC messages from (value above 112 are treated as MSC 'groups').">
-            <Label Content="MSC RX Device" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-            <local:TextField Text="{Binding MAMSCRXDevice}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="The device to receive MSC messages from (value above 112 are treated as MSC 'groups').">
-            <Label Content="MSC TX Device" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-            <local:TextField Text="{Binding MAMSCTXDevice}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="The MA executor number to receive/send go/stop/pause commands from. Set to -1 to accept all executors.">
-            <Label Content="MSC Executor" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-            <local:TextField Text="{Binding MAMSCExecutor}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="The MA executor page to receive/send go/stop/pause commands from. Set to -1 to accept all pages.">
-            <Label Content="MSC Executor Page" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
-            <local:TextField Text="{Binding MAMSCPage}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="When checked, all OSC messages are logged to the log window.">
-            <Label Content="Monitor MSC Messages" HorizontalAlignment="Left"/>
-            <CheckBox IsChecked="{Binding MonitorMSCMessages}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
-        </DockPanel>
+        <StackPanel IsEnabled="{Binding EnableMSC, Mode=OneWay}">
+            <DockPanel ToolTip="The port to transmit MSC messages on (should be the same as MA's MSC RX port).">
+                <Label Content="MSC TX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+                <local:TextField Text="{Binding MAMSCTXPort}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="The port to receive MSC messages on (should be the same as MA's MSC TX port).">
+                <Label Content="MSC RX Port" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+                <local:TextField Text="{Binding MAMSCRXPort}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="The device to receive MSC messages from (value above 112 are treated as MSC 'groups').">
+                <Label Content="MSC RX Device" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+                <local:TextField Text="{Binding MAMSCRXDevice}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="The device to receive MSC messages from (value above 112 are treated as MSC 'groups').">
+                <Label Content="MSC TX Device" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+                <local:TextField Text="{Binding MAMSCTXDevice}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="The MA executor number to receive/send go/stop/pause commands from. Set to -1 to accept all executors.">
+                <Label Content="MSC Executor" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+                <local:TextField Text="{Binding MAMSCExecutor}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="The MA executor page to receive/send go/stop/pause commands from. Set to -1 to accept all pages.">
+                <Label Content="MSC Executor Page" HorizontalAlignment="Left" DockPanel.Dock="Left"/>
+                <local:TextField Text="{Binding MAMSCPage}" Margin="8,2,2,2" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="When checked, all MSC messages are logged to the log window.">
+                <Label Content="Monitor MSC Messages" HorizontalAlignment="Left"/>
+                <CheckBox IsChecked="{Binding MonitorMSCMessages}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
+            </DockPanel>
+        </StackPanel>
     </StackPanel>
 </UserControl>

@@ -130,21 +130,21 @@
                 </Grid.RowDefinitions>
                 <DockPanel Grid.Row="0">
                     <Button Content="GO" Command="{Binding GoCommand}"
-                            Height="70"
-                            FontSize="28" FontWeight="Bold" 
-                            Background="#FF135F1B" BorderBrush="#FF032707" 
-                            Style="{DynamicResource SlightlyRoundButton}"
+                            Height="80"
+                            FontSize="31" FontWeight="SemiBold"
+                            Background="#FF135F1B" BorderBrush="#FF02460F" 
+                            Style="{DynamicResource SlightlyRoundButtonTop}"
                             Focusable="False"
                             DockPanel.Dock="Top">
                         <Button.ToolTip>
                             <ToolTip Content="Advances to the next cue (Space)" FontSize="11" FontWeight="Medium"/>
                         </Button.ToolTip>
                     </Button>
-                    <Button Content="Stop" Command="{Binding StopCommand}" 
+                    <Button Content="STOP" Command="{Binding StopCommand}" 
                             Height="40"
                             FontSize="16" FontWeight="Bold" 
                             Background="#FF5F1313" BorderBrush="#FF4C0707" 
-                            Style="{DynamicResource SlightlyRoundButton}"
+                            Style="{DynamicResource SlightlyRoundButtonBottom}"
                             Focusable="False"
                             DockPanel.Dock="Top">
                         <Button.ToolTip>
@@ -153,7 +153,7 @@
                     </Button>
                     <Label Content="{Binding Clock}" 
                            HorizontalAlignment="Center" Margin="0,2,0,0"
-                           FontStretch="Expanded" FontFamily="Consolas" FontSize="16" FontWeight="Bold" 
+                           FontStretch="Expanded" FontFamily="{StaticResource CascadiaMono}" FontSize="16" FontWeight="Bold" 
                            BorderBrush="{DynamicResource ComboBox.Static.Background}" BorderThickness="2"
                            DockPanel.Dock="Top"/>
                     <Separator DockPanel.Dock="Top"/>
@@ -171,23 +171,8 @@
                     </ScrollViewer>
                 </DockPanel>
                 <StackPanel Grid.Row="1">
-                    <Grid Margin="4,0,2,4">
-                        <Grid.ColumnDefinitions>
-                            <ColumnDefinition Width="18"/>
-                            <ColumnDefinition/>
-                        </Grid.ColumnDefinitions>
-                        <Grid.RowDefinitions>
-                            <RowDefinition/>
-                            <RowDefinition/>
-                        </Grid.RowDefinitions>
-                        <TextBlock Text="L" VerticalAlignment="Center" Margin="4,0,0,0"/>
-                        <TextBlock Text="R" VerticalAlignment="Center" Margin="4,0,0,0" Grid.Row="1"/>
-                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.PeakL}" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
-                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.PeakR}" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
-                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.RMSL}" Opacity="0.5" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
-                        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding MainAudioMeter.RMSR}" Opacity="0.5" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
-                    </Grid>
-                    
+                    <local:AudioMeter DataContext="{Binding MainAudioMeter}" Margin="4,0,2,4"/>
+
                     <Label Content="Preload Cue" Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
                            FontWeight="Bold" Margin="5,0,0,0"/>
                     <DockPanel>

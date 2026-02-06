@@ -27,6 +27,9 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
     [Reactive] private DateTime date;
 
     [Reactive] private int audioLatency;
+    [Reactive] private bool exclusiveMode;
+    [Reactive] private int channelOffset;
+    [Reactive] private readonly RelayCommand showAsioControlPanelCommand;
     [Reactive] private AudioOutputDriver audioOutputDriver;
     [Reactive, ModelCustomBinding(nameof(VM2M_AudioOutputDevice), nameof(M2VM_AudioOutputDevice))]
     public int selectedAudioOutputDeviceIndex;
@@ -63,6 +66,7 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
     [Reactive] private string nodeName = string.Empty;
     [Reactive] private readonly ReadOnlyObservableCollection<RemoteNodeViewModel> remoteNodes;
 
+    [Reactive] private bool enableMSC = false;
     [Reactive, ModelBindsTo(nameof(ShowSettings.mscRXPort))] private int mAMSCRXPort = 6004;
     [Reactive, ModelBindsTo(nameof(ShowSettings.mscTXPort))] private int mAMSCTXPort = 6004;
     [Reactive, ModelBindsTo(nameof(ShowSettings.mscRXDevice))] private int mAMSCRXDevice = 0x70;
@@ -134,6 +138,8 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
                     });
                     break;
                 case nameof(AudioLatency):
+                case nameof(ExclusiveMode):
+                case nameof(ChannelOffset):
                 case nameof(SelectedAudioOutputDeviceIndex):
                     if (suppressAudioDeviceQuery)
                         break;
@@ -161,6 +167,8 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
                     //    break;
             }
         };
+
+        showAsioControlPanelCommand = new(mainViewModel.AudioPlaybackManager.OpenASIOControlPanel);
 
         _ = AudioOutputDevices; // Update the list of audio devices...
         //if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)

@@ -53,7 +53,7 @@ public partial class VolumeCueViewModel : CueViewModel
         if(cue != null)
         {
             if (cue is SoundCueViewModel soundCue)
-                soundCue.Fade(Volume, FadeTime, FadeType);
+                soundCue.Fade(MathF.Pow(10, Volume / 20f), FadeTime, FadeType);
             else
                 Stop();
         } else

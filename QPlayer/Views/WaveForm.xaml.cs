@@ -39,6 +39,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
     public Visibility InvWaveFormVisible => Enabled ? Visibility.Hidden : Visibility.Visible;
     public Visibility WaveFormLoading => (WaveFormRenderer?.PeakFile != null && Enabled) ? Visibility.Hidden : Visibility.Visible;
     public RelayCommand PopupCommand { get; private set; }
+    public RelayCommand ResetZoomCommand { get; private set; }
     public double TimeStampFontSize => NavBarHeight / 2;
     public Thickness PlaybackMarkerPos
     {
@@ -91,6 +92,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         InitializeComponent();
 
         PopupCommand = new(OpenPopup);
+        ResetZoomCommand = new(ResetZoom);
         UpdateTimePositions();
     }
 
@@ -295,6 +297,18 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
     {
         if (window == null)
             return;
+    }
+
+    public void ResetZoom()
+    {
+        if (!Enabled)
+            return;
+
+        if (WaveFormRenderer == null)
+            return;
+
+        var wf = WaveFormRenderer;
+        wf.ViewBounds = (TimeSpan.Zero, wf.Duration);
     }
 
     private void OpenPopup()

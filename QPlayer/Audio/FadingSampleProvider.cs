@@ -1,5 +1,4 @@
-﻿using JetBrains.Profiler.Api;
-using NAudio.Wave;
+﻿using NAudio.Wave;
 using QPlayer.Audio;
 using System;
 using System.Collections.Generic;
@@ -13,12 +12,13 @@ namespace QPlayer.Audio;
 internal class FadingSampleProvider : ISamplePositionProvider
 {
     private readonly ISamplePositionProvider source;
-    private readonly object lockObj = new();
+    private readonly Lock lockObj = new();
     private FadeState state;
     private long fadeTime;
     private long fadeDuration;
     private float startVolume = 1;
     private float endVolume = 1;
+    private float pan = 0;
     private FadeType fadeType;
     private Action<bool>? onCompleteAction;
     private SynchronizationContext? synchronizationContext;
@@ -50,32 +50,45 @@ internal class FadingSampleProvider : ISamplePositionProvider
         set => startVolume = value;
     }
 
+    /// <summary>
+    /// The stereo panning applied to the processed samples.
+    /// </summary>
+    public float Pan
+    {
+        get => pan;
+        set => pan = value;
+    }
+
     public int Read(float[] buffer, int offset, int count)
     {
         int numSource = source.Read(buffer, offset, count);
+        int offsetSource = offset;
         int num = numSource;
-        lock (lockObj)
+        if (state == FadeState.Fading)
         {
-            if (state == FadeState.Fading)
-            {
-                int numFaded = FadeSamples(buffer, offset, numSource);
-                offset += numFaded;
-                num -= numFaded;
-            }
-
-            if (startVolume == 0)
-            {
-                buffer.AsSpan(offset, num).Clear();
-                return numSource;
-            }
-            else if (startVolume == 1)
-            {
-                return numSource;
-            }
-
-            if (num > 0)
-                VectorExtensions.Multiply(buffer.AsSpan(offset, num), startVolume);
+            int numFaded = FadeSamples(buffer, offset, numSource);
+            offset += numFaded;
+            num -= numFaded;
         }
+
+        // Apply pan if needed
+        if (pan != 0 && source.WaveFormat.Channels == 2)
+            VectorExtensions.ApplyPan(buffer.AsSpan(offsetSource, numSource), pan);
+
+        // Fast paths for -inf gain and unity gain
+        if (startVolume == 0)
+        {
+            buffer.AsSpan(offset, num).Clear();
+            return numSource;
+        }
+        else if (startVolume == 1)
+        {
+            return numSource;
+        }
+
+        // Apply volume to any remaining samples, the common case.
+        if (num > 0)
+            VectorExtensions.Multiply(buffer.AsSpan(offset, num), startVolume);
 
         return numSource;
     }
@@ -96,7 +109,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
             EndFade();
 
             fadeTime = 0;
-            fadeDuration = (int)(durationMS * source.WaveFormat.SampleRate / 1000.0);
+            fadeDuration = (int)(durationMS * source.WaveFormat.SampleRate * 1e-3);
             endVolume = volume;
             this.fadeType = fadeType;
             onCompleteAction = onComplete;
@@ -116,7 +129,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
         lock (lockObj)
         {
             state = FadeState.Ready;
-            float t = GetFadeFraction();
+            float t = GetFadeFraction(fadeTime / (float)fadeDuration, fadeType);
             startVolume = endVolume * t + startVolume * (1 - t);
             if (synchronizationContext != null)
                 synchronizationContext.Post(x => onCompleteAction?.Invoke(false), null);
@@ -129,46 +142,45 @@ internal class FadingSampleProvider : ISamplePositionProvider
 
     private int FadeSamples(float[] buffer, int offset, int count)
     {
-        int i = 0;
+        int i;
         int channels = source.WaveFormat.Channels;
-        if (fadeTime == 0)
+        long _fadeTime = fadeTime;
+        long _fadeDuration = fadeDuration;
+        FadeType _fadeType = fadeType;
+        for (i = offset; i < offset + count; i += channels)
         {
-            //var dbg_t = DateTime.Now;
-            //MainViewModel.Log($"[Playback Debugging] Audio fade start! {dbg_t:HH:mm:ss.ffff} dt={(dbg_t - MainViewModel.dbg_cueStartTime)}");
-            MeasureProfiler.SaveData();
-        }
-        while (i < count)
-        {
-            if (fadeTime >= fadeDuration)
+            if (_fadeTime >= _fadeDuration)
             {
-                startVolume = endVolume;
-                state = FadeState.Ready;
-                if (synchronizationContext != null)
-                    synchronizationContext.Post(x => onCompleteAction?.Invoke(true), null);
-                else
-                    onCompleteAction?.Invoke(true);
-                //onCompleteAction = null;
-                //synchronizationContext = null;
-
+                FadeCompleted();
                 break;
             }
 
-            float t = GetFadeFraction();
+            float t = GetFadeFraction(_fadeTime / (float)_fadeDuration, _fadeType);
             float currVol = endVolume * t + startVolume * (1 - t);
             for (int c = 0; c < channels; c++)
-                buffer[offset + i + c] *= currVol;
+                buffer[i + c] *= currVol;
 
-            i += channels;
-            fadeTime++;
+            _fadeTime++;
         }
 
-        return i;
+        fadeTime = _fadeTime;
+
+        return i - offset;
+
+        void FadeCompleted()
+        {
+            startVolume = endVolume;
+            state = FadeState.Ready;
+            if (synchronizationContext != null)
+                synchronizationContext.Post(x => onCompleteAction?.Invoke(true), null);
+            else
+                onCompleteAction?.Invoke(true);
+        }
     }
 
-    private float GetFadeFraction()
+    private static float GetFadeFraction(float t, FadeType type)
     {
-        float t = fadeTime / (float)fadeDuration;
-        switch (fadeType)
+        switch (type)
         {
             case FadeType.SCurve:
                 // Cubic hermite spline

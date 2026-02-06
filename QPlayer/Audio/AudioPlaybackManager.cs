@@ -31,7 +31,7 @@ public class AudioPlaybackManager : IDisposable
 
     private AudioOutputDriver driver;
     private IWavePlayer? device;
-    private int restartAudioDeviceDelay = 100;
+    private int restartAudioDeviceDelay = 10;
     private CancellationTokenSource cancelAudioDeviceRestart;
 
     public event Action<MeteringEvent> OnMixerMeter
@@ -90,6 +90,12 @@ public class AudioPlaybackManager : IDisposable
         deviceClosedEvent.Dispose();
     }
 
+    public void OpenASIOControlPanel()
+    {
+        if (device is AsioOut asio)
+            asio.ShowControlPanel();
+    }
+
     private void CloseAudioDevices()
     {
         if (device == null)
@@ -114,7 +120,7 @@ public class AudioPlaybackManager : IDisposable
             MainViewModel.Log($"Audio device error! \n{e.Exception}", MainViewModel.LogLevel.Error);
 
             restartAudioDeviceDelay *= 2;
-            restartAudioDeviceDelay = Math.Min(restartAudioDeviceDelay, 60 * 1000);
+            restartAudioDeviceDelay = Math.Min(restartAudioDeviceDelay, 2000);
             cancelAudioDeviceRestart = new();
             Task.Delay(restartAudioDeviceDelay, cancelAudioDeviceRestart.Token).ContinueWith(_ =>
             {
@@ -162,7 +168,7 @@ public class AudioPlaybackManager : IDisposable
         });
     }
 
-    public void OpenOutputDevice(AudioOutputDriver driver, object? key, int desiredLatency = 40)
+    public void OpenOutputDevice(AudioOutputDriver driver, object? key, int desiredLatency = 40, bool exclusive = false, int outputChannelOffset = 0)
     {
         CloseAudioDevices();
         desiredLatency = Math.Max(desiredLatency, 0);
@@ -177,7 +183,7 @@ public class AudioPlaybackManager : IDisposable
             {
                 AudioOutputDriver.Wave => new WaveOutEvent() { DeviceNumber = (int)key, DesiredLatency = desiredLatency },
                 AudioOutputDriver.DirectSound => new DirectSoundOut((Guid)key, desiredLatency),
-                AudioOutputDriver.WASAPI => new WasapiOut(new MMDeviceEnumerator().GetDevice((string)key), AudioClientShareMode.Shared, true, desiredLatency),
+                AudioOutputDriver.WASAPI => new WasapiOut(new MMDeviceEnumerator().GetDevice((string)key), exclusive ? AudioClientShareMode.Exclusive : AudioClientShareMode.Shared, false, desiredLatency),
                 AudioOutputDriver.ASIO => new AsioOut((string)key),
                 _ => throw new NotImplementedException($"Unsupported audio driver '{driver}'!"),
             };
@@ -189,11 +195,22 @@ public class AudioPlaybackManager : IDisposable
             return;
         }
 
+        if (device is AsioOut asio)
+        {
+            asio.ChannelOffset = Math.Min(outputChannelOffset, asio.DriverOutputChannelCount - 1);
+            // asio.DriverResetRequest += (o, e) => mainViewModel.OpenAudioDevice();
+        }
+        /*else if (device is WasapiOut wasapi)
+        {
+            wasapi.
+        }*/
+
         this.driver = driver;
         device.PlaybackStopped += DevicePlaybackStopped;
         deviceClosedEvent.Reset();
         try
         {
+            mixer.ResetThreadPriority();
             device.Init(meteringProvider);
             device.Play();
         }

@@ -5,10 +5,58 @@
         <ResourceDictionary Source="ControlColours.xaml"/>
         <ResourceDictionary Source="Controls.xaml"/>
     </ResourceDictionary.MergedDictionaries>
-    <Style x:Key="SlightlyRoundButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
+    <Style x:Key="SlightlyRoundButton" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
         <Style.Resources>
             <Style TargetType="Border">
-                <Setter Property="CornerRadius" Value="5" />
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusMedium}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+    
+    <Style x:Key="SlightlyRoundButtonTop" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusMediumTop}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <Style x:Key="SlightlyRoundButtonBottom" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusMediumBottom}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <Style x:Key="ButtonRoundLeft" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusLeft}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <Style x:Key="ButtonRoundRight" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusRight}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <Style x:Key="ButtonRoundTop" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusTop}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <Style x:Key="ButtonRoundBottom" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadiusBottom}" />
             </Style>
         </Style.Resources>
     </Style>
@@ -56,12 +104,23 @@
     </Style>
 
     <Style TargetType="DatePicker">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="BorderBrush" Value="Black"/>
+                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadius}" />
+            </Style>
+        </Style.Resources>
         <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
         <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
         <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>
         <Setter Property="CalendarStyle">
             <Setter.Value>
                 <Style TargetType="Calendar">
+                    <Style.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadius}" />
+                        </Style>
+                    </Style.Resources>
                     <Setter Property="Background" Value="{DynamicResource TextBox.Static.Background}"/>
                     <Setter Property="BorderBrush" Value="{DynamicResource TextBox.Static.Border}"/>
                     <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}"/>

@@ -14,68 +14,70 @@
             <Label Content="Enable Remote Control" HorizontalAlignment="Left"/>
             <CheckBox IsChecked="{Binding EnableRemoteControl}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
         </DockPanel>
-        <DockPanel ToolTip="Allows this instance of QPlayer to control other instances. When this options is disabled, the OSC RX and TX ports are internally flipped to allow for communication with the host.">
-            <Label Content="Is Remote Host" HorizontalAlignment="Left"/>
-            <CheckBox IsChecked="{Binding IsRemoteHost}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="Sends the host's showfile to all remote clients whenever it is saved.">
-            <Label Content="Sync Showfile On Save" HorizontalAlignment="Left"/>
-            <CheckBox IsChecked="{Binding SyncShowFileOnSave}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
-        </DockPanel>
-        <DockPanel ToolTip="The name of this node for remote control, must be unique within the network.">
-            <Label Content="Node Name" HorizontalAlignment="Left"/>
-            <local:TextField Text="{Binding NodeName}" Margin="8,2,2,2" DockPanel.Dock="Right"/>
-        </DockPanel>
-        <Label Content="Remote Nodes:" HorizontalAlignment="Left" FontStyle="Italic"/>
-        <ScrollViewer Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+        <StackPanel IsEnabled="{Binding EnableRemoteControl, Mode=OneWay}">
+            <DockPanel ToolTip="Allows this instance of QPlayer to control other instances. When this options is disabled, the OSC RX and TX ports are internally flipped to allow for communication with the host.">
+                <Label Content="Is Remote Host" HorizontalAlignment="Left"/>
+                <CheckBox IsChecked="{Binding IsRemoteHost}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="Sends the host's showfile to all remote clients whenever it is saved.">
+                <Label Content="Sync Showfile On Save" HorizontalAlignment="Left"/>
+                <CheckBox IsChecked="{Binding SyncShowFileOnSave}" Margin="8,2,2,2" Width="20" HorizontalAlignment="Right" DockPanel.Dock="Right" VerticalContentAlignment="Center"/>
+            </DockPanel>
+            <DockPanel ToolTip="The name of this node for remote control, must be unique within the network.">
+                <Label Content="Node Name" HorizontalAlignment="Left"/>
+                <local:TextField Text="{Binding NodeName}" Margin="8,2,2,2" DockPanel.Dock="Right"/>
+            </DockPanel>
+            <Label Content="Remote Nodes:" HorizontalAlignment="Left" FontStyle="Italic"/>
+            <ScrollViewer Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
           BorderBrush="{DynamicResource Button.Static.Border}" BorderThickness="1"
           Margin="2">
-            <ItemsControl ItemsSource="{Binding RemoteNodes}" Height="150">
-                <ItemsControl.ItemTemplate>
-                    <DataTemplate DataType="vm:RemoteNodeViewModel">
-                        <DockPanel MouseDown="RemoteNode_MouseDown">
-                            <DockPanel.Style>
-                                <Style TargetType="{x:Type DockPanel}">
-                                    <Style.Triggers>
-                                        <DataTrigger Binding="{Binding IsActive}" Value="False">
-                                            <Setter Property="Background">
-                                                <Setter.Value>
-                                                    <SolidColorBrush Color="#FF670303"/>
-                                                </Setter.Value>
-                                            </Setter>
-                                        </DataTrigger>
-                                        <Trigger Property="IsMouseOver" Value="true">
-                                            <Setter Property="Background" Value="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" />
-                                        </Trigger>
-                                    </Style.Triggers>
-                                </Style>
-                            </DockPanel.Style>
-                            <Button Content="❌" Command="{Binding DataContext.RemoveRemoteNodeCommand, 
+                <ItemsControl ItemsSource="{Binding RemoteNodes}" Height="150">
+                    <ItemsControl.ItemTemplate>
+                        <DataTemplate DataType="vm:RemoteNodeViewModel">
+                            <DockPanel MouseDown="RemoteNode_MouseDown">
+                                <DockPanel.Style>
+                                    <Style TargetType="{x:Type DockPanel}">
+                                        <Style.Triggers>
+                                            <DataTrigger Binding="{Binding IsActive}" Value="False">
+                                                <Setter Property="Background">
+                                                    <Setter.Value>
+                                                        <SolidColorBrush Color="#FF670303"/>
+                                                    </Setter.Value>
+                                                </Setter>
+                                            </DataTrigger>
+                                            <Trigger Property="IsMouseOver" Value="true">
+                                                <Setter Property="Background" Value="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" />
+                                            </Trigger>
+                                        </Style.Triggers>
+                                    </Style>
+                                </DockPanel.Style>
+                                <Button Content="❌" Command="{Binding DataContext.RemoveRemoteNodeCommand, 
                         Mode=OneWay, RelativeSource={RelativeSource AncestorType=ItemsControl}}" 
                         CommandParameter="{Binding}"
                         DockPanel.Dock="Right" HorizontalAlignment="Right"
                         Width="{Binding ActualHeight, RelativeSource={RelativeSource Self}}"/>
-                            <Label Content="{Binding Name}" HorizontalAlignment="Left"/>
-                            <Label Content="{Binding Address}" HorizontalAlignment="Left"/>
-                        </DockPanel>
-                    </DataTemplate>
-                </ItemsControl.ItemTemplate>
-                <ItemsControl.Style>
-                    <Style TargetType="ItemsControl">
-                        <Style.Triggers>
-                            <Trigger Property="HasItems" Value="false">
-                                <Setter Property="Template">
-                                    <Setter.Value>
-                                        <ControlTemplate>
-                                            <TextBlock Text="No remote nodes detected." VerticalAlignment="Center" HorizontalAlignment="Center"/>
-                                        </ControlTemplate>
-                                    </Setter.Value>
-                                </Setter>
-                            </Trigger>
-                        </Style.Triggers>
-                    </Style>
-                </ItemsControl.Style>
-            </ItemsControl>
-        </ScrollViewer>
+                                <Label Content="{Binding Name}" HorizontalAlignment="Left"/>
+                                <Label Content="{Binding Address}" HorizontalAlignment="Left"/>
+                            </DockPanel>
+                        </DataTemplate>
+                    </ItemsControl.ItemTemplate>
+                    <ItemsControl.Style>
+                        <Style TargetType="ItemsControl">
+                            <Style.Triggers>
+                                <Trigger Property="HasItems" Value="false">
+                                    <Setter Property="Template">
+                                        <Setter.Value>
+                                            <ControlTemplate>
+                                                <TextBlock Text="No remote nodes detected." VerticalAlignment="Center" HorizontalAlignment="Center"/>
+                                            </ControlTemplate>
+                                        </Setter.Value>
+                                    </Setter>
+                                </Trigger>
+                            </Style.Triggers>
+                        </Style>
+                    </ItemsControl.Style>
+                </ItemsControl>
+            </ScrollViewer>
+        </StackPanel>
     </StackPanel>
 </UserControl>

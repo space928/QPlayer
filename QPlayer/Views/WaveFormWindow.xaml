@@ -23,13 +23,13 @@
                 <ColumnDefinition Width="20"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
-            <Button Command="{Binding StopCommand}" Grid.Column="0" ToolTip="Stops this cue">
+            <Button Command="{Binding StopCommand}" Grid.Column="0" ToolTip="Stops this cue" Style="{StaticResource ButtonRoundLeft}">
                 <Image Source="{StaticResource IconStop}" Margin="2"/>
             </Button>
-            <Button Command="{Binding GoCommand}" Grid.Column="1" ToolTip="Starts this cue">
+            <Button Command="{Binding GoCommand}" Grid.Column="1" ToolTip="Starts this cue" Style="{StaticResource ButtonRoundNone}">
                 <Image Source="{StaticResource IconPlay}" Margin="2"/>
             </Button>
-            <Button Command="{Binding PauseCommand}" Grid.Column="2" ToolTip="Pauses this cue">
+            <Button Command="{Binding PauseCommand}" Grid.Column="2" ToolTip="Pauses this cue" Style="{StaticResource ButtonRoundRight}">
                 <Image Source="{StaticResource IconPause}" Margin="2"/>
             </Button>
             <TextBlock Text="{Binding PlaybackTime, StringFormat=mm\\:ss\\.ff, FallbackValue=00:00:00}" Margin="8,0" VerticalAlignment="Center" Grid.Column="3"/>

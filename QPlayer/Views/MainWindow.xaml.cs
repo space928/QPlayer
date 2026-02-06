@@ -284,6 +284,17 @@ public partial class MainWindow : Window
             var mousePos = e.GetPosition((Panel)DraggingItemsPanel.Parent);
             //Debug.WriteLine(mousePos);
             DraggingItemsPanel.Margin = new(mousePos.X + 2, mousePos.Y + 2, 0, 0);
+
+            // Scrolling
+            mousePos = e.GetPosition(CueListScrollViewer);
+            if (mousePos.Y < 50)
+            {
+                CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset - 15);
+            } 
+            else if (mousePos.Y > CueListScrollViewer.ActualHeight - 50)
+            {
+                CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset + 15);
+            }
         }
     }
 

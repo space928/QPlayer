@@ -4,13 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Drawing;
 using System.Numerics;
-using System.Text.Json.Serialization;
 
 namespace QPlayer.Models;
 
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 6;
+    public const int FILE_FORMAT_VERSION = 7;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
     public ShowSettings showSettings = new();
@@ -26,6 +25,8 @@ public record ShowSettings
     public DateTime date = DateTime.Today;
 
     public int audioLatency = 10;
+    public bool exclusiveMode = false;
+    public int channelOffset = 0;
     public AudioOutputDriver audioOutputDriver = AudioOutputDriver.WASAPI;
     public string audioOutputDevice = "";
 
@@ -39,6 +40,7 @@ public record ShowSettings
     public string nodeName = "QPlayer";
     public List<RemoteNode> remoteNodes = [];
 
+    public bool enableMSC = false;
     public int mscRXPort = 6004;
     public int mscTXPort = 6004;
     public int mscRXDevice = 0x70;
@@ -119,7 +121,8 @@ public record SoundCue : Cue
     public string path = string.Empty;
     public TimeSpan startTime;
     public TimeSpan duration;
-    public float volume = 1;
+    public float volume = 0;
+    public float pan = 0;
     public float fadeIn;
     public float fadeOut;
     public FadeType fadeType = FadeType.SCurve;

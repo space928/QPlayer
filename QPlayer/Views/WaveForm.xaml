@@ -48,17 +48,18 @@
                        Visibility="{Binding WaveFormVisible, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}">
                 <Rectangle.Fill>
                     <DrawingBrush Drawing="{Binding WaveFormRenderer.WaveFormDrawing, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}" 
-                                  AlignmentY="Bottom" AlignmentX="Left" Stretch="Uniform">
-                        <DrawingBrush.Transform>
-                            <TransformGroup>
-                                <!--<ScaleTransform x:Name="GraphScale" 
-                                                CenterY="{Binding ActualHeight, RelativeSource={RelativeSource AncestorType={x:Type Rectangle}}}" 
-                                                ScaleY="{Binding SoundCue.Volume, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"/>-->
-                            </TransformGroup>
-                        </DrawingBrush.Transform>
-                    </DrawingBrush>
+                                  AlignmentY="Bottom" AlignmentX="Left" Stretch="Uniform"/>
                 </Rectangle.Fill>
             </Rectangle>
+            <Button Content="Z"
+                    Command="{Binding ResetZoomCommand, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"
+                    FontSize="8" Width="16" Height="16" Padding="0"
+                    HorizontalAlignment="Left" VerticalAlignment="Top"
+                    VerticalContentAlignment="Center" HorizontalContentAlignment="Center">
+                <Button.ToolTip>
+                    <ToolTip Content="Resets the zoom to fit the whole waveform in view." FontSize="11" FontWeight="Medium"/>
+                </Button.ToolTip>
+            </Button>
             <Button Content="[  ]"
                     Command="{Binding PopupCommand, RelativeSource={RelativeSource AncestorType={x:Type local:WaveForm}}}"
                     FontSize="6" Width="16" Height="16" Padding="0"

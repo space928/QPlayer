@@ -6,7 +6,7 @@
     <Nullable>enable</Nullable>
     <UseWPF>true</UseWPF>
     <Title>QPlayer</Title>
-    <Version>1.11.2</Version>
+    <Version>1.11.4</Version>
     <Authors>Thomas Mathieson</Authors>
     <Company>Thomas Mathieson</Company>
 	<Copyright>©️ Thomas Mathieson 2026</Copyright>
@@ -36,6 +36,8 @@
     <None Remove="Resources\Icons\rotate-solid.svg" />
     <None Remove="Resources\Icons\sort-solid.svg" />
     <None Remove="Resources\Icons\stop-solid.svg" />
+    <!--<None Remove="Resources\Inter-Italic-VariableFont.ttf" />
+    <None Remove="Resources\Inter-VariableFont.ttf" />-->
     <None Remove="Resources\SplashV2.png" />
   </ItemGroup>
 
@@ -63,6 +65,8 @@
     <Resource Include="Resources\Icons\rotate-solid.svg" />
     <Resource Include="Resources\Icons\sort-solid.svg" />
     <Resource Include="Resources\Icons\stop-solid.svg" />
+    <!--<Resource Include="Resources\Inter-Italic-VariableFont.ttf" />
+    <Resource Include="Resources\Inter-VariableFont.ttf" />-->
   </ItemGroup>
 
   <ItemGroup>
@@ -91,6 +95,15 @@
 		  <ReferenceOutputAssembly>false</ReferenceOutputAssembly>
 		  <OutputItemType>Analyzer</OutputItemType>
 	  </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="Resources\CascadiaMono_LICENSE_OFL.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
+    <!--<None Update="Resources\Inter-VariableFont_LICENSE_OFL.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>-->
   </ItemGroup>
 
 </Project>

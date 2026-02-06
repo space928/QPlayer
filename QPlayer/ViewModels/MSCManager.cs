@@ -28,7 +28,8 @@ public class MSCManager
 
     public void ConnectMSC()
     {
-        mscDriver.MSCConnect(ProjectSettings.OSCNic, ProjectSettings.OSCSubnet, ProjectSettings.MAMSCRXPort, ProjectSettings.MAMSCTXPort);
+        if (ProjectSettings.EnableMSC)
+            mscDriver.MSCConnect(ProjectSettings.OSCNic, ProjectSettings.OSCSubnet, ProjectSettings.MAMSCRXPort, ProjectSettings.MAMSCTXPort);
     }
 
     public void MonitorMSC(bool enable)

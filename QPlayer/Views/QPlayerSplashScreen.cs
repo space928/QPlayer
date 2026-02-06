@@ -79,8 +79,22 @@ partial class QPlayerSplashScreen : IDisposable
             Trimming = StringTrimming.EllipsisCharacter
         };
         // statusBGBrush = new TextureBrush(bmp, statusTextRect);
+        DrawVersionNumber();
 
         MainViewModel.LogList.CollectionChanged += LogList_CollectionChanged;
+    }
+
+    private void DrawVersionNumber()
+    {
+        if (statusFont == null || statusTextFormat == null || statusBrush == null || hGraphics == null)
+            return;
+
+        var name = Assembly.GetCallingAssembly().GetName();
+        var text = $"Version: {name.Version}";
+        hGraphics.DrawString(text, statusFont, statusBrush, 26, 266, statusTextFormat);
+
+        var hBmp = gdiBmp!.GetHbitmap(Color.Black);
+        UpdateWnd(hBmp);
     }
 
     private void LogList_CollectionChanged(object? sender, System.Collections.Specialized.NotifyCollectionChangedEventArgs e)

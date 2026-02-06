@@ -45,6 +45,7 @@ public partial class SoundCueViewModel : CueViewModel
     public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
     public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
     [Reactive] private float volume;
+    [Reactive] private float pan;
     [Reactive] private float fadeIn;
     [Reactive] private float fadeOut;
     [Reactive] private FadeType fadeType;
@@ -82,7 +83,10 @@ public partial class SoundCueViewModel : CueViewModel
                     LoadAudioFile();
                     break;
                 case nameof(Volume):
-                    fadeInOutProvider?.Volume = Volume;
+                    fadeInOutProvider?.Volume = MathF.Pow(10, Volume / 20f);
+                    break;
+                case nameof(Pan):
+                    fadeInOutProvider?.Pan = Pan;
                     break;
                 case nameof(StartTime):
                     if (loopingAudioStream != null)
@@ -197,7 +201,7 @@ public partial class SoundCueViewModel : CueViewModel
         //MainViewModel.Log($"[Playback Debugging] Cue about to start! {dbg_t:HH:mm:ss.ffff} dt={(dbg_t-MainViewModel.dbg_cueStartTime)}");
         mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x) => Stop());
         fadeInOutProvider.Volume = 0;
-        fadeInOutProvider.BeginFade(Volume, Math.Max(FadeIn * 1000, 1000 / (double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
+        fadeInOutProvider.BeginFade(MathF.Pow(10, Volume / 20f), Math.Max(FadeIn * 1000, 1000 / (double)fadeInOutProvider.WaveFormat.SampleRate), FadeType);
     }
 
     public override void Pause()

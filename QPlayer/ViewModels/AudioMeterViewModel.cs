@@ -12,6 +12,7 @@ public partial class AudioMeterViewModel : ObservableObject
     [Reactive] private float peakR;
     [Reactive] private float rMSL;
     [Reactive] private float rMSR;
+    [Reactive] private bool clip;
 
     private readonly Dispatcher dispatcher;
     private DispatcherOperation? prevOperation;
@@ -37,7 +38,8 @@ public partial class AudioMeterViewModel : ObservableObject
             PeakR = ComputeMeter(PeakR, meter.peakR);
             RMSL = ComputeMeter(RMSL, meter.rmsL);
             RMSR = ComputeMeter(RMSR, meter.rmsR);
-        }, DispatcherPriority.Input);
+            Clip = peakL >= -1e-9f || peakR >= -1e-9f;
+        }, DispatcherPriority.Loaded);
 
         static float ComputeMeter(float prev, float next)
         {

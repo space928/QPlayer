@@ -14,9 +14,10 @@
                 <ResourceDictionary Source="Views/CueDataTemplates.xaml"/>
                 <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
                 <ResourceDictionary Source="ThemesV2/Icons.xaml"/>
-                <ResourceDictionary Source="Views/CueDataTemplates.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="CascadiaMono">pack://application:,,,/Resources/#Cascadia Mono</FontFamily>
+            <!--<FontFamily x:Key="Inter">pack://application:,,,/Resources/#Inter</FontFamily>-->
+
         </ResourceDictionary>
     </Application.Resources>
 </Application>

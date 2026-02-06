@@ -30,6 +30,16 @@ public class MixerSampleProvider : ISampleProvider
         mixerInputs = [];
     }
 
+    /// <summary>
+    /// Ensures the audio thread using this mixer has a sufficiently high priority. 
+    /// Due to the design of NAudio, this works by setting the thread priority the 
+    /// first time the <see cref="Read(float[], int, int)"/> method is called.
+    /// </summary>
+    internal void ResetThreadPriority()
+    {
+        firstRead = true;
+    }
+
     public int Read(float[] buffer, int offset, int count)
     {
         if (firstRead)
@@ -153,10 +163,10 @@ public class MixerSampleProvider : ISampleProvider
 
     private static void SetThreadPriority()
     {
+        Thread.CurrentThread.Priority = ThreadPriority.Highest;
         int task = 0;
         var handle = AVRTLib.AvSetMmThreadCharacteristicsW("Pro Audio", ref task);
-        AVRTLib.AvSetMmThreadPriority(handle, AVRTLib.AVRT_PRIORITY.AVRT_PRIORITY_HIGH);
-        //Thread.CurrentThread.Priority = ThreadPriority.Highest;
+        AVRTLib.AvSetMmThreadPriority(handle, AVRTLib.AVRT_PRIORITY.AVRT_PRIORITY_CRITICAL);
         Thread.CurrentThread.Name = "Audio Thread";
     }
 
