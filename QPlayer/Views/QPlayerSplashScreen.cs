@@ -117,9 +117,9 @@ partial class QPlayerSplashScreen : IDisposable
                 return;
 
             string text = (string)strings[^1]!;
-            int splitPos = text.LastIndexOf(']');
             int nlPos = text.IndexOf('\n');
             nlPos = nlPos < 0 ? text.Length : (nlPos - 1);
+            int splitPos = text.AsSpan(0, nlPos).LastIndexOf(']');
             if (text.Length > splitPos + 2 && text[splitPos + 2] == ' ') // Skip indented messages
                 return;
             if (splitPos > 0)

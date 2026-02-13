@@ -1,0 +1,53 @@
+﻿<UserControl x:Class="QPlayer.Views.AudioLimiterControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local='clr-namespace:QPlayer.Views'
+             xmlns:vm='clr-namespace:QPlayer.ViewModels;assembly=QPlayer'
+             xmlns:util='clr-namespace:QPlayer.Utilities;assembly=QPlayer'
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800" d:DataContext="{d:DesignInstance Type=vm:AudioLimiterViewModel}">
+    <StackPanel>
+        <DockPanel ToolTip="Enables the audio limiter which applies limiting to the audio signal just before it gets sent to the audio driver. This is useful in preventing accidental clipping/distortion when multiple sound cues are playing.">
+            <Label Content="Enabled" />
+            <CheckBox IsChecked='{Binding Enabled, UpdateSourceTrigger=Default}' Margin='8,2,2,2' DockPanel.Dock='Right' />
+        </DockPanel>
+        <Grid IsEnabled="{Binding Enabled, Mode=OneWay}">
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <local:Knob Grid.Column="0" MaxWidth="50" Value="{Binding InputGain}" Label="Input Gain" ValueFormat="{}{0:F2} dB" MinValue="-32" MaxValue="32" Power="1"
+                ToolTip="A gain adjustment applied before the limiter is applied."/>
+            <local:Knob Grid.Column="1" MaxWidth="50" Value="{Binding Threshold}" Label="Threshold" ValueFormat="{}{0:F2} dB" MinValue="-50" MaxValue="0" Power="1"
+                ToolTip="The threshold volume above which audio starts to get limited."/>
+            <local:Knob Grid.Column="2" MaxWidth="50" Value="{Binding Attack}" Label="Attack" ValueFormat="{}{0:F4} s" MinValue="0.0001" MaxValue="0.3" Power="3"
+                ToolTip="The attack or rise time of the limiter, smaller values will be louder and punchier at the cost of more distortion at the extreme."/>
+            <local:Knob Grid.Column="3" MaxWidth="50" Value="{Binding Release}" Label="Release" ValueFormat="{}{0:F3} s" MinValue="0.01" MaxValue="3" Power="3"
+                ToolTip="The release or fall time of the limiter, smaller values will be louder and punchier at the cost of more distortion at the extreme."/>
+        </Grid>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="24"/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <Grid.Resources>
+                <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                    <Setter Property="Foreground" Value="#fb21"/>
+                            <!--<Setter Property="Foreground" Value="#f12f"/>-->
+                </Style>
+            </Grid.Resources>
+            <TextBlock Text="GR" VerticalAlignment="Center" Margin="4,0,0,0"/>
+            <ProgressBar Minimum="0" Maximum="30" Value="{Binding GR}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="1" RenderTransformOrigin="0.5,0.5">
+                <ProgressBar.RenderTransform>
+                    <TransformGroup>
+                        <RotateTransform Angle="180"/>
+                    </TransformGroup>
+                </ProgressBar.RenderTransform>
+            </ProgressBar>
+        </Grid>
+    </StackPanel>
+</UserControl>

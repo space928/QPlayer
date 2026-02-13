@@ -1,14 +1,16 @@
 ﻿using NAudio.Wave;
+using QPlayer.Audio;
+using QPlayer.Utilities;
+using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.IO.Compression;
 using System.IO;
+using System.IO.Compression;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
-using QPlayer.ViewModels;
 
 namespace QPlayer.Models;
 
@@ -19,7 +21,7 @@ namespace QPlayer.Models;
 public struct PeakFile
 {
     public const uint FILE_MAGIC = ((byte)'Q') + ((byte)'P' << 8) + ((byte)'e' << 16) + ((byte)'k' << 24);
-    public const int FILE_VERSION = 1;
+    public const int FILE_VERSION = 2;
     public const string FILE_EXTENSION = ".qpek";
 
     /// <summary>
@@ -34,6 +36,10 @@ public struct PeakFile
     /// The minimum number of samples in a pyramid.
     /// </summary>
     public const int MIN_SAMPLES = 64;
+    /// <summary>
+    /// Every N samples, we store the position in bytes into the file stream for efficient seeking. This is always a power of 2.
+    /// </summary>
+    public const int SAMPLE_POS_INCREMENT = 1024;
 
     // Metadata
     public uint fileMagic;
@@ -47,6 +53,10 @@ public struct PeakFile
     public int fs;  // Sample rate
     public long length;  // The total number of uncompressed mono samples in the source file
     public PeakData[] peakDataPyramid;
+
+    // File seeking helpers
+    public int samplePosIncrement;
+    public long[] samplePosToBytePos;
 
     [StructLayout(LayoutKind.Explicit)]
     public struct Sample
@@ -100,6 +110,14 @@ internal static class PeakFileReader
                 sourceName[i] = reader.ReadChar();
             peak.sourceName = sourceName.ToString();
         }
+        catch (MalformedException)
+        {
+            throw;
+        }
+        catch (InvalidVersionException)
+        {
+            throw;
+        }
         catch (Exception ex)
         {
             throw new MalformedException("Error while decoding peak file metadata!", ex);
@@ -121,6 +139,8 @@ internal static class PeakFileReader
         peak.fs = reader.ReadInt32();
         peak.length = reader.ReadInt64();
 
+        peak.samplePosIncrement = reader.ReadInt32();
+
         using BrotliStream br = new(stream, CompressionMode.Decompress);
         using BinaryReader compressedReader = new(br);
 
@@ -135,6 +155,14 @@ internal static class PeakFileReader
                 pyramid.samples[j] = new() { data = compressedReader.ReadUInt32() };
             }
             peak.peakDataPyramid[i] = pyramid;
+        }
+
+        peak.samplePosToBytePos = new long[compressedReader.ReadInt32()];
+        long sum = 0;
+        for (int i = 0; i < peak.samplePosToBytePos.Length; i++)
+        {
+            // Delta coding, since this is a monotonically increasing value starting at 0
+            peak.samplePosToBytePos[i] = sum += compressedReader.ReadInt64();
         }
 
         return peak;
@@ -179,7 +207,7 @@ internal static class PeakFileWriter
                 }
                 catch (Exception ex)
                 {
-                    MainViewModel.Log($"Exception encountered while reading peak file '{path}', it will be regenerated:\n" + ex,
+                    MainViewModel.Log($"Exception encountered while reading peak file '{path}', it will be regenerated:\n" + ex.Message,
                         MainViewModel.LogLevel.Warning);
                 }
                 return default;
@@ -200,7 +228,7 @@ internal static class PeakFileWriter
         }
         catch (Exception ex)
         {
-            MainViewModel.Log($"Exception encountered while generating peak file for '{Path.GetFileName(path)}':\n" + ex,
+            MainViewModel.Log($"Exception encountered while generating peak file for '{Path.GetFileName(path)}':\n" + ex.Message,
                 MainViewModel.LogLevel.Error);
         }
 
@@ -230,13 +258,13 @@ internal static class PeakFileWriter
         }
         catch (InvalidVersionException ex)
         {
-            MainViewModel.Log($"Peak file '{peakPath}' is incompatible with this version, it will be regenerated:\n" + ex,
+            MainViewModel.Log($"Peak file '{peakPath}' is incompatible with this version, it will be regenerated:\n" + ex.Message,
                 MainViewModel.LogLevel.Info);
             return false;
         }
         catch (MalformedException ex)
         {
-            MainViewModel.Log($"Exception encountered while reading peak file '{peakPath}', it will be regenerated:\n" + ex,
+            MainViewModel.Log($"Exception encountered while reading peak file '{peakPath}', it will be regenerated:\n" + ex.Message,
                 MainViewModel.LogLevel.Warning);
             return false;
         }
@@ -256,7 +284,7 @@ internal static class PeakFileWriter
 
         // Load source file
         var sourceInfo = new FileInfo(path);
-        using var sourceAudio = new AudioFileReader(path);
+        using var sourceAudio = new QAudioFileReader(path);
 
         // Generate metadata...
         peakFile.fileMagic = PeakFile.FILE_MAGIC;
@@ -268,24 +296,36 @@ internal static class PeakFileWriter
         peakFile.sourceName = sourceInfo.Name;
 
         peakFile.fs = sourceAudio.WaveFormat.SampleRate;
+        peakFile.samplePosIncrement = PeakFile.SAMPLE_POS_INCREMENT;
 
         // Generate peak data
-        List<PeakFile.PeakData> pyramids = new();
+        using TemporaryList<PeakFile.PeakData> pyramids = [];
+        using TemporaryList<long> filePositions = [];
 
         // Generate the peaks for the first pyramid from the audio file
         float[] sourceBuffer = new float[sourceAudio.WaveFormat.Channels * 4 * PeakFile.MIN_REDUCTION];
         int samplesPerSample = sourceBuffer.Length;
         PeakFile.PeakData pyramid = new();
         pyramid.reductionFactor = PeakFile.MIN_REDUCTION;
-        List<PeakFile.Sample> samples = new();
+        using TemporaryList<PeakFile.Sample> samples = [];
+        int filePosSamplesRead = 0;
         do
         {
             // Read a number of samples to average together
             int read = 0;
             do
             {
-                int lastRead = sourceAudio.Read(sourceBuffer, read, samplesPerSample - read);
+                int toRead = samplesPerSample - read;
+                toRead = Math.Min(toRead, PeakFile.SAMPLE_POS_INCREMENT - filePosSamplesRead);
+
+                int lastRead = sourceAudio.Read(sourceBuffer, read, toRead);
                 read += lastRead;
+                filePosSamplesRead += lastRead;
+                if (filePosSamplesRead == PeakFile.SAMPLE_POS_INCREMENT)
+                {
+                    filePosSamplesRead = 0;
+                    filePositions.Add(sourceAudio.Position);
+                }
                 if (lastRead == 0)
                     break;
             } while (read < samplesPerSample);
@@ -294,16 +334,8 @@ internal static class PeakFileWriter
                 break;
 
             // Compute the peak and rms of the samples
-            float max = 0;
-            float sqrSum = 0;
-            for (int i = 0; i < sourceBuffer.Length; i++)
-            {
-                float s = Math.Abs(sourceBuffer[i]);
-                max = Math.Max(s, max);
-                sqrSum += s * s;
-            }
+            MeteringSampleProviderVec.ComputePeakRMSMono(sourceBuffer, out var max, out var rmsFloat);
             ushort peak = (ushort)(max * ushort.MaxValue);
-            float rmsFloat = MathF.Sqrt(sqrSum / sourceBuffer.Length);
             ushort rms = (ushort)(rmsFloat * ushort.MaxValue);
 
             samples.Add(new PeakFile.Sample() { peak = peak, rms = rms });
@@ -313,6 +345,8 @@ internal static class PeakFileWriter
         //if (samples.Count >= PeakFile.MIN_SAMPLES)
         pyramids.Add(pyramid);
         peakFile.length /= sourceAudio.WaveFormat.Channels;
+
+        peakFile.samplePosToBytePos = filePositions.ToArray();
 
         // Now compute all subsequant pyramids from the previous pyramid
         int currReduction = PeakFile.MIN_REDUCTION << PeakFile.REDUCTION_STEP;
@@ -350,7 +384,7 @@ internal static class PeakFileWriter
                 break;
         } while (true);
 
-        peakFile.peakDataPyramid = pyramids.Reverse<PeakFile.PeakData>().ToArray();
+        peakFile.peakDataPyramid = pyramids.Reverse().ToArray();
 
         return peakFile;
     }
@@ -370,6 +404,8 @@ internal static class PeakFileWriter
         writer.Write(peakFile.fs);
         writer.Write(peakFile.length);
 
+        writer.Write(peakFile.samplePosIncrement);
+
         using (BrotliStream br = new(stream, CompressionLevel.Optimal, true))
         using (BinaryWriter compressedWriter = new(br, Encoding.UTF8, true))
         {
@@ -384,6 +420,16 @@ internal static class PeakFileWriter
                     var sample = pyramid.samples[j];
                     compressedWriter.Write(sample.data);
                 }
+            }
+
+            compressedWriter.Write(peakFile.samplePosToBytePos.Length);
+            long lastSamplePos = 0;
+            for (int i = 0; i < peakFile.samplePosToBytePos.Length; i++)
+            {
+                // Delta coding, since this is a monotonically increasing value starting at 0
+                long v = peakFile.samplePosToBytePos[i];
+                compressedWriter.Write(v - lastSamplePos);
+                lastSamplePos = v;
             }
         }
 
@@ -405,7 +451,7 @@ public class InvalidVersionException : Exception
 /// <summary>
 /// The exception thrown when a file could not be loaded due to it being corrupt.
 /// </summary>
-public class MalformedException : Exception 
+public class MalformedException : Exception
 {
     public MalformedException() : base() { }
     public MalformedException(string? message) : base(message) { }

@@ -13,6 +13,7 @@ using System.Net.NetworkInformation;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using System.Diagnostics.CodeAnalysis;
 
 namespace QPlayer.ViewModels;
 
@@ -52,6 +53,8 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
             return new(audioOutputDevices.Select(x => x.identifier));
         }
     }
+
+    [Reactive] private AudioLimiterViewModel limiter;
 
     [Reactive("NICs")] private readonly ObservableCollection<string> nics = [];
     [Reactive, ModelCustomBinding(nameof(VM2M_OSCNic), nameof(M2VM_OSCNic))]
@@ -105,6 +108,7 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
     {
         remoteNodes = new(remoteNodesOb);
         this.mainViewModel = mainViewModel;
+        SetupLimiter();
         audioOutputDriverValues ??= new(Enum.GetValues<AudioOutputDriver>());
         PropertyChanged += (o, e) =>
         {
@@ -191,6 +195,7 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
 
         if (boundModel == null)
             return;
+        SetupLimiter();
 
         // The audio device list gets populated asynchronously, defer selecting the device until the list is populated.
         var sc = SynchronizationContext.Current;
@@ -198,7 +203,8 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
         {
             audioOutputDevices = x.Result;
             int ind = audioOutputDevices.IndexOf(x => x.identifier, boundModel.audioOutputDevice);
-            sc?.Post(x => {
+            sc?.Post(x =>
+            {
                 OnPropertyChanged(nameof(AudioOutputDevices));
                 SelectedAudioOutputDeviceIndex = ind;
             }, null);
@@ -210,6 +216,15 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
             if (remoteNodesDict.TryAdd(remote.Name, remote))
                 remoteNodesOb.Add(remote);
         }
+    }
+
+    [MemberNotNull(nameof(limiter))]
+    private void SetupLimiter()
+    {
+        limiter ??= new();
+        limiter.InputSampleProvider = mainViewModel.AudioPlaybackManager.MixerSampleProvider;
+        if (limiter.LimiterSampleProvider is ISamplePositionProvider provider)
+            mainViewModel.AudioPlaybackManager.RegisterMasterChain(provider);
     }
 
     public override void SyncToModel()

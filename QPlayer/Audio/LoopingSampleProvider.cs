@@ -1,4 +1,5 @@
 ﻿using NAudio.Wave;
+using QPlayer.Models;
 using System;
 
 namespace QPlayer.Audio;
@@ -11,9 +12,9 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
 {
     private readonly T input;
     private readonly double bytesPerSample;
-    private readonly int bytesPerSampleInt;
     private readonly double mcSampleRate;
     private readonly int alignmentSize;
+    private readonly int channelCount;
 
     private bool infinite;
     private int loops;
@@ -22,6 +23,7 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
     private long playedLoops = 0;
     private long startTime;
     private long endTime;
+    private PeakFile? peakFile;
 
     public LoopingSampleProvider(T input, bool infinite = true, int loops = 1)
     {
@@ -34,18 +36,10 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         // This should correspond with the multiple of samples we must read from input.Read(), it should be
         // related to wf.BlockAlign, but for all intents and purposes we just use wf.Channels. This might not 
         // be correct for compressed formats.
-        alignmentSize = wf.Channels;//~(wf.BlockAlign - 1) << 2;
-        // For length/position we need to know how many bytes there are to a sample
-        // For compressed inputs, this might not an integer, for VBR streams, it'll
-        // be very innacurate. But if it does land nicely on an integer, use it.
-        bytesPerSampleInt = wf.BitsPerSample / 8;
-        if (bytesPerSampleInt == 0)
-        {
-            bytesPerSample = wf.AverageBytesPerSecond / (double)wf.SampleRate;
-            var bpsRnd = Math.Round(bytesPerSample);
-            if (Math.Abs(bytesPerSample - bpsRnd) < 1e-8)
-                bytesPerSampleInt = (int)bpsRnd;
-        }
+        channelCount = alignmentSize = wf.Channels;//~(wf.BlockAlign - 1) << 2;
+        // This is used for seeking within the file, for compressed files (especially if VBR) this isn't very accurate
+        // if the peak file is loaded, the timing information withi will be used instead.
+        bytesPerSample = wf.AverageBytesPerSecond / (double)wf.SampleRate;
     }
 
     public WaveFormat WaveFormat => input.WaveFormat;
@@ -53,7 +47,16 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
     /// <summary>
     /// The length in samples (estimate, for compressed inputs) of the input stream.
     /// </summary>
-    public long SrcLength => bytesPerSampleInt == 0 ? (long)(input.Length / bytesPerSample) : input.Length / bytesPerSampleInt;
+    public long SrcLength
+    {
+        get
+        {
+            if (peakFile.HasValue)
+                return peakFile.Value.length * channelCount; // The peak file stores the mono length, hence multiply by channel count
+            else
+                return (long)(input.Length / bytesPerSample);
+        }
+    }
 
     /// <summary>
     /// The position in samples (estimate) within the input stream.
@@ -64,9 +67,10 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         set
         {
             value = Align(value);
-            var newPos = bytesPerSampleInt == 0 ? (long)(value * bytesPerSample) : value * bytesPerSampleInt;
-
-            input.Position = newPos;
+            if (peakFile.HasValue)
+                input.Position = ComputeBytePosFromPeakFile(value);
+            else
+                input.Position = (long)(value * bytesPerSample);
 
             samplePosition = value;
         }
@@ -171,6 +175,12 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         set => endTime = Align((long)(value.TotalSeconds * mcSampleRate));
     }
 
+    public PeakFile? PeakFile
+    {
+        get => peakFile;
+        set => peakFile = value;
+    }
+
     /// <summary>
     /// An event raised at the end of each loop played.
     /// </summary>
@@ -191,6 +201,12 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
     {
         int read = ReadInternal(buffer, offset, count);
         int totalRead = read;
+        if (read < count)
+        {
+            // Try again, if we actually got 0 samples this time, it must be the end of the file.
+            read = ReadInternal(buffer, offset + read, count - read);
+            totalRead += read;
+        }
 
         if (read == 0 || (endTime != 0 && samplePosition >= endTime))
         {
@@ -240,5 +256,21 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
             return pos & (-2);
 
         return (pos / align) * align;
+    }
+
+    private long ComputeBytePosFromPeakFile(long samplePos)
+    {
+        var lookup = peakFile!.Value.samplePosToBytePos;
+        var increment = peakFile!.Value.samplePosIncrement;
+
+        // return (long)((samplePos / (double)peakFile!.Value.length / 2) * input.Length);
+
+        var lookupPos = samplePos / increment;
+        var interp = samplePos & (increment - 1);
+
+        var startPos = lookupPos == 0 ? 0 : lookup[lookupPos - 1];
+        // var endPos = lookup[lookupPos];
+
+        return startPos + (long)(bytesPerSample * interp);// (endPos - startPos)
     }
 }

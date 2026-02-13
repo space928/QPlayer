@@ -1,6 +1,5 @@
 ﻿using NAudio.CoreAudioApi;
 using NAudio.Wave;
-using NAudio.Wave.SampleProviders;
 using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -77,6 +76,20 @@ public class AudioPlaybackManager : IDisposable
         meteringProvider = new(mixer);
         // 30 notifications per second
         meteringProvider.SamplesPerNotification = mixer.WaveFormat.SampleRate / 30;
+    }
+
+    /// <summary>
+    /// When building a mastering chain, use this sample provider as the source, it should never be read from directly.
+    /// </summary>
+    public ISamplePositionProvider MixerSampleProvider => mixer;
+
+    /// <summary>
+    /// Registers the given sample provider as a mastering chain, this is the last sample provider before the output.
+    /// </summary>
+    /// <param name="sampleProvider"></param>
+    public void RegisterMasterChain(ISampleProvider sampleProvider)
+    {
+        meteringProvider.Source = sampleProvider;
     }
 
     public void Stop()

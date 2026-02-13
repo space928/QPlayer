@@ -14,14 +14,17 @@ using System.Threading.Tasks;
 
 namespace QPlayer.Audio;
 
-public class MixerSampleProvider : ISampleProvider
+public class MixerSampleProvider : ISamplePositionProvider
 {
     private readonly List<ISampleProvider> mixerInputs;
     private const int maxInputs = 1024;
     private float[] sourceBuffer = [];
     private bool firstRead = true;
+    private long pos;
 
     public WaveFormat WaveFormat { get; private set; }
+    public long Position { get => pos; set => throw new NotImplementedException(); }
+
     public event EventHandler<SampleProviderEventArgs>? MixerInputEnded;
 
     public MixerSampleProvider(WaveFormat waveFormat)
@@ -104,6 +107,10 @@ public class MixerSampleProvider : ISampleProvider
             }
         }
 
+        unchecked
+        {
+            pos += count;
+        }
         return count;
 
         void InputEnded(int input)

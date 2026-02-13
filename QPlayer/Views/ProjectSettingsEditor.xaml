@@ -40,7 +40,7 @@
             <Label Content="Audio Latency (ms)"/>
             <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="1" MaxValue="500" SpinnerType="Int" ClampValue="True" Text="{Binding AudioLatency}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
-        <DockPanel ToolTip="Uses this device in exclusive mode, this can lead to better performance, but it prevents any other application on this computer from using device." x:Name="ExclusiveModeControl">
+        <DockPanel ToolTip="Uses this device in exclusive mode, this can lead to better performance, but it prevents any other application on this computer from using the device." x:Name="ExclusiveModeControl">
             <Label Content="Exclusive Mode"/>
             <CheckBox IsChecked="{Binding ExclusiveMode}" Width="20" HorizontalAlignment="Right" VerticalContentAlignment="Center" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
@@ -49,6 +49,8 @@
             <local:TextField ShowSpinner="True" SpinRate="0.1" MinValue="0" MaxValue="128" SpinnerType="Int" ClampValue="True" Text="{Binding ChannelOffset}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <Button Content="Open Control Panel" Command="{Binding ShowAsioControlPanelCommand}" Margin="2" x:Name="ShowControlPanelControl"/>
+        <Label Content="Audio Limiter" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <local:AudioLimiterControl DataContext="{Binding Limiter}"/>
         <Label Content="Network Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
         <DockPanel ToolTip="The network interface to listen to OSC messages on.">
             <Label Content="Network Adaptor" HorizontalAlignment="Left" DockPanel.Dock="Left"/>

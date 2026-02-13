@@ -30,6 +30,8 @@ public record ShowSettings
     public AudioOutputDriver audioOutputDriver = AudioOutputDriver.WASAPI;
     public string audioOutputDevice = "";
 
+    public AudioLimiterSettings? limiter;
+
     public string oscNIC = "";
     public int oscRXPort = 9000;
     public int oscTXPort = 8000;

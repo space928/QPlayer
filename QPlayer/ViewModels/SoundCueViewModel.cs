@@ -10,6 +10,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Threading.Tasks;
 using System.Timers;
+using QAudioFileReader = QPlayer.Audio.QAudioFileReader;
 
 namespace QPlayer.ViewModels;
 
@@ -56,8 +57,8 @@ public partial class SoundCueViewModel : CueViewModel
 
     private bool shouldSendRemoteStatus;
     private string? thisNodeName;
-    private AudioFileReader? audioFile;
-    private LoopingSampleProvider<AudioFileReader>? loopingAudioStream;
+    private QAudioFileReader? audioFile;
+    private LoopingSampleProvider<QAudioFileReader>? loopingAudioStream;
     private FadingSampleProvider? fadeInOutProvider;
     //private readonly Timer audioProgressUpdater;
     private readonly Timer fadeOutTimer;
@@ -365,7 +366,6 @@ public partial class SoundCueViewModel : CueViewModel
         try
         {
             audioFile = new(path);
-
             // Hook up the different sample providers.
             loopingAudioStream = new(audioFile, LoopMode == LoopMode.LoopedInfinite, LoopMode != LoopMode.OneShot ? LoopCount : 1);
             // The EQ sample provider isn't compatible with the resampler (if the resampler comes after it in the chain)
@@ -385,7 +385,11 @@ public partial class SoundCueViewModel : CueViewModel
                 // Make sure this happens on the UI thread...
                 synchronizationContext?.Post(x =>
                 {
-                    waveFormRenderer.PeakFile = (PeakFile?)x;
+                    var pk = (PeakFile?)x;
+                    waveFormRenderer.PeakFile = pk;
+                    loopingAudioStream.PeakFile = pk;
+                    // A peak file contains the measured length of the audio file, which for compressed files will differ from the estimated length.
+                    OnPropertyChanged(nameof(Duration));
                 }, x.Result);
             });
         }

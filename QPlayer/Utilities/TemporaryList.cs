@@ -256,6 +256,13 @@ public struct TemporaryList<T> : IList<T>, IDisposable
         version++;
     }
 
+    public readonly T[] ToArray()
+    {
+        var res = new T[count];
+        Array.Copy(items ?? [], res, count);
+        return res;
+    }
+
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 }
 
