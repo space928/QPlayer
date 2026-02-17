@@ -22,14 +22,14 @@ jobs:
 
     - name: Restore
       working-directory: ${{ github.workspace }}
-      run: 
+      run: |
         dotnet restore -r win-x64 QPlayer/QPlayer.csproj
         dotnet restore -r win-x64 QPlayer.OSCCuePlugin/QPlayer.OSCCuePlugin.csproj
 
     - name: Build
       shell: bash
       working-directory: ${{ github.workspace }}
-      run: 
+      run: |
         dotnet publish -o "publish/" -r win-x64 --no-self-contained --no-restore --configuration Release QPlayer/QPlayer.csproj
         dotnet publish -o "publish/plugins/" -r win-x64 --no-self-contained --no-restore --configuration Release QPlayer.OSCCuePlugin/QPlayer.OSCCuePlugin.csproj
 
