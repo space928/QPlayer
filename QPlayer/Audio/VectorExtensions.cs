@@ -342,4 +342,126 @@ internal static class VectorExtensions
 
         return x;
     }
+
+    internal static unsafe int LerpSamplesMono(Span<float> dst, ReadOnlySpan<float> src, ref double srcPos, double drsPos)
+    {
+        int len = Math.Min(dst.Length, (int)(src.Length / drsPos)) - (Vector256<float>.Count - 1);
+        if (!Fma.IsSupported || !Avx2.IsSupported || len <= 0)
+            return 0;
+
+        ref var srcRef = ref MemoryMarshal.GetReference(src);
+        ref var dstRef = ref MemoryMarshal.GetReference(dst);
+        nuint i = 0;
+
+        // Here we attempt to vectorise a linear resampling operation
+        // In essence, for each destination sample, we sample 2 source samples and lerp between them.
+        // The source samples being samples are not necessarily consecutive, hence we need to gather
+        // samples before lerping in parallel.
+        // There may be some specific cases (friendly values of drsPos) which would allow us to sample
+        // src consecutively which would improve performance, this is not done here for simplicity.
+        var srcPosVec = Vector256.Create(srcPos);
+        var drsPosInc = Vector256.Create(drsPos * 8);
+        var incVecA = Vector256.Create(0d, 1d, 2d, 3d) * drsPos;
+        var incVecB = Vector256.Create(4d, 5d, 6d, 7d) * drsPos;
+        for (; i < (nuint)len; i += (nuint)Vector256<float>.Count)
+        {
+            // We split this into two vectors so this can be done in parallel on Avx2 targets, as
+            // this is computed as doubles, once converted back to integers then we truncate back
+            // to 32 bit.
+            var srcPosA = incVecA + srcPosVec;
+            var srcPosB = incVecB + srcPosVec;
+            var srcPosIntA = Avx.ConvertToVector128Int32WithTruncation(srcPosA);
+            var srcPosIntB = Avx.ConvertToVector128Int32WithTruncation(srcPosB);
+            var srcPosIntLo = Vector256.Create(srcPosIntA, srcPosIntB);
+            var srcPosIntHi = srcPosIntLo + Vector256<int>.One;
+            // Gather source samples
+            var srcLo = Avx2.GatherVector256((float*)Unsafe.AsPointer(ref srcRef), srcPosIntLo, 4);
+            var srcHi = Avx2.GatherVector256((float*)Unsafe.AsPointer(ref srcRef), srcPosIntHi, 4);
+
+            // Compute the lerp fraction while in double and then truncate down to floats
+            var ta = Avx.ConvertToVector128Single(srcPosA - Avx.Floor(srcPosA));
+            var tb = Avx.ConvertToVector128Single(srcPosB - Avx.Floor(srcPosB));
+            var t = Vector256.Create(ta, tb);
+            // Lerp
+            // v0 + t * (v1 - v0)
+            var res = Fma.MultiplyAdd(t, srcHi - srcLo, srcLo);
+            res.StoreUnsafe(ref dstRef, i);
+
+            srcPosVec += drsPosInc;
+        }
+        srcPos = srcPosVec[0];
+
+        return (int)i;
+    }
+
+    /// <summary>
+    /// Exactly the same as <see cref="LerpSamplesMono(Span{float}, ReadOnlySpan{float}, ref double, double)"/>
+    /// but processes interleaved stereo samples instead.
+    /// Only processes samples tht can be vectorised, 
+    /// </summary>
+    /// <param name="dst">Resampling destination.</param>
+    /// <param name="src">Resampling source.</param>
+    /// <param name="srcPos">The fractional position in the source buffer.</param>
+    /// <param name="drsPos">The increment size when sampling the source buffer.</param>
+    /// <returns>The number of interpolated samples written.</returns>
+    internal static unsafe int LerpSamplesStereo(Span<float> dst, ReadOnlySpan<float> src, ref double srcPos, double drsPos)
+    {
+        int len = Math.Min(dst.Length, (int)(src.Length / drsPos)) - (Vector256<float>.Count * 2 - 1);
+        if (!Fma.IsSupported || !Avx2.IsSupported || len <= 0)
+            return 0;
+
+        ref var srcRef = ref MemoryMarshal.GetReference(src);
+        ref var dstRef = ref MemoryMarshal.GetReference(dst);
+        nuint i = 0;
+
+        // Here we attempt to vectorise a linear resampling operation
+        // In essence, for each destination sample, we sample 2 source samples and lerp between them.
+        // The source samples being samples are not necessarily consecutive, hence we need to gather
+        // samples before lerping in parallel.
+        // There may be some specific cases (friendly values of drsPos) which would allow us to sample
+        // src consecutively which would improve performance, this is not done here for simplicity.
+        var srcPosVec = Vector256.Create(srcPos);
+        var drsPosInc = Vector256.Create(drsPos * 8);
+        var incVecA = Vector256.Create(0d, 1d, 2d, 3d) * drsPos;
+        var incVecB = Vector256.Create(4d, 5d, 6d, 7d) * drsPos;
+        var permA = Vector256.Create(0, 0, 1, 1, 2, 2, 3, 3);
+        for (; i < (nuint)len; i += (nuint)Vector256<float>.Count * 2)
+        {
+            // We split this into two vectors so this can be done in parallel on Avx2 targets, as
+            // this is computed as doubles, once converted back to integers then we truncate back
+            // to 32 bit.
+            var srcPosA = incVecA + srcPosVec;
+            var srcPosB = incVecB + srcPosVec;
+            var srcPosIntA = Avx.ConvertToVector128Int32WithTruncation(srcPosA);
+            var srcPosIntB = Avx.ConvertToVector128Int32WithTruncation(srcPosB);
+            var srcPosIntAHi = srcPosIntA + Vector128<int>.One;
+            var srcPosIntBHi = srcPosIntB + Vector128<int>.One;
+            // Gather source samples
+            // As we're loading pairs of stereo samples, we need to do this in four gathers to
+            // end up with two Vec256 of floats. We gather as doubles instead of as singles as
+            // the throughput of the former is better.
+            var srcLoA = Avx2.GatherVector256((double*)Unsafe.AsPointer(ref srcRef), srcPosIntA, 8).AsSingle();
+            var srcLoB = Avx2.GatherVector256((double*)Unsafe.AsPointer(ref srcRef), srcPosIntB, 8).AsSingle();
+            var srcHiA = Avx2.GatherVector256((double*)Unsafe.AsPointer(ref srcRef), srcPosIntAHi, 8).AsSingle();
+            var srcHiB = Avx2.GatherVector256((double*)Unsafe.AsPointer(ref srcRef), srcPosIntBHi, 8).AsSingle();
+
+            // Compute the lerp fraction while in double and then truncate down to floats
+            var ta = Avx.ConvertToVector128Single(srcPosA - Avx.Floor(srcPosA));
+            var tb = Avx.ConvertToVector128Single(srcPosB - Avx.Floor(srcPosB));
+            // Duplicate each element
+            var taStereo = Avx2.PermuteVar8x32(ta.ToVector256Unsafe(), permA);
+            var tbStereo = Avx2.PermuteVar8x32(tb.ToVector256Unsafe(), permA);
+            // Lerp
+            // v0 + t * (v1 - v0)
+            var res = Fma.MultiplyAdd(taStereo, srcHiA - srcLoA, srcLoA);
+            res.StoreUnsafe(ref dstRef, i);
+            res = Fma.MultiplyAdd(tbStereo, srcHiB - srcLoB, srcLoB);
+            res.StoreUnsafe(ref dstRef, i + (nuint)Vector256<float>.Count);
+
+            srcPosVec += drsPosInc;
+        }
+        srcPos = srcPosVec[0];
+
+        return (int)i;
+    }
 }

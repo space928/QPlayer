@@ -21,12 +21,15 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         set => readerStream!.Position = Math.Clamp(value, 0, length - 1);
     }
     public override WaveFormat WaveFormat => waveFormat;
+    public WaveFormat ConvertedWaveFormat => sampleProvider.WaveFormat;
     public WaveStream? ReaderStream => readerStream;
+    public bool IsMediaFoundationReader => isMediaFoundationReader;
 
     private WaveStream? readerStream;
     private readonly long length;
     private readonly WaveFormat waveFormat;
     private readonly ISampleProvider sampleProvider;
+    private bool isMediaFoundationReader;
 
     public QAudioFileReader(string fileName)
     {
@@ -34,7 +37,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         CreateReaderStream(fileName);
         sampleProvider = ConvertWaveProviderIntoSampleProvider(readerStream);
         length = readerStream.Length;
-        waveFormat = sampleProvider.WaveFormat;
+        waveFormat = readerStream.WaveFormat;
     }
 
     public int Read(float[] buffer, int offset, int count)
@@ -69,6 +72,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             else
             {
                 readerStream = new MediaFoundationReader(fileName);
+                isMediaFoundationReader = true;
             }
         }
         else if (fileName.EndsWith(".aiff", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".aif", StringComparison.OrdinalIgnoreCase))
@@ -87,10 +91,10 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         {
             return waveProvider.WaveFormat.BitsPerSample switch
             {
-                8 => new Pcm8BitToSampleProvider(waveProvider),
-                16 => new Pcm16BitToSampleProvider(waveProvider),
-                24 => new Pcm24BitToSampleProvider(waveProvider),
-                32 => new Pcm32BitToSampleProvider(waveProvider),
+                8 => new Pcm8BitToSampleProviderVec(waveProvider),
+                16 => new Pcm16BitToSampleProviderVec(waveProvider),
+                24 => new Pcm24BitToSampleProviderVec(waveProvider),
+                32 => new Pcm32BitToSampleProviderVec(waveProvider),
                 _ => throw new InvalidOperationException("Unsupported bit depth"),
             };
         }
@@ -100,7 +104,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             return waveProvider.WaveFormat.BitsPerSample switch
             {
                 64 => new WaveToSampleProvider64(waveProvider),
-                32 => new WaveToSampleProvider(waveProvider),
+                32 => new FloatToSampleProviderVec(waveProvider),
                 _ => throw new InvalidOperationException("Unsupported bit depth"),
             };
         }

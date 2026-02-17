@@ -91,7 +91,7 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
             GR = -LinToDb(1 - gr); // ComputeMeter(GR, gr);
         }, DispatcherPriority.Loaded);
 
-        static float ComputeMeter(float prev, float next)
+        /*static float ComputeMeter(float prev, float next)
         {
             float x = prev;
             x = DbToLin(x);
@@ -101,7 +101,7 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
                 x *= 0.96f;
             x = MathF.Min(MathF.Max(x, 1e-10f), 1);
             return LinToDb(x);
-        }
+        }*/
 
         static float LinToDb(float x)
         {

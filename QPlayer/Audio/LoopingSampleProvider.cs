@@ -15,6 +15,13 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
     private readonly double mcSampleRate;
     private readonly int alignmentSize;
     private readonly int channelCount;
+    /// <summary>
+    /// Annoyingly, the media foundation reader class uses an estimate when 
+    /// seeking (even when seeking to a specific byte offset), so we need 
+    /// to do some trickery when seeking in this reader to get a slightly 
+    /// more accurate seek.
+    /// </summary>
+    private readonly bool mediaFoundationPositionHack;
 
     private bool infinite;
     private int loops;
@@ -31,15 +38,16 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         this.infinite = infinite;
         this.loops = loops;
 
-        var wf = input.WaveFormat;
+        WaveFormat wf = input.WaveFormat;
         mcSampleRate = wf.SampleRate * wf.Channels;
         // This should correspond with the multiple of samples we must read from input.Read(), it should be
         // related to wf.BlockAlign, but for all intents and purposes we just use wf.Channels. This might not 
         // be correct for compressed formats.
         channelCount = alignmentSize = wf.Channels;//~(wf.BlockAlign - 1) << 2;
         // This is used for seeking within the file, for compressed files (especially if VBR) this isn't very accurate
-        // if the peak file is loaded, the timing information withi will be used instead.
-        bytesPerSample = wf.AverageBytesPerSecond / (double)wf.SampleRate;
+        // if the peak file is loaded, the timing information within will be used instead.
+        bytesPerSample = wf.AverageBytesPerSecond / (double)wf.SampleRate / wf.Channels;
+        mediaFoundationPositionHack = input is QAudioFileReader qAudioFileReader && qAudioFileReader.IsMediaFoundationReader;
     }
 
     public WaveFormat WaveFormat => input.WaveFormat;
@@ -67,7 +75,14 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         set
         {
             value = Align(value);
-            if (peakFile.HasValue)
+            if (mediaFoundationPositionHack)
+            {
+                // Lerp 0 to input.Length by our current playback fraction.
+                var frac = value / (double)SrcLength;
+                frac *= input.Length;
+                input.Position = (long)frac;
+            }
+            else if (peakFile.HasValue)
                 input.Position = ComputeBytePosFromPeakFile(value);
             else
                 input.Position = (long)(value * bytesPerSample);

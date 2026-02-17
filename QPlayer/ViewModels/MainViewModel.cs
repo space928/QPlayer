@@ -164,11 +164,7 @@ public partial class MainViewModel : ObservableObject
     private Dictionary<string, string>? packedPaths;
     private int autoBackInd = 0;
     private static ObservableCollection<string> logList = [];
-    private static List<Window> openWindows = [];
-    private static LogWindow? logWindow;
-    private static RemoteNodesWindow? remoteNodesWindow;
-    private static SettingsWindow? settingsWindow;
-    private static AboutWindow? aboutWindow;
+    private static readonly List<Window> openWindows = [];
     private static readonly object logListLock = new();
     private readonly JsonSerializerOptions jsonSerializerOptions;
     private readonly Timer fastUpdateTimer;

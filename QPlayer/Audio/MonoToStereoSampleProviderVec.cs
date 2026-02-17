@@ -44,14 +44,16 @@ public class MonoToStereoSampleProviderVec : ISamplePositionProvider
         ref var src = ref srcBuff[i];
         if (Avx2.IsSupported)
         {
-            // Vectorised path, loads 8 samples into an xmm register, then uses the unpack instructions to duplicate each float
+            var permA = Vector256.Create(0, 0, 1, 1, 2, 2, 3, 3);
+            var permB = Vector256.Create(4, 4, 5, 5, 6, 6, 7, 7);
+            // Vectorised path, loads 8 samples into a ymm register, then uses the perm instructions to duplicate each float
             for (; i <= read - Vector256<float>.Count; i += Vector256<float>.Count)
             {
                 var srcVec = Vector256.LoadUnsafe<float>(ref src);
                 // [1,2,3,4,5,6,7,8] => [1,1,2,2,3,3,4,4]
-                var a = Avx.UnpackLow(srcVec, srcVec);
+                var a = Avx2.PermuteVar8x32(srcVec, permA);// Avx.UnpackLow(srcVec, srcVec);
                 // [1,2,3,4,5,6,7,8] => [5,5,6,6,7,7,8,8]
-                var b = Avx.UnpackHigh(srcVec, srcVec);
+                var b = Avx2.PermuteVar8x32(srcVec, permB); // Avx.UnpackHigh(srcVec, srcVec);
                 a.StoreUnsafe(ref dst);
                 dst = ref Unsafe.Add(ref dst, Vector256<float>.Count);
                 b.StoreUnsafe(ref dst);

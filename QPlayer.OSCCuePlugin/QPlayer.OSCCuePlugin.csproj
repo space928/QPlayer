@@ -18,8 +18,11 @@
 	</PropertyGroup>
 	<PropertyGroup>
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
-		<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>
+		<!--<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>-->
 	</PropertyGroup>
+	<Target Name="AfterBuild">
+		<Copy SourceFiles="$(OutDir)" DestinationFiles="..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\"/>
+	</Target>
 	<ItemGroup>
 		<ProjectReference Include="..\QPlayer\QPlayer.csproj">
 			<Private>false</Private>

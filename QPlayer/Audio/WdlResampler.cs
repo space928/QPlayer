@@ -375,6 +375,14 @@ public class WdlResampler
         {
             if (nch == 1)
             {
+                // TODO: Is this method any faster?
+                int proc = VectorExtensions.LerpSamplesMono(
+                    outBuffer.AsSpan(outptr, ns), 
+                    m_rsinbuf.AsSpan(localin + (int)srcpos, rsinbuf_availtemp),
+                    ref srcpos, drspos);
+                ns -= proc;
+                ret += proc;
+                outptr += proc;
                 while (ns-- != 0)
                 {
                     int ipos = (int)srcpos;
@@ -394,6 +402,14 @@ public class WdlResampler
             }
             else if (nch == 2)
             {
+                // This is slightly faster than scalar, sadly, not by much
+                int proc = VectorExtensions.LerpSamplesStereo(
+                    outBuffer.AsSpan(outptr, ns),
+                    m_rsinbuf.AsSpan(localin + (int)srcpos, rsinbuf_availtemp),
+                    ref srcpos, drspos);
+                ns -= proc >> 1;
+                ret += proc >> 1;
+                outptr += proc;
                 while (ns-- != 0)
                 {
                     int ipos = (int)srcpos;
