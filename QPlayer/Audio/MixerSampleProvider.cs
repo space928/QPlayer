@@ -24,6 +24,7 @@ public class MixerSampleProvider : ISamplePositionProvider
 
     public WaveFormat WaveFormat { get; private set; }
     public long Position { get => pos; set => throw new NotImplementedException(); }
+    public int SourceCount => mixerInputs.Count;
 
     public event EventHandler<SampleProviderEventArgs>? MixerInputEnded;
 

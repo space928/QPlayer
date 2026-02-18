@@ -187,7 +187,7 @@ public partial class WaveFormRenderer : ObservableObject
 
     private void Render()
     {
-        if (peakFile == null)
+        if (peakFile == null || peakFile.Value.peakDataPyramid == null)
             return;
 
         if (width != clipGeometry.Rect.Width || height != clipGeometry.Rect.Height)

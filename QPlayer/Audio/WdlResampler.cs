@@ -27,7 +27,6 @@
 using System;
 using System.Runtime.Intrinsics;
 using System.Runtime.Intrinsics.X86;
-using System.Threading.Channels;
 
 namespace QPlayer.Audio;
 
@@ -229,7 +228,7 @@ public class WdlResampler
                 m_iirfilter.SetParms((float)((1 / m_ratio) * m_filterpos), m_filterq);
 
                 int bufIndex = m_samples_in_rsinbuf * nch;
-                int a, x;
+                int a;
                 int offs = 0;
                 if (nch == 2)
                 {
@@ -239,9 +238,9 @@ public class WdlResampler
                 }
                 else
                 {
-                    for (x = 0; x < nch; x++)
-                        for (a = 0; a < n; a++)
-                            m_iirfilter.Apply(m_rsinbuf, bufIndex + x, nsamples_in, 1, offs++);
+                    //for (x = 0; x < nch; x++)
+                    for (a = 0; a < n; a++)
+                        m_iirfilter.Apply(m_rsinbuf, bufIndex, nsamples_in, nch, offs++);
                 }
             }
         }
@@ -377,8 +376,8 @@ public class WdlResampler
             {
                 // TODO: Is this method any faster?
                 int proc = VectorExtensions.LerpSamplesMono(
-                    outBuffer.AsSpan(outptr, ns), 
-                    m_rsinbuf.AsSpan(localin + (int)srcpos, rsinbuf_availtemp),
+                    outBuffer.AsSpan(outptr, ns),
+                    m_rsinbuf.AsSpan(localin, rsinbuf_availtemp),
                     ref srcpos, drspos);
                 ns -= proc;
                 ret += proc;
@@ -405,7 +404,7 @@ public class WdlResampler
                 // This is slightly faster than scalar, sadly, not by much
                 int proc = VectorExtensions.LerpSamplesStereo(
                     outBuffer.AsSpan(outptr, ns),
-                    m_rsinbuf.AsSpan(localin + (int)srcpos, rsinbuf_availtemp),
+                    m_rsinbuf.AsSpan(localin, rsinbuf_availtemp),
                     ref srcpos, drspos);
                 ns -= proc >> 1;
                 ret += proc >> 1;
@@ -463,19 +462,19 @@ public class WdlResampler
                 int n = m_filtercnt;
                 m_iirfilter.SetParms((float)m_ratio * m_filterpos, m_filterq);
 
-                int x, a;
+                int a;
                 int offs = 0;
                 if (nch == 2)
                 {
                     // Fast path for stereo
                     for (a = 0; a < n; a++)
-                        m_iirfilter.Apply(m_rsinbuf, 0, nsamples_in, 2, offs++);
+                        m_iirfilter.Apply(outBuffer, 0, nsamples_in, 2, offs++);
                 }
                 else
                 {
-                    for (x = 0; x < nch; x++)
-                        for (a = 0; a < n; a++)
-                            m_iirfilter.Apply(m_rsinbuf, x, nsamples_in, 1, offs++);
+                    //for (x = 0; x < nch; x++)
+                    for (a = 0; a < n; a++)
+                        m_iirfilter.Apply(outBuffer, 0, ret, nch, offs++);
                 }
             }
         }
@@ -642,15 +641,15 @@ public class WdlResampler
     class WDLResampler_IIRFilter
     {
         private float fpos;
-        private float a1, a2;
-        private float b0, b1, b2;
-        private readonly float[] hist;
+        private double a1, a2;
+        private double b0, b1, b2;
+        private readonly double[] hist;
         private const int HISTORY_SAMPLES = 4;
 
         public WDLResampler_IIRFilter()
         {
             fpos = -1;
-            hist = new float[WDL_RESAMPLE_MAX_FILTERS * WDL_RESAMPLE_MAX_NCH * HISTORY_SAMPLES];
+            hist = new double[WDL_RESAMPLE_MAX_FILTERS * WDL_RESAMPLE_MAX_NCH * HISTORY_SAMPLES];
         }
 
         public void Reset()
@@ -664,17 +663,16 @@ public class WdlResampler
                 return;
             this.fpos = fpos;
 
-            float pos = fpos * MathF.PI;
-            var (cpos, spos) = MathF.SinCos(pos);
+            double pos = fpos * Math.PI;
+            var (cpos, spos) = Math.SinCos(pos);
 
-            float alpha = spos / (2 * Q);
+            double alpha = spos / (2 * Q);
 
-            float sc = 1 / (1 + alpha);
+            double sc = 1 / (1 + alpha);
             b1 = (1 - cpos) * sc;
             b2 = b0 = b1 * 0.5f;
             a1 = -2 * cpos * sc;
             a2 = (1 - alpha) * sc;
-
         }
 
         public void Apply(float[] buffer, int offset, int count, int channels, int ind)

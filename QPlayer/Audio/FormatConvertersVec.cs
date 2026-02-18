@@ -141,7 +141,7 @@ public class FloatToSampleProviderVec(IWaveProvider source) : SampleProviderConv
         EnsureSourceBuffer(count * 4);
         int read = source.Read(sourceBuffer, 0, count * 4) / 4;
 
-        var srcSpan = MemoryMarshal.Cast<byte, float>(sourceBuffer);
+        var srcSpan = MemoryMarshal.Cast<byte, float>(sourceBuffer)[..read];
         srcSpan.CopyTo(buffer.AsSpan(offset, count));
 
         return read;
