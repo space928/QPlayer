@@ -108,9 +108,9 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
             return 20 * MathF.Log10(x);
         }
 
-        static float DbToLin(float x)
+        /*static float DbToLin(float x)
         {
             return MathF.Pow(10, x / 20);
-        }
+        }*/
     }
 }

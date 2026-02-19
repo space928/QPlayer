@@ -126,6 +126,8 @@ public partial class MainViewModel : ObservableObject
             var assembly = Assembly.GetAssembly(typeof(MainViewModel));
             if (assembly == null)
                 return string.Empty;
+            if (string.IsNullOrEmpty(assembly.Location))
+                return $"Version {assembly.GetName().Version}";
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
             return $"Version {versionInfo.ProductVersion}";
         }
@@ -137,6 +139,8 @@ public partial class MainViewModel : ObservableObject
             var assembly = Assembly.GetAssembly(typeof(MainViewModel));
             if (assembly == null)
                 return string.Empty;
+            if (string.IsNullOrEmpty(assembly.Location))
+                return $"Copyright Thomas Mathieson";
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
             return $"Copyright {versionInfo.LegalCopyright}";
         }
