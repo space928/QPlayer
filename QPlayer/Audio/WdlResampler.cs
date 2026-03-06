@@ -664,7 +664,7 @@ public class WdlResampler
             this.fpos = fpos;
 
             double pos = fpos * Math.PI;
-            var (cpos, spos) = Math.SinCos(pos);
+            var (spos, cpos) = Math.SinCos(pos);
 
             double alpha = spos / (2 * Q);
 

@@ -464,4 +464,143 @@ internal static class VectorExtensions
 
         return (int)i;
     }
+
+    public static void FadeSamplesLinMono(Span<float> src, float startGain, float endGain)
+    {
+        int len = src.Length;
+        int i = 0;
+        float rlen = 1f / len;
+        if (len < Vector256<float>.Count || !Vector256.IsHardwareAccelerated)
+            goto CopyRemaining;
+
+        int remaining = len % Vector256<float>.Count;
+
+        var vecB = Vector256.Create(0f, 1f, 2f, 3f, 4f, 5f, 6f, 7f);
+        var startGainVec = Vector256.Create(startGain);
+        var vecC = Vector256.Create((startGain + endGain) * rlen);
+        ref float dst = ref MemoryMarshal.GetReference(src);
+        for (; i < len - remaining; i += Vector256<float>.Count)
+        {
+            var vecA = Vector256.LoadUnsafe(ref dst);
+            var frac = startGainVec - (Vector256.Create((float)i) + vecB) * vecC;
+            var res = Vector256.Multiply(vecA, frac);
+            res.StoreUnsafe(ref dst, unchecked((nuint)i));
+        }
+
+    CopyRemaining:
+        for (; i < len; i++)
+        {
+            float frac = startGain - (i * rlen) * (endGain + startGain);
+            src[i] *= frac;
+        }
+    }
+
+    public static void FadeSamplesLinStereo(Span<float> src, float startGain, float endGain)
+    {
+        int len = src.Length;
+        int i = 0;
+        float rlen = 1f / len;
+        if (len < Vector256<float>.Count || !Vector256.IsHardwareAccelerated)
+            goto CopyRemaining;
+
+        int remaining = len % Vector256<float>.Count;
+
+        var vecB = Vector256.Create(0f, 0f, 2f, 2f, 4f, 4f, 6f, 6f);
+        var startGainVec = Vector256.Create(startGain);
+        var vecC = Vector256.Create((startGain + endGain) * rlen);
+        ref float dst = ref MemoryMarshal.GetReference(src);
+        for (; i < len - remaining; i += Vector256<float>.Count)
+        {
+            var vecA = Vector256.LoadUnsafe(ref dst);
+            var frac = startGainVec - (Vector256.Create((float)i) + vecB) * vecC;
+            var res = Vector256.Multiply(vecA, frac);
+            res.StoreUnsafe(ref dst, unchecked((nuint)i));
+        }
+
+    CopyRemaining:
+        for (; i < len; i += 2)
+        {
+            float frac = startGain - (i * rlen) * (endGain + startGain);
+            src[i] *= frac;
+            src[i + 1] *= frac;
+        }
+    }
+
+    public static void FadeSamplesSCurveMono(Span<float> src, float startGain, float endGain)
+    {
+        int len = src.Length;
+        int i = 0;
+        float rlen = 1f / len;
+        if (len < Vector256<float>.Count || !Vector256.IsHardwareAccelerated)
+            goto CopyRemaining;
+
+        int remaining = len % Vector256<float>.Count;
+
+        var vecB = Vector256.Create(0f, 1f, 2f, 3f, 4f, 5f, 6f, 7f);
+        var startGainVec = Vector256.Create(startGain);
+        var vecC = Vector256.Create(startGain + endGain);
+        var vecRLen = Vector256.Create(rlen);
+        ref float dst = ref MemoryMarshal.GetReference(src);
+        for (; i < len - remaining; i += Vector256<float>.Count)
+        {
+            var vecA = Vector256.LoadUnsafe(ref dst);
+            var t = (Vector256.Create((float)i) + vecB) * vecRLen;
+            var t2 = t * t;
+            var t3 = t2 * t;
+            t = -2 * t3 + 3 * t2;
+            var frac = startGainVec - t * vecC;
+            var res = Vector256.Multiply(vecA, frac);
+            res.StoreUnsafe(ref dst, unchecked((nuint)i));
+        }
+
+    CopyRemaining:
+        for (; i < len; i++)
+        {
+            float t = (i * rlen);
+            float t2 = t * t;
+            float t3 = t2 * t;
+            t = -2 * t3 + 3 * t2;
+            float frac = startGain - t * (endGain + startGain);
+            src[i] *= frac;
+        }
+    }
+
+    public static void FadeSamplesSCurveStereo(Span<float> src, float startGain, float endGain)
+    {
+        int len = src.Length;
+        int i = 0;
+        float rlen = 1f / len;
+        if (len < Vector256<float>.Count || !Vector256.IsHardwareAccelerated)
+            goto CopyRemaining;
+
+        int remaining = len % Vector256<float>.Count;
+
+        var vecB = Vector256.Create(0f, 0f, 2f, 2f, 4f, 4f, 6f, 6f);
+        var startGainVec = Vector256.Create(startGain);
+        var vecC = Vector256.Create(startGain + endGain);
+        var vecRLen = Vector256.Create(rlen);
+        ref float dst = ref MemoryMarshal.GetReference(src);
+        for (; i < len - remaining; i += Vector256<float>.Count)
+        {
+            var vecA = Vector256.LoadUnsafe(ref dst);
+            var t = (Vector256.Create((float)i) + vecB) * vecRLen;
+            var t2 = t * t;
+            var t3 = t2 * t;
+            t = -2 * t3 + 3 * t2;
+            var frac = startGainVec - t * vecC;
+            var res = Vector256.Multiply(vecA, frac);
+            res.StoreUnsafe(ref dst, unchecked((nuint)i));
+        }
+
+    CopyRemaining:
+        for (; i < len; i += 2)
+        {
+            float t = (i * rlen);
+            float t2 = t * t;
+            float t3 = t2 * t;
+            t = -2 * t3 + 3 * t2;
+            float frac = startGain - t * (endGain + startGain); src[i] *= frac;
+            src[i + 1] *= frac;
+        }
+    }
 }

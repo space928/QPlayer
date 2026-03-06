@@ -283,7 +283,7 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         var lookupPos = samplePos / increment;
         var interp = samplePos & (increment - 1);
 
-        var startPos = lookupPos == 0 ? 0 : lookup[lookupPos - 1];
+        var startPos = lookupPos == 0 ? 0 : lookup[Math.Clamp(lookupPos - 1, 0, lookup.Length - 1)];
         // var endPos = lookup[lookupPos];
 
         return startPos + (long)(bytesPerSample * interp);// (endPos - startPos)

@@ -9,13 +9,15 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
+using Resampler = QPlayer.Audio.WdlResampler;//NAudio.Dsp.WdlResampler;
+
 namespace QPlayer.Audio;
 
 public class WdlResamplingProviderVec : ISamplePositionProvider
 {
     private readonly ISamplePositionProvider source;
     private readonly WaveFormat waveFormat;
-    private readonly WdlResampler resampler;
+    private readonly Resampler resampler;
     private readonly int channels;
 
     public long Position { get => source.Position; set => source.Position = value; }
@@ -27,7 +29,12 @@ public class WdlResamplingProviderVec : ISamplePositionProvider
         this.source = source;
         waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(newSampleRate, channels);
         this.channels = waveFormat.Channels;
-        resampler = new WdlResampler(source.WaveFormat.SampleRate, newSampleRate, interp: true, 2, sinc: false);
+        resampler = new Resampler(source.WaveFormat.SampleRate, newSampleRate, interp: true, 2, sinc: false);
+        /*resampler = new();
+        resampler.SetMode(true, 2, false);
+        //resampler.SetMode(false, 0, true);
+        resampler.SetRates(source.WaveFormat.SampleRate, newSampleRate);
+        resampler.SetFeedMode(false);*/
     }
 
     public int Read(float[] buffer, int offset, int count)

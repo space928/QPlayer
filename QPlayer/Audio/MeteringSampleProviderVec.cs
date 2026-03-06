@@ -2,6 +2,7 @@
 using NAudio.Wave.SampleProviders;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -236,7 +237,7 @@ public class MeteringSampleProviderVec : ISampleProvider
         {
             var maxSampleVec = Vector256<float>.Zero;
             var rmsSampleVec = Vector256<float>.Zero;
-            for (; i < (nuint)buffer.Length; i += (nuint)Vector256<float>.Count * 2)
+            for (; i < (nuint)(buffer.Length - (Vector256<float>.Count * 2 - 1)); i += (nuint)Vector256<float>.Count * 2)
             {
                 /*
                  * We need to compute the sum and max of each sample.

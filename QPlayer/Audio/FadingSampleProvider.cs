@@ -18,7 +18,6 @@ internal class FadingSampleProvider : ISamplePositionProvider
     private long fadeDuration;
     private float startVolume = 1;
     private float endVolume = 1;
-    private float pan = 0;
     private FadeType fadeType;
     private Action<bool>? onCompleteAction;
     private SynchronizationContext? synchronizationContext;
@@ -50,19 +49,9 @@ internal class FadingSampleProvider : ISamplePositionProvider
         set => startVolume = value;
     }
 
-    /// <summary>
-    /// The stereo panning applied to the processed samples.
-    /// </summary>
-    public float Pan
-    {
-        get => pan;
-        set => pan = value;
-    }
-
     public int Read(float[] buffer, int offset, int count)
     {
         int numSource = source.Read(buffer, offset, count);
-        int offsetSource = offset;
         int num = numSource;
         if (state == FadeState.Fading)
         {
@@ -70,10 +59,6 @@ internal class FadingSampleProvider : ISamplePositionProvider
             offset += numFaded;
             num -= numFaded;
         }
-
-        // Apply pan if needed
-        if (pan != 0 && source.WaveFormat.Channels == 2)
-            VectorExtensions.ApplyPan(buffer.AsSpan(offsetSource, numSource), pan);
 
         // Fast paths for -inf gain and unity gain
         if (startVolume == 0)
@@ -102,7 +87,9 @@ internal class FadingSampleProvider : ISamplePositionProvider
     /// <param name="onComplete">Optionally, an event to raise when the fade is completed. <c>true</c> is passed to the 
     /// event handler if the fade completed normally, <c>false</c> if it was cancelled. The event is invoked on the 
     /// thread that called this method.</param>
-    public void BeginFade(float volume, double durationMS, FadeType fadeType = FadeType.Linear, Action<bool>? onComplete = null)
+    /// <param name="useSyncContext">Whether the onComplete action should be invoked using the current thread's 
+    /// synchronization context.</param>
+    public void BeginFade(float volume, double durationMS, FadeType fadeType = FadeType.Linear, Action<bool>? onComplete = null, bool useSyncContext = true)
     {
         lock (lockObj)
         {
@@ -113,7 +100,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
             endVolume = volume;
             this.fadeType = fadeType;
             onCompleteAction = onComplete;
-            synchronizationContext = SynchronizationContext.Current;
+            synchronizationContext = useSyncContext ? SynchronizationContext.Current : null;
             state = FadeState.Fading;
         }
     }
@@ -142,26 +129,70 @@ internal class FadingSampleProvider : ISamplePositionProvider
 
     private int FadeSamples(float[] buffer, int offset, int count)
     {
-        int i;
+        int i = offset;
         int channels = source.WaveFormat.Channels;
         long _fadeTime = fadeTime;
         long _fadeDuration = fadeDuration;
         FadeType _fadeType = fadeType;
-        for (i = offset; i < offset + count; i += channels)
+
+        var fadeEnd = _fadeTime + _fadeDuration;
+        float tStart = _fadeTime / (float)_fadeDuration;
+        float tEnd = fadeEnd / (float)_fadeDuration;
+        int toTake = Math.Min(count, (int)(_fadeDuration - _fadeTime) * channels);
+        float startGain = startVolume;
+        float sumGain = startVolume + endVolume;
+        float rlen = 1f / _fadeDuration;
+
+        switch (fadeType)
         {
-            if (_fadeTime >= _fadeDuration)
-            {
-                FadeCompleted();
+            case FadeType.Linear:
+                for (i = offset; i < offset + toTake; i += channels)
+                {
+                    float frac = startGain - (_fadeTime * rlen) * sumGain;
+                    for (int c = 0; c < channels; c++)
+                        buffer[i + c] *= frac;
+                    _fadeTime++;
+                }
                 break;
-            }
-
-            float t = GetFadeFraction(_fadeTime / (float)_fadeDuration, _fadeType);
-            float currVol = endVolume * t + startVolume * (1 - t);
-            for (int c = 0; c < channels; c++)
-                buffer[i + c] *= currVol;
-
-            _fadeTime++;
+            case FadeType.Square:
+                for (i = offset; i < offset + toTake; i += channels)
+                {
+                    float t = _fadeTime * rlen;
+                    t *= t;
+                    float frac = startGain - t * sumGain;
+                    for (int c = 0; c < channels; c++)
+                        buffer[i + c] *= frac;
+                    _fadeTime++;
+                }
+                break;
+            case FadeType.InverseSquare:
+                for (i = offset; i < offset + toTake; i += channels)
+                {
+                    float t = _fadeTime * rlen;
+                    t = MathF.Sqrt(t);
+                    float frac = startGain - t * sumGain;
+                    for (int c = 0; c < channels; c++)
+                        buffer[i + c] *= frac;
+                    _fadeTime++;
+                }
+                break;
+            case FadeType.SCurve:
+                for (i = offset; i < offset + toTake; i += channels)
+                {
+                    float t = _fadeTime * rlen;
+                    float t2 = t * t;
+                    float t3 = t2 * t;
+                    t = -2 * t3 + 3 * t2;
+                    float frac = startGain - t * sumGain;
+                    for (int c = 0; c < channels; c++)
+                        buffer[i + c] *= frac;
+                    _fadeTime++;
+                }
+                break;
         }
+
+        if (_fadeTime >= _fadeDuration - channels)
+            FadeCompleted();
 
         fadeTime = _fadeTime;
 

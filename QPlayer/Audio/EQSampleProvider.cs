@@ -253,10 +253,10 @@ public class EQSampleProvider : ISamplePositionProvider
         }
 
         // Store the last samples in the buffer for the next chunk
-        x1.GetLower().StoreUnsafe(ref prevRef);
-        x2.GetLower().StoreUnsafe(ref prevRef, 2);
-        y1.GetLower().StoreUnsafe(ref prevRef, 4);
-        y2.GetLower().StoreUnsafe(ref prevRef, 6);
+        x1.StoreUnsafe(ref prevRef);
+        x2.StoreUnsafe(ref prevRef, 2);
+        y1.StoreUnsafe(ref prevRef, 4);
+        y2.StoreUnsafe(ref prevRef, 6);
     }
 
     /// <summary>

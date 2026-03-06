@@ -59,22 +59,24 @@ public class MixerSampleProvider : ISamplePositionProvider
             {
                 // Why are we using this instead of Array.Clear?
                 // Because this float array is actually (usually) a byte array in disguise.
-                // But since the array knows this, it ends up nott clearing enough items.
+                // But since the array knows this, it ends up not clearing enough items.
                 // Hence, we treat it as a span which behaves as expected.
                 buffer.AsSpan(offset, count).Clear();
                 return count;
             }
 
-            // Copy the first input to the output buffer
-            int read = mixerInputs[0].Read(buffer, offset, count);
+            // Copy the last input to the output buffer
+            int read = mixerInputs[^1].Read(buffer, offset, count);
             if (read < count)
             {
-                InputEnded(0);
+                InputEnded(mixerInputs.Count - 1);
                 buffer.AsSpan(offset + read, count - read).Clear();
             }
 
             // Read each subsequant input and add them to the buffer
-            for (int i = 1; i < mixerInputs.Count; i++)
+            // Mixer inputs are read in reverse order so that if the
+            // input list is removed from, inputs won't be missed.
+            for (int i = mixerInputs.Count - 2; i >= 0; i--)
             {
                 read = mixerInputs[i].Read(sourceBuffer, 0, count);
                 if (read < count)
