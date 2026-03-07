@@ -9,7 +9,9 @@ using System.Text;
 using System.Threading.Channels;
 using System.Threading.Tasks;
 
-using Resampler = QPlayer.Audio.WdlResampler;//NAudio.Dsp.WdlResampler;
+// Until the resampling bug can be fixed, we'll use the old resampler
+// using Resampler = QPlayer.Audio.WdlResampler;
+using Resampler = NAudio.Dsp.WdlResampler;
 
 namespace QPlayer.Audio;
 
@@ -29,12 +31,14 @@ public class WdlResamplingProviderVec : ISamplePositionProvider
         this.source = source;
         waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(newSampleRate, channels);
         this.channels = waveFormat.Channels;
-        resampler = new Resampler(source.WaveFormat.SampleRate, newSampleRate, interp: true, 2, sinc: false);
-        /*resampler = new();
+        
+        //resampler = new Resampler(source.WaveFormat.SampleRate, newSampleRate, interp: true, 2, sinc: false);
+        
+        resampler = new();
         resampler.SetMode(true, 2, false);
         //resampler.SetMode(false, 0, true);
         resampler.SetRates(source.WaveFormat.SampleRate, newSampleRate);
-        resampler.SetFeedMode(false);*/
+        resampler.SetFeedMode(false);
     }
 
     public int Read(float[] buffer, int offset, int count)

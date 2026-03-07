@@ -468,7 +468,7 @@ public class WdlResampler
                 {
                     // Fast path for stereo
                     for (a = 0; a < n; a++)
-                        m_iirfilter.Apply(outBuffer, 0, nsamples_in, 2, offs++);
+                        m_iirfilter.Apply(outBuffer, 0, nsamples_out, 2, offs++);
                 }
                 else
                 {
