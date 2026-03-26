@@ -1,4 +1,5 @@
-﻿using QPlayer.Audio;
+﻿using NAudio.Wave;
+using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.SourceGenerator;
 using QPlayer.Views;
@@ -16,15 +17,25 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
     [Reactive] private bool enabled;
     [Reactive, Knob, Range()] private float inputGain = 0f;
     [Reactive, Knob, Range()] private float threshold = -1.5f;
-    [Reactive, Knob, Range()] private float attack = 0.005f;
-    [Reactive, Knob, Range()] private float release = 0.05f;
+    [Reactive, Knob, Range()] private float attack = 0.5f;
+    [Reactive, Knob, Range()] private float release = 30f;
+    [Reactive, ModelSkip] private float crestFactor = 0;
+    [Reactive, ModelSkip] private float hold = 0;
+    [Reactive, ModelSkip] private float tilt = 0;
+    [Reactive, ModelSkip] private float dbg = 1;
+    [Reactive, ModelSkip] private float eq = 1;
+    [Reactive, ModelSkip] private bool write = false;
 
     [Reactive("GR"), ModelSkip] private float gr;
+    [Reactive("DBG_Meter"), ModelSkip] private float dbg_meter;
 
     private AudioLimiterSampleProvider? limiter;
     private ISamplePositionProvider? source;
     private readonly Dispatcher dispatcher;
-    private DispatcherOperation? prevOperation;
+    private readonly DispatcherTimer timer;
+    private MeterEvent meterEventA;
+    private MeterEvent meterEventB;
+    private bool swap;
 
     public ISamplePositionProvider? InputSampleProvider
     {
@@ -50,7 +61,43 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
     {
         dispatcher = Dispatcher.CurrentDispatcher;
 
-        PropertyChanged += (o, e) => Configure();
+        PropertyChanged += (o, e) =>
+        {
+            if (e.PropertyName != nameof(GR) && e.PropertyName != nameof(DBG_Meter))
+                Configure();
+        };
+
+        timer = new(DispatcherPriority.Loaded, dispatcher);
+        timer.Tick += Timer_Tick;
+        timer.Interval = TimeSpan.FromMilliseconds(20);
+        timer.Start();
+    }
+
+    private void Timer_Tick(object? sender, EventArgs e)
+    {
+        MeterEvent meter;
+        if (swap)
+            meter = meterEventB;
+        else
+            meter = meterEventA;
+
+        GR = -LinToDb(1 - meter.gr); // ComputeMeter(GR, gr);
+        DBG_Meter = LinToDb(meter.dbg);
+    }
+
+    public void ProcessSample(float gr, float dbg_m)
+    {
+        if (swap)
+            meterEventA = new(gr, dbg_m);
+        else
+            meterEventB = new(gr, dbg_m);
+        swap ^= true;
+        return;
+    }
+
+    static float LinToDb(float x)
+    {
+        return 20 * MathF.Log10(x);
     }
 
     private void Configure()
@@ -59,11 +106,18 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
             return;
 
         limiter.Enabled = enabled;
-        limiter.InputGain = MathF.Pow(10, inputGain / 20f); ;
-        limiter.AttackTime = attack;
-        limiter.ReleaseTime = release;
+        limiter.InputGain = MathF.Pow(10, inputGain / 20f);
+        limiter.AttackTime = release * 0.001f / 20;
+        limiter.ReleaseTime = release * 0.001f;
         limiter.Threshold = MathF.Pow(10, threshold / 20f);
         limiter.SamplesPerNotification = limiter.WaveFormat.SampleRate / 30;
+
+        limiter.CrestFactor = crestFactor;
+        limiter.Hold = release * 0.001f / 6;
+        limiter.Tilt = tilt;
+        limiter.Dbg = dbg;
+        limiter.Eq = eq;
+        limiter.WriteWave = write;
     }
 
     public override void SyncToModel()
@@ -80,37 +134,9 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
         Configure();
     }
 
-    public void ProcessSample(float gr)
+    private readonly struct MeterEvent(float gr, float dbg)
     {
-        var prev = prevOperation;
-        if (prev != null && (prev.Status == DispatcherOperationStatus.Executing || prev.Status == DispatcherOperationStatus.Pending))
-            return;
-
-        prevOperation = dispatcher.InvokeAsync(() =>
-        {
-            GR = -LinToDb(1 - gr); // ComputeMeter(GR, gr);
-        }, DispatcherPriority.Loaded);
-
-        /*static float ComputeMeter(float prev, float next)
-        {
-            float x = prev;
-            x = DbToLin(x);
-            if (next > x)
-                x = next;
-            else
-                x *= 0.96f;
-            x = MathF.Min(MathF.Max(x, 1e-10f), 1);
-            return LinToDb(x);
-        }*/
-
-        static float LinToDb(float x)
-        {
-            return 20 * MathF.Log10(x);
-        }
-
-        /*static float DbToLin(float x)
-        {
-            return MathF.Pow(10, x / 20);
-        }*/
+        public readonly float gr = gr;
+        public readonly float dbg = dbg;
     }
 }

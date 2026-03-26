@@ -67,95 +67,144 @@ public class EQSampleProvider : ISamplePositionProvider
 
         // The biquad filter terms, normalized such that a0 is 1
         ref var coeffs = ref coeffsCache[ind];
-        double a0;
-        var a1 = coeffs.a1;
-        var a2 = coeffs.a2;
-        var b0 = coeffs.b0;
-        var b1 = coeffs.b1;
-        var b2 = coeffs.b2;
+        if (coeffs.band != band)
+            coeffs = CalculateFilterCoefficients(band, WaveFormat.SampleRate);
         int channels = WaveFormat.Channels;
 
-        if (coeffs.band != band)
+        ApplyFilter(prevBuff, ind, channels, coeffs, buffer.AsSpan(offset, count));
+    }
+
+    public static FilterCoeffs CalculateFilterCoefficients(in EQBand band, int fs)
+    {
+        double a0, a1, a2, b0, b1, b2;
+        // See: https://semiwiki.com/semiconductor-services/einfochips/296500-digital-filters-for-audio-equalizer-design/
+        // For details on calculating filter coefficients
+        double A = MathF.Pow(10, band.gain / 40);
+        double w0 = 2 * Math.PI * band.freq / fs;
+        var (sw0, cw0) = Math.SinCos(w0);
+        double alpha = sw0 / (2 * band.q);
+        double sqrtA;
+
+        switch (band.shape)
         {
-            // See: https://semiwiki.com/semiconductor-services/einfochips/296500-digital-filters-for-audio-equalizer-design/
-            // For details on calculating filter coefficients
-            double fs = WaveFormat.SampleRate;
-            double A = MathF.Pow(10, band.gain / 40);
-            double w0 = 2 * Math.PI * band.freq / fs;
-            var (sw0, cw0) = Math.SinCos(w0);
-            double alpha = sw0 / (2 * band.q);
-            double sqrtA;
-
-            switch (band.shape)
-            {
-                case EQBandShape.Bell:
-                    b0 = 1 + alpha * A;
-                    b1 = -2 * cw0;
-                    b2 = 1 - alpha * A;
-                    a0 = 1 + alpha / A;
-                    a1 = b1;
-                    a2 = 1 - alpha / A;
-                    break;
-                case EQBandShape.LowShelf:
-                    sqrtA = Math.Sqrt(A);
-                    b0 = A * (A + 1 - (A - 1) * cw0 + 2 * sqrtA * alpha);
-                    b1 = 2 * A * (A - 1 - (A + 1) * cw0);
-                    b2 = A * (A + 1 - (A - 1) * cw0 - 2 * sqrtA * alpha);
-                    a0 = A + 1 + (A - 1) * cw0 + 2 * sqrtA * alpha;
-                    a1 = -2 * (A - 1 + (A + 1) * cw0);
-                    a2 = A + 1 + (A - 1) * cw0 - 2 * sqrtA * alpha;
-                    break;
-                case EQBandShape.HighShelf:
-                    sqrtA = Math.Sqrt(A);
-                    b0 = A * (A + 1 + (A - 1) * cw0 + 2 * sqrtA * alpha);
-                    b1 = -2 * A * (A - 1 + (A + 1) * cw0);
-                    b2 = A * (A + 1 + (A - 1) * cw0 - 2 * sqrtA * alpha);
-                    a0 = A + 1 - (A - 1) * cw0 + 2 * sqrtA * alpha;
-                    a1 = 2 * (A - 1 - (A + 1) * cw0);
-                    a2 = A + 1 - (A - 1) * cw0 - 2 * sqrtA * alpha;
-                    break;
-                case EQBandShape.Notch:
-                    b0 = 1;
-                    b1 = -2 * cw0;
-                    b2 = 1;
-                    a0 = 1 + alpha;
-                    a1 = b1;
-                    a2 = 1 - alpha;
-                    break;
-                default:
-                    a0 = b0 = 1;
-                    a1 = a2 = b1 = b2 = 0;
-                    break;
-            }
-
-            // Normalize coeffs
-            double inva = 1 / a0;
-            a1 *= inva;
-            a2 *= inva;
-            b0 *= inva;
-            b1 *= inva;
-            b2 *= inva;
-
-            coeffs.a1 = a1;
-            coeffs.a2 = a2;
-            coeffs.b0 = b0;
-            coeffs.b1 = b1;
-            coeffs.b2 = b2;
-            coeffs.band = band;
+            case EQBandShape.Bell:
+                b0 = 1 + alpha * A;
+                b1 = -2 * cw0;
+                b2 = 1 - alpha * A;
+                a0 = 1 + alpha / A;
+                a1 = b1;
+                a2 = 1 - alpha / A;
+                break;
+            case EQBandShape.LowShelf:
+                sqrtA = Math.Sqrt(A);
+                b0 = A * (A + 1 - (A - 1) * cw0 + 2 * sqrtA * alpha);
+                b1 = 2 * A * (A - 1 - (A + 1) * cw0);
+                b2 = A * (A + 1 - (A - 1) * cw0 - 2 * sqrtA * alpha);
+                a0 = A + 1 + (A - 1) * cw0 + 2 * sqrtA * alpha;
+                a1 = -2 * (A - 1 + (A + 1) * cw0);
+                a2 = A + 1 + (A - 1) * cw0 - 2 * sqrtA * alpha;
+                break;
+            case EQBandShape.HighShelf:
+                sqrtA = Math.Sqrt(A);
+                b0 = A * (A + 1 + (A - 1) * cw0 + 2 * sqrtA * alpha);
+                b1 = -2 * A * (A - 1 + (A + 1) * cw0);
+                b2 = A * (A + 1 + (A - 1) * cw0 - 2 * sqrtA * alpha);
+                a0 = A + 1 - (A - 1) * cw0 + 2 * sqrtA * alpha;
+                a1 = 2 * (A - 1 - (A + 1) * cw0);
+                a2 = A + 1 - (A - 1) * cw0 - 2 * sqrtA * alpha;
+                break;
+            case EQBandShape.Notch:
+                b0 = 1;
+                b1 = -2 * cw0;
+                b2 = 1;
+                a0 = 1 + alpha;
+                a1 = b1;
+                a2 = 1 - alpha;
+                break;
+            case EQBandShape.LowPass:
+                b0 = (1 - cw0) / 2;
+                b1 = 1 - cw0;
+                b2 = b0;
+                a0 = 1 + alpha;
+                a1 = -2 * cw0;
+                a2 = 1 - alpha;
+                break;
+            case EQBandShape.HighPass:
+                b0 = (1 + cw0) / 2;
+                b1 = -(1 + cw0);
+                b2 = b0;
+                a0 = 1 + alpha;
+                a1 = -2 * cw0;
+                a2 = 1 - alpha;
+                break;
+            case EQBandShape.AllPass:
+                b0 = 1 - alpha;
+                b1 = -2 * cw0;
+                b2 = 1 + alpha;
+                a0 = b2;
+                a1 = b1;
+                a2 = b0;
+                break;
+            default:
+                a0 = b0 = 1;
+                a1 = a2 = b1 = b2 = 0;
+                break;
         }
 
+        // Normalize coeffs
+        double inva = 1 / a0;
+        a1 *= inva;
+        a2 *= inva;
+        b0 *= inva;
+        b1 *= inva;
+        b2 *= inva;
+
+        FilterCoeffs coeffs;
+        coeffs.a1 = a1;
+        coeffs.a2 = a2;
+        coeffs.b0 = b0;
+        coeffs.b1 = b1;
+        coeffs.b2 = b2;
+        coeffs.band = band;
+        return coeffs;
+    }
+
+    /// <summary>
+    /// Applies a biquad filter to the input signal. Automatically picks a vectorised implementation if available.
+    /// </summary>
+    /// <param name="hist">The history buffer, must be at least 4*<paramref name="channels"/> long.</param>
+    /// <param name="ind">The index into the history buffer to use (this is internally multiplied by 
+    /// the number of history samples the filter uses (ie: 4*<paramref name="channels"/>)).</param>
+    /// <param name="channels">The number of interleaved channels in the input buffer.</param>
+    /// <param name="filter">The filter coefficients to apply to the signal.</param>
+    /// <param name="buffer">The signal to filter.</param>
+    public static void ApplyFilter(double[] hist, int ind, int channels, FilterCoeffs filter, Span<float> buffer)
+    {
         if (Vector128.IsHardwareAccelerated && Fma.IsSupported)
         {
             if (channels == 2)
-                ApplyFilterVecStereo(prevBuff, buffer, offset, count, ind, a1, a2, b0, b1, b2);
+                ApplyFilterVecStereo(hist, buffer, ind, filter.a1, filter.a2, filter.b0, filter.b1, filter.b2);
             else
-                ApplyFilterVec(prevBuff, buffer, offset, count, channels, ind, a1, a2, b0, b1, b2);
+                ApplyFilterVec(hist, buffer, channels, ind, filter.a1, filter.a2, filter.b0, filter.b1, filter.b2);
         }
         else
-            ApplyFilterScalar(prevBuff, buffer, offset, count, channels, ind, a1, a2, b0, b1, b2);
+            ApplyFilterScalar(hist, buffer, channels, ind, filter.a1, filter.a2, filter.b0, filter.b1, filter.b2);
     }
 
-    public static void ApplyFilterScalar(double[] prevBuf, float[] buffer, int offset, int count, int channels, int ind, 
+    /// <summary>
+    /// Applies a biquad filter to the input signal.
+    /// </summary>
+    /// <param name="prevBuf">The history buffer, must be at least 4*<paramref name="channels"/> long.</param>
+    /// <param name="buffer">The sample buffer to process.</param>
+    /// <param name="channels">The number of interleaved channels in the input buffer.</param>
+    /// <param name="ind">The index into the history buffer to use (this is internally multiplied by 
+    /// the number of history samples the filter uses (ie: 4*<paramref name="channels"/>)).</param>
+    /// <param name="a1"></param>
+    /// <param name="a2"></param>
+    /// <param name="b0"></param>
+    /// <param name="b1"></param>
+    /// <param name="b2"></param>
+    public static void ApplyFilterScalar(double[] prevBuf, Span<float> buffer, int channels, int ind,
         double a1, double a2, double b0, double b1, double b2)
     {
         double x0, x1, x2, y1, y2;
@@ -173,7 +222,7 @@ public class EQSampleProvider : ISamplePositionProvider
             y2 = prevRef;
             //x1 = y1 = x2 = y2 = buffer[offset + c];
 
-            for (int i = offset + c; i < count; i += channels)
+            for (int i = c; i < buffer.Length; i += channels)
             {
                 x0 = buffer[i];
 
@@ -205,9 +254,26 @@ public class EQSampleProvider : ISamplePositionProvider
         }
     }
 
-    public static void ApplyFilterVecStereo(double[] prevBuf, float[] buffer, int offset, int count, int ind,
+    /// <summary>
+    /// Applies a biquad filter to the input signal.
+    /// </summary>
+    /// <param name="prevBuf">The history buffer, must be at least 4*<paramref name="channels"/> long.</param>
+    /// <param name="buffer">The sample buffer to process.</param>
+    /// <param name="channels">The number of interleaved channels in the input buffer.</param>
+    /// <param name="ind">The index into the history buffer to use (this is internally multiplied by 
+    /// the number of history samples the filter uses (ie: 4*<paramref name="channels"/>)).</param>
+    /// <param name="a1"></param>
+    /// <param name="a2"></param>
+    /// <param name="b0"></param>
+    /// <param name="b1"></param>
+    /// <param name="b2"></param>
+    public static void ApplyFilterVecStereo(double[] prevBuf, Span<float> buffer, int ind,
         double a1, double a2, double b0, double b1, double b2)
     {
+        if (!Fma.IsSupported)
+            throw new NotImplementedException();
+        if ((buffer.Length & 1) != 0)
+            throw new ArgumentOutOfRangeException(nameof(buffer), "Buffer must have an even length!");
         // https://shafq.at/vectorizing-iir-filters.html
         var va1 = Vector128.Create(-a1);
         var va2 = Vector128.Create(-a2);
@@ -222,7 +288,7 @@ public class EQSampleProvider : ISamplePositionProvider
         var y1 = Vector128.LoadUnsafe(in prevRef, 4);
         var y2 = Vector128.LoadUnsafe(in prevRef, 6);
 
-        for (int i = offset; i < count; i += 2)
+        for (int i = 0; i < buffer.Length; i += 2)
         {
             // This will read and process more samples than needed, I imagine this is fine...
             var x0 = Sse2.ConvertToVector128Double(Vector128.LoadUnsafe(in buffer[i]));
@@ -264,8 +330,6 @@ public class EQSampleProvider : ISamplePositionProvider
     /// </summary>
     /// <param name="prevBuf">The history buffer used by the filter, must be at least 4 * channels long.</param>
     /// <param name="buffer">The buffer to filter.</param>
-    /// <param name="offset">The starting offset into this buffer to begin filtering from.</param>
-    /// <param name="count">The total number of samples to filter (mono sample count * channel count).</param>
     /// <param name="channels">The number of interleaved channels in the signal to filter (ie: buffer = [LRLRLRLR..], channels = 2)</param>
     /// <param name="ind">The index into the history buffer to use, when chaining multiple filters 
     /// (this is the filter index, not the buffer index, so for the second iteration of filtering an index of 1 would be used).</param>
@@ -274,9 +338,12 @@ public class EQSampleProvider : ISamplePositionProvider
     /// <param name="b0"></param>
     /// <param name="b1"></param>
     /// <param name="b2"></param>
-    public static void ApplyFilterVec(double[] prevBuf, float[] buffer, int offset, int count, int channels, int ind, 
-        double a1, double a2, double b0, double b1, double b2)
+    public static void ApplyFilterVec(double[] prevBuf, Span<float> buffer, int channels, int ind,
+        double a1, double a2,
+        double b0, double b1, double b2)
     {
+        if (!Fma.IsSupported)
+            throw new NotImplementedException();
         // https://shafq.at/vectorizing-iir-filters.html
         Vector128<double> x0, x1, x2, y1, y2;
         var clipScale = Vector128.CreateScalar(0.1f);
@@ -299,7 +366,7 @@ public class EQSampleProvider : ISamplePositionProvider
             y2 = Vector128.CreateScalar(prevRef);
             //x1 = y1 = x2 = y2 = buffer[offset + c];
 
-            for (int i = offset + c; i < count; i += channels)
+            for (int i = c; i < buffer.Length; i += channels)
             {
                 x0 = Vector128.CreateScalar((double)buffer[i]);
 
@@ -340,7 +407,7 @@ public class EQSampleProvider : ISamplePositionProvider
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    private struct FilterCoeffs
+    public struct FilterCoeffs
     {
         public EQBand band;
         public double a1, a2, b0, b1, b2;

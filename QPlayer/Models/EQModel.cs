@@ -67,7 +67,10 @@ public enum EQBandShape
     Bell,
     HighShelf,
     LowShelf,
-    Notch
+    Notch,
+    LowPass,
+    HighPass,
+    AllPass
 }
 
 public struct EQFilter

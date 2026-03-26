@@ -11,8 +11,111 @@ using System.Threading.Tasks;
 
 namespace QPlayer.Audio;
 
+/// <summary>
+/// This class provides a number of vectorised maths routines, which are optimised for X86 SIMD instructions.
+/// </summary>
 internal static class VectorExtensions
 {
+    /// <summary>
+    /// Pretty prints an audio signal as a waveform. Based on https://github.com/sudara/melatonin_audio_sparklines/blob/main/melatonin_audio_sparklines.h
+    /// <para/>
+    /// The signal is represented as a series of dashes, with a few special characters indicated specific values:
+    /// <code>
+    /// 0     -- a single 0 value
+    /// 0(23) -- 23 consecutive zeros
+    /// x     -- a zero-crossing
+    /// N     -- NaN
+    /// I     -- +-Inf
+    /// S     -- subnormal values
+    /// E     -- outside of the -1 to 1 range
+    /// </code>
+    /// For interleaved multi-channel signals, each chanel is displayed on it's own line.
+    /// If a signal is prepended with a + then every sample is >= 0.
+    /// </summary>
+    /// <param name="sig">The signal to display.</param>
+    /// <param name="channels">The number of interleaved channels.</param>
+    /// <param name="collapse">Whether the signal should be collapsed to skip repeated values.</param>
+    /// <param name="normalize">Whether the signal should be normalized.</param>
+    /// <param name="maxLen">The maximum number of characters to return.</param>
+    /// <returns></returns>
+    public static string PrintSignal(ReadOnlySpan<float> sig, int channels = 1, bool collapse = true, bool normalize = true, int maxLen = 120)
+    {
+        string waveform = "_⎽⎼—⎻⎺‾";//"_\xe2\x8e\xbd\xe2\x8e\xbc\xe2\x80\x94\xe2\x8e\xbb\xe2\x8e\xba\xe2\x80\xbe";
+        StringBuilder sb = new();
+        for (int c = 0; c < channels; c++)
+        {
+            float max = float.MinValue;
+            float min = float.MaxValue;
+            for (int i = c; i < sig.Length; i += channels)
+            {
+                float x = sig[i];
+                max = Math.Max(max, x);
+                min = Math.Min(min, x);
+            }
+            bool pos = min >= 0;
+            float trueMin = min;
+            min = MathF.Abs(min);
+            float trueMax = MathF.Max(min, max);
+
+            if (pos)
+                sb.Append('+');
+            sb.Append('[');
+            int numZeros = 0;
+            for (int i = 0; i < sig.Length; i += channels)
+            {
+                float xRaw = sig[i];
+                float x = normalize && trueMax > 1e-9 ? xRaw / trueMax : xRaw;
+
+                char ch;
+                if (MathF.Abs(x) <= float.Epsilon)
+                {
+                    ch = '0';
+                    numZeros++;
+                }
+                else if ((i > 0) && ((x < 0) != (sig[i - channels] < 0)))
+                    ch = 'x';
+                else if (float.IsNaN(x))
+                    ch = 'N';
+                else if (float.IsInfinity(x))
+                    ch = 'I';
+                else if (float.IsSubnormal(x))
+                    ch = 'S';
+                else if (float.Abs(xRaw) - float.Epsilon > 1.0f)
+                    ch = 'E';
+                else
+                {
+                    float xNrm = pos ? x : ((x + 1) * 0.5f);
+                    ch = waveform[(int)(xNrm * 6.999f)];
+                }
+
+                if (collapse && (((ch != '0') && numZeros > 1) || ((ch == '0') && i == sig.Length - 1)))
+                {
+                    sb.Append('(').Append(numZeros).Append(')');
+                    numZeros = 0;
+                }
+                else if ((ch != '0') && numZeros == 1)
+                {
+                    sb.Append(ch);
+                    numZeros = 0;
+                }
+                else if (i == 0 || !collapse || (ch != sb[^1]))
+                {
+                    sb.Append(ch);
+                }
+
+                if (sb.Length >= maxLen)
+                {
+                    sb.Append('…');
+                    break;
+                }
+            }
+            sb.AppendLine("]");
+            sb.AppendLine($"  range: {trueMin:F3} // {max:F3}");
+        }
+
+        return sb.ToString();
+    }
+
     /// <summary>
     /// Multiplies the contents of span a by the scalar b, mutating a with the result.
     /// </summary>
@@ -206,6 +309,47 @@ internal static class VectorExtensions
         return x;
     }
 
+    public static Span<float> SmoothMin(Span<float> x, ReadOnlySpan<float> y, float k)
+    {
+        /*
+            // Derived from: https://iquilezles.org/articles/smin/
+            float smin( float a, float b, float k )
+            {
+                k *= 4.0;
+                float h = max( k-abs(a-b), 0.0 );
+                return min(a,b) - h*h*k*(1.0/4.0);
+            }
+        */
+        nuint i = 0;
+        nuint l = (nuint)x.Length;
+        ref var xRef = ref MemoryMarshal.GetReference(x);
+        ref var yRef = ref MemoryMarshal.GetReference(y);
+        float qk = k * 4;
+        float ik = 1 / (qk * 4);
+        if (Avx2.IsSupported && x.Length > Vector256<float>.Count * 2)
+        {
+            var vqk = Vector256.Create(qk);
+            var vik = Vector256.Create(ik);
+            for (; i < l - (nuint)Vector256<float>.Count; i += (nuint)Vector256<float>.Count)
+            {
+                var vx = Vector256.LoadUnsafe(in xRef, i);
+                var vy = Vector256.LoadUnsafe(in yRef, i);
+                var vh = Avx.Max(vqk - Vector256.Abs(vx - vy), Vector256<float>.Zero);
+                vx = Avx.Min(vx, vy) - vh * vh * vik;
+                vx.StoreUnsafe(ref xRef, i);
+            }
+        }
+        for (; i < l; i++)
+        {
+            ref var px = ref Unsafe.Add(ref xRef, i);
+            var py = Unsafe.Add(ref yRef, i);
+            float h = MathF.Max(qk - MathF.Abs(px - py), 0);
+            px = MathF.Min(px, py) - h * h * ik;
+        }
+
+        return x;
+    }
+
     /// <summary>
     /// Computes the minimum value in x.
     /// </summary>
@@ -309,25 +453,23 @@ internal static class VectorExtensions
     }
 
     /// <summary>
-    /// Computes the gain reduction required to clip a signal x by threshold.
+    /// Computes the gain reduction (fraction) required to clip a signal x by threshold.
     /// </summary>
     /// <param name="x"></param>
-    /// <param name="gain"></param>
     /// <param name="threshold"></param>
     /// <returns></returns>
-    public static Span<float> ClipGR(Span<float> x, float gain, float threshold)
+    public static Span<float> ClipGR(Span<float> x, float threshold)
     {
         nuint i = 0;
         nuint l = (nuint)x.Length;
         ref var xRef = ref MemoryMarshal.GetReference(x);
         if (Avx2.IsSupported && x.Length > Vector256<float>.Count * 2)
         {
-            var gainVec = Vector256.Create(gain);
             var threshVec = Vector256.Create(threshold);
             for (; i < l - (nuint)Vector256<float>.Count; i += (nuint)Vector256<float>.Count)
             {
                 var vx = Vector256.LoadUnsafe(in xRef, i);
-                vx = Vector256.Abs(vx) * gainVec;
+                vx = Vector256.Abs(vx);
                 var v1 = Vector256.GreaterThan(vx, threshVec);
                 vx = Avx.BlendVariable(Vector256<float>.One, threshVec / vx, v1);
                 vx.StoreUnsafe(ref xRef, i);
@@ -336,8 +478,44 @@ internal static class VectorExtensions
         for (; i < l; i++)
         {
             ref var px = ref Unsafe.Add(ref xRef, i);
-            var v = MathF.Abs(px) * gain;
+            var v = MathF.Abs(px);
             px = v > threshold ? threshold / v : 1;
+        }
+
+        return x;
+    }
+
+    private static Span<float> SoftClip(Span<float> x, float y)
+    {
+        // https://www.desmos.com/calculator/dq0mjejv3t
+
+        throw new NotImplementedException();
+    }
+
+    public static Span<float> HardClip(Span<float> x, float y)
+    {
+        nuint i = 0;
+        nuint l = (nuint)x.Length;
+        ref var xRef = ref MemoryMarshal.GetReference(x);
+        if (Avx2.IsSupported && x.Length > Vector256<float>.Count * 2)
+        {
+            var vmax = Vector256.Create(-y);
+            var vmin = Vector256.Create(y);
+            for (; i < l - (nuint)Vector256<float>.Count; i += (nuint)Vector256<float>.Count)
+            {
+                var v = Vector256.LoadUnsafe(in xRef, i);
+                v = Avx.Max(v, vmax);
+                v = Avx.Min(v, vmin);
+                v.StoreUnsafe(ref xRef, i);
+            }
+        }
+        for (; i < l; i++)
+        {
+            ref var p = ref Unsafe.Add(ref xRef, i);
+            if (p > y)
+                p = y;
+            else if (p < -y)
+                p = -y;
         }
 
         return x;

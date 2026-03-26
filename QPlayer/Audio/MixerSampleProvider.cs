@@ -55,7 +55,8 @@ public class MixerSampleProvider : ISamplePositionProvider
         sourceBuffer = BufferHelpers.Ensure(sourceBuffer, count);
         lock (mixerInputs)
         {
-            if (mixerInputs.Count == 0)
+            int inputCount = mixerInputs.Count;
+            if (inputCount == 0)
             {
                 // Why are we using this instead of Array.Clear?
                 // Because this float array is actually (usually) a byte array in disguise.
@@ -69,14 +70,14 @@ public class MixerSampleProvider : ISamplePositionProvider
             int read = mixerInputs[^1].Read(buffer, offset, count);
             if (read < count)
             {
-                InputEnded(mixerInputs.Count - 1);
+                InputEnded(inputCount - 1);
                 buffer.AsSpan(offset + read, count - read).Clear();
             }
 
             // Read each subsequant input and add them to the buffer
             // Mixer inputs are read in reverse order so that if the
             // input list is removed from, inputs won't be missed.
-            for (int i = mixerInputs.Count - 2; i >= 0; i--)
+            for (int i = inputCount - 2; i >= 0; i--)
             {
                 read = mixerInputs[i].Read(sourceBuffer, 0, count);
                 if (read < count)

@@ -20,20 +20,36 @@
                 <ColumnDefinition/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
             <local:Knob Grid.Column="0" MaxWidth="50" Value="{Binding InputGain}" Label="Input Gain" ValueFormat="{}{0:F2} dB" MinValue="-32" MaxValue="32" Power="1"
                 ToolTip="A gain adjustment applied before the limiter is applied."/>
             <local:Knob Grid.Column="1" MaxWidth="50" Value="{Binding Threshold}" Label="Threshold" ValueFormat="{}{0:F2} dB" MinValue="-50" MaxValue="0" Power="1"
                 ToolTip="The threshold volume above which audio starts to get limited."/>
-            <local:Knob Grid.Column="2" MaxWidth="50" Value="{Binding Attack}" Label="Attack" ValueFormat="{}{0:F4} s" MinValue="0.0001" MaxValue="0.3" Power="3"
+            <local:Knob Grid.Column="2" MaxWidth="50" Value="{Binding Attack}" Label="Attack" ValueFormat="{}{0:F2} ms" MinValue="0.01" MaxValue="100" Power="3"
                 ToolTip="The attack or rise time of the limiter, smaller values will be louder and punchier at the cost of more distortion at the extreme."/>
-            <local:Knob Grid.Column="3" MaxWidth="50" Value="{Binding Release}" Label="Release" ValueFormat="{}{0:F3} s" MinValue="0.01" MaxValue="3" Power="3"
+            <local:Knob Grid.Column="3" MaxWidth="50" Value="{Binding Release}" Label="Release" ValueFormat="{}{0:F1} ms" MinValue="1" MaxValue="2000" Power="3"
                 ToolTip="The release or fall time of the limiter, smaller values will be louder and punchier at the cost of more distortion at the extreme."/>
+            
+            <local:Knob Grid.Row="1" Grid.Column="0" MaxWidth="50" Value="{Binding CrestFactor}" Label="CMergeSmooth" ValueFormat="{}{0:F2}" MinValue="0" MaxValue="1" Power="2"/>
+            <local:Knob Grid.Row="1" Grid.Column="1" MaxWidth="50" Value="{Binding Hold}" Label="" ValueFormat="{}{0:F2} s" MinValue="0" MaxValue="0.9" Power="3"/>
+            <local:Knob Grid.Row="1" Grid.Column="2" MaxWidth="50" Value="{Binding Tilt}" Label="" ValueFormat="{}{0:F4}" MinValue="0" MaxValue="1" Power="3"/>
+            <local:Knob Grid.Row="1" Grid.Column="3" MaxWidth="50" Value="{Binding Dbg}" Label="CRatio" ValueFormat="{}{0:F3}" MinValue="0" MaxValue="1" Power="2"/>
+            <local:Knob Grid.Row="2" Grid.Column="0" MaxWidth="50" Value="{Binding Eq}" Label="CThresh" ValueFormat="{}{0:F2}" MinValue="0" MaxValue="20" Power="3"/>
+            <CheckBox Grid.Row="2" Grid.Column="1" Grid.ColumnSpan="2" MaxWidth="100" Content="Write WAV" IsChecked="{Binding Write}"/>
         </Grid>
         <Grid>
             <Grid.ColumnDefinitions>
                 <ColumnDefinition Width="24"/>
                 <ColumnDefinition/>
             </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
             <Grid.Resources>
                 <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                     <Setter Property="Foreground" Value="#fb21"/>
@@ -47,6 +63,9 @@
                         <RotateTransform Angle="180"/>
                     </TransformGroup>
                 </ProgressBar.RenderTransform>
+            </ProgressBar>
+
+            <ProgressBar Minimum="-100" Maximum="10" Value="{Binding DBG_Meter}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="1" Grid.Row="1" RenderTransformOrigin="0.5,0.5">
             </ProgressBar>
         </Grid>
     </StackPanel>

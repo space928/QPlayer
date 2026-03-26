@@ -140,7 +140,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
         float tEnd = fadeEnd / (float)_fadeDuration;
         int toTake = Math.Min(count, (int)(_fadeDuration - _fadeTime) * channels);
         float startGain = startVolume;
-        float sumGain = startVolume + endVolume;
+        float delta = endVolume - startVolume;
         float rlen = 1f / _fadeDuration;
 
         switch (fadeType)
@@ -148,7 +148,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
             case FadeType.Linear:
                 for (i = offset; i < offset + toTake; i += channels)
                 {
-                    float frac = startGain - (_fadeTime * rlen) * sumGain;
+                    float frac = startGain + (_fadeTime * rlen) * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     _fadeTime++;
@@ -159,7 +159,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
                 {
                     float t = _fadeTime * rlen;
                     t *= t;
-                    float frac = startGain - t * sumGain;
+                    float frac = startGain + t * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     _fadeTime++;
@@ -170,7 +170,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
                 {
                     float t = _fadeTime * rlen;
                     t = MathF.Sqrt(t);
-                    float frac = startGain - t * sumGain;
+                    float frac = startGain + t * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     _fadeTime++;
@@ -183,7 +183,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
                     float t2 = t * t;
                     float t3 = t2 * t;
                     t = -2 * t3 + 3 * t2;
-                    float frac = startGain - t * sumGain;
+                    float frac = startGain + t * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     _fadeTime++;

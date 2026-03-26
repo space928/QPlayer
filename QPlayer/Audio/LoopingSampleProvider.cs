@@ -219,7 +219,7 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         if (read < count)
         {
             // Try again, if we actually got 0 samples this time, it must be the end of the file.
-            read = ReadInternal(buffer, offset + read, count - read);
+            read = ReadInternal(buffer, offset + totalRead, count - totalRead);
             totalRead += read;
         }
 
@@ -236,11 +236,9 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
             {
                 do
                 {
-                    offset += read;
-                    count -= read;
-                    read = ReadInternal(buffer, offset, count);
+                    read = ReadInternal(buffer, offset + totalRead, count - totalRead);
                     totalRead += read;
-                } while (count > 0);
+                } while (totalRead < count);
             }
         }
 

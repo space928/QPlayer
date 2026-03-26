@@ -53,7 +53,7 @@ public class WdlResampler
     private int m_filter_coeffs_size;
     private int m_last_requested;
     private int m_filtlatency;
-    private int m_samples_in_rsinbuf;
+    private int m_frames_in_rsinbuf;
     private int m_lp_oversize;
 
     private readonly int m_sincsize;
@@ -123,7 +123,7 @@ public class WdlResampler
         m_last_requested = 0;
         m_filtlatency = 0;
         m_fracpos = fracpos;
-        m_samples_in_rsinbuf = 0;
+        m_frames_in_rsinbuf = 0;
         m_iirfilter?.Reset();
     }
 
@@ -132,7 +132,7 @@ public class WdlResampler
     /// </summary>
     public double GetCurrentLatency()
     {
-        double v = ((double)m_samples_in_rsinbuf - m_filtlatency) / m_sratein;
+        double v = ((double)m_frames_in_rsinbuf - m_filtlatency) / m_sratein;
 
         if (v < 0.0) v = 0.0;
         return v;
@@ -143,12 +143,12 @@ public class WdlResampler
     /// note that it is safe to call ResamplePrepare without calling ResampleOut (the next call of ResamplePrepare will function as normal)
     /// nb inbuffer was float **, returning a place to put the in buffer, so we return a buffer and offset
     /// </summary>
-    /// <param name="out_samples">req_samples is output samples desired if !wantInputDriven, or if wantInputDriven is input samples that we have</param>
+    /// <param name="out_frames">req_samples is output samples desired if !wantInputDriven, or if wantInputDriven is input samples that we have</param>
     /// <param name="nch"></param>
     /// <param name="inbuffer"></param>
     /// <param name="inbufferOffset"></param>
     /// <returns>returns number of samples desired (put these into *inbuffer)</returns>
-    public int ResamplePrepare(int out_samples, int nch, out float[] inbuffer, out int inbufferOffset)
+    public int ResamplePrepare(int out_frames, int nch, out float[] inbuffer, out int inbufferOffset)
     {
         if (nch > WDL_RESAMPLE_MAX_NCH || nch < 1)
         {
@@ -162,37 +162,37 @@ public class WdlResampler
             fsize = m_sincsize;
 
         int hfs = fsize / 2;
-        if (hfs > 1 && m_samples_in_rsinbuf < hfs - 1)
+        if (hfs > 1 && m_frames_in_rsinbuf < hfs - 1)
         {
-            m_filtlatency += hfs - 1 - m_samples_in_rsinbuf;
+            m_filtlatency += hfs - 1 - m_frames_in_rsinbuf;
 
-            m_samples_in_rsinbuf = hfs - 1;
+            m_frames_in_rsinbuf = hfs - 1;
 
-            if (m_samples_in_rsinbuf > 0)
-                m_rsinbuf = new float[m_samples_in_rsinbuf * nch];
+            if (m_frames_in_rsinbuf > 0)
+                m_rsinbuf = new float[m_frames_in_rsinbuf * nch];
         }
 
-        int sreq;
+        int framesReq;
         if (!m_feedmode)
-            sreq = (int)(m_ratio * out_samples) + 4 + fsize - m_samples_in_rsinbuf;
+            framesReq = (int)(m_ratio * out_frames) + 4 + fsize - m_frames_in_rsinbuf;
         else
-            sreq = out_samples;
+            framesReq = out_frames;
 
-        if (sreq < 0)
-            sreq = 0;
+        if (framesReq < 0)
+            framesReq = 0;
 
         while (true)
         {
-            int buffSize = (m_samples_in_rsinbuf + sreq) * nch;
-            int sz = buffSize / nch - m_samples_in_rsinbuf;
-            if (sz != sreq)
+            int buffSize = (m_frames_in_rsinbuf + framesReq) * nch;
+            int sz = buffSize / nch - m_frames_in_rsinbuf;
+            if (sz != framesReq)
             {
-                if (sreq > 4 && (sz == 0))
+                if (framesReq > 4 && (sz == 0))
                 {
-                    sreq /= 2;
+                    framesReq /= 2;
                     continue; // try again with half the size
                 }
-                sreq = sz;
+                framesReq = sz;
             }
             if (buffSize > m_rsinbuf.Length)
                 Array.Resize(ref m_rsinbuf, buffSize);
@@ -200,18 +200,18 @@ public class WdlResampler
         }
 
         inbuffer = m_rsinbuf;
-        inbufferOffset = m_samples_in_rsinbuf * nch;
+        inbufferOffset = m_frames_in_rsinbuf * nch;
 
-        m_last_requested = sreq;
-        return sreq;
+        m_last_requested = framesReq;
+        return framesReq;
     }
 
     /// <summary>
     /// if numsamples_in &lt; the value return by ResamplePrepare(), then it will be flushed to produce all remaining valid samples
-    /// do NOT call with nsamples_in greater than the value returned from resamplerprpare()! the extra samples will be ignored.
+    /// do NOT call with nframes_in greater than the value returned from resamplerprpare()! the extra samples will be ignored.
     /// returns number of samples successfully outputted to out
     /// </summary>
-    public int ResampleOut(float[] outBuffer, int outBufferIndex, int nsamples_in, int nsamples_out, int nch)
+    public int ResampleOut(float[] outBuffer, int outBufferIndex, int nframes_in, int nframes_out, int nch)
     {
         if (nch > WDL_RESAMPLE_MAX_NCH || nch < 1)
         {
@@ -220,46 +220,46 @@ public class WdlResampler
 
         if (m_filtercnt > 0)
         {
-            if (m_ratio > 1.0 && nsamples_in > 0) // filter input
+            if (m_ratio > 1.0 && nframes_in > 0) // filter input
             {
                 m_iirfilter ??= new WDLResampler_IIRFilter();
 
                 int n = m_filtercnt;
                 m_iirfilter.SetParms((float)((1 / m_ratio) * m_filterpos), m_filterq);
 
-                int bufIndex = m_samples_in_rsinbuf * nch;
+                int bufIndex = m_frames_in_rsinbuf * nch;
                 int a;
                 int offs = 0;
                 if (nch == 2)
                 {
                     // Fast path for stereo
                     for (a = 0; a < n; a++)
-                        m_iirfilter.Apply(m_rsinbuf, bufIndex, nsamples_in, 2, offs++);
+                        m_iirfilter.Apply(m_rsinbuf, bufIndex, nframes_in, 2, offs++);
                 }
                 else
                 {
                     //for (x = 0; x < nch; x++)
                     for (a = 0; a < n; a++)
-                        m_iirfilter.Apply(m_rsinbuf, bufIndex, nsamples_in, nch, offs++);
+                        m_iirfilter.Apply(m_rsinbuf, bufIndex, nframes_in, nch, offs++);
                 }
             }
         }
 
-        m_samples_in_rsinbuf += Math.Min(nsamples_in, m_last_requested); // prevent the user from corrupting the internal state
+        m_frames_in_rsinbuf += Math.Min(nframes_in, m_last_requested); // prevent the user from corrupting the internal state
 
 
-        int rsinbuf_availtemp = m_samples_in_rsinbuf;
+        int rsinbuf_availtemp = m_frames_in_rsinbuf;
 
-        if (nsamples_in < m_last_requested) // flush out to ensure we can deliver
+        if (nframes_in < m_last_requested) // flush out to ensure we can deliver
         {
-            int fsize = (m_last_requested - nsamples_in) * 2 + m_sincsize * 2;
+            int fsize = (m_last_requested - nframes_in) * 2 + m_sincsize * 2;
 
-            int alloc_size = (m_samples_in_rsinbuf + fsize) * nch;
+            int alloc_size = (m_frames_in_rsinbuf + fsize) * nch;
             if (alloc_size > m_rsinbuf.Length)
                 Array.Resize(ref m_rsinbuf, alloc_size);
-            int samplesIn = m_samples_in_rsinbuf * nch;
+            int samplesIn = m_frames_in_rsinbuf * nch;
             m_rsinbuf.AsSpan(samplesIn, alloc_size - samplesIn).Clear();
-            rsinbuf_availtemp = m_samples_in_rsinbuf + fsize;
+            rsinbuf_availtemp = m_frames_in_rsinbuf + fsize;
         }
 
         int ret = 0;
@@ -269,7 +269,7 @@ public class WdlResampler
 
         int outptr = outBufferIndex;  // outptr is an index into  outBuffer;
 
-        int ns = nsamples_out;
+        int ns = nframes_out;
 
         int outlatadj = 0;
 
@@ -468,7 +468,7 @@ public class WdlResampler
                 {
                     // Fast path for stereo
                     for (a = 0; a < n; a++)
-                        m_iirfilter.Apply(outBuffer, 0, nsamples_out, 2, offs++);
+                        m_iirfilter.Apply(outBuffer, 0, nframes_out, 2, offs++);
                 }
                 else
                 {
@@ -479,10 +479,10 @@ public class WdlResampler
             }
         }
 
-        if (ret > 0 && rsinbuf_availtemp > m_samples_in_rsinbuf) // we had to pad!!
+        if (ret > 0 && rsinbuf_availtemp > m_frames_in_rsinbuf) // we had to pad!!
         {
-            // check for the case where rsinbuf_availtemp>m_samples_in_rsinbuf, decrease ret down to actual valid samples
-            double adj = (srcpos - m_samples_in_rsinbuf + outlatadj) / drspos;
+            // check for the case where rsinbuf_availtemp>m_frames_in_rsinbuf, decrease ret down to actual valid samples
+            double adj = (srcpos - m_frames_in_rsinbuf + outlatadj) / drspos;
             if (adj > 0)
             {
                 ret -= (int)(adj + 0.5);
@@ -492,15 +492,15 @@ public class WdlResampler
 
         int isrcpos = (int)srcpos;
         m_fracpos = srcpos - isrcpos;
-        m_samples_in_rsinbuf -= isrcpos;
-        if (m_samples_in_rsinbuf <= 0)
+        m_frames_in_rsinbuf -= isrcpos;
+        if (m_frames_in_rsinbuf <= 0)
         {
-            m_samples_in_rsinbuf = 0;
+            m_frames_in_rsinbuf = 0;
         }
         else
         {
             // TODO: bug here
-            Array.Copy(m_rsinbuf, localin + isrcpos * nch, m_rsinbuf, localin, m_samples_in_rsinbuf * nch);
+            Array.Copy(m_rsinbuf, localin + isrcpos * nch, m_rsinbuf, localin, m_frames_in_rsinbuf * nch);
         }
 
 
@@ -641,8 +641,7 @@ public class WdlResampler
     class WDLResampler_IIRFilter
     {
         private float fpos;
-        private double a1, a2;
-        private double b0, b1, b2;
+        private EQSampleProvider.FilterCoeffs filter;
         private readonly double[] hist;
         private const int HISTORY_SAMPLES = 4;
 
@@ -669,23 +668,15 @@ public class WdlResampler
             double alpha = spos / (2 * Q);
 
             double sc = 1 / (1 + alpha);
-            b1 = (1 - cpos) * sc;
-            b2 = b0 = b1 * 0.5f;
-            a1 = -2 * cpos * sc;
-            a2 = (1 - alpha) * sc;
+            filter.b1 = (1 - cpos) * sc;
+            filter.b2 = filter.b0 = filter.b1 * 0.5f;
+            filter.a1 = -2 * cpos * sc;
+            filter.a2 = (1 - alpha) * sc;
         }
 
         public void Apply(float[] buffer, int offset, int count, int channels, int ind)
         {
-            if (Vector128.IsHardwareAccelerated && Fma.IsSupported)
-            {
-                if (channels == 2)
-                    EQSampleProvider.ApplyFilterVecStereo(hist, buffer, offset, count, ind, a1, a2, b0, b1, b2);
-                else
-                    EQSampleProvider.ApplyFilterVec(hist, buffer, offset, count, channels, ind, a1, a2, b0, b1, b2);
-            }
-            else
-                EQSampleProvider.ApplyFilterScalar(hist, buffer, offset, count, channels, ind, a1, a2, b0, b1, b2);
+            EQSampleProvider.ApplyFilter(hist, ind, channels, filter, buffer.AsSpan(offset, count * channels));
         }
     }
 }

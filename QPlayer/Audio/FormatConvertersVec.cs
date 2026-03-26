@@ -91,7 +91,10 @@ public class Pcm24BitToSampleProviderVec(IWaveProvider source) : SampleProviderC
         int j = 0;
         for (int i = offset; i < offset + read; i++)
         {
-            buffer[i] = (Unsafe.ReadUnaligned<int>(in Unsafe.Add(ref srcRef, j)) & 0xffffff) / 8388608f;
+            int x = Unsafe.ReadUnaligned<int>(in Unsafe.Add(ref srcRef, j));
+            //x = (x >> 16) | ((x & 0xffff) << 8);
+            x <<= 8;
+            buffer[i] = x * 4.65661287e-10f; // 1/2^31
             j += 3;
         }
 
@@ -118,7 +121,7 @@ public class Pcm32BitToSampleProviderVec(IWaveProvider source) : SampleProviderC
             for (; i < end - (Vector256<float>.Count - 1); i += Vector256<float>.Count)
             {
                 var vi = Vector256.LoadUnsafe(in srcRef, (nuint)j);
-                var vf = Avx.ConvertToVector256Single(vi) * (1 / 2.14748365E+09f);
+                var vf = Avx.ConvertToVector256Single(vi) * 4.65661287e-10f; // 1/2^31
                 vf.StoreUnsafe(ref dstRef, (nuint)i);
                 j += Vector256<int>.Count;
             }

@@ -213,10 +213,6 @@ public class AudioPlaybackManager : IDisposable
             asio.ChannelOffset = Math.Min(outputChannelOffset, asio.DriverOutputChannelCount - 1);
             // asio.DriverResetRequest += (o, e) => mainViewModel.OpenAudioDevice();
         }
-        /*else if (device is WasapiOut wasapi)
-        {
-            wasapi.
-        }*/
 
         this.driver = driver;
         device.PlaybackStopped += DevicePlaybackStopped;
@@ -225,6 +221,7 @@ public class AudioPlaybackManager : IDisposable
         {
             mixer.ResetThreadPriority();
             device.Init(meteringProvider);
+            SetWasapiProperties();
             device.Play();
         }
         catch (Exception ex)
@@ -236,6 +233,22 @@ public class AudioPlaybackManager : IDisposable
         /*var sig = new SignalGenerator();
         PlaySound(sig);*/
         MainViewModel.Log($"Opened sound device '{key}' with driver '{driver}'!", MainViewModel.LogLevel.Info);
+    }
+
+    private void SetWasapiProperties()
+    {
+        if (device is WasapiOut wasapi)
+        {
+            //wasapi.AudioStreamVolume
+            WasapiExtensions ext = new(wasapi);
+            ext.SetStreamProperties(new AudioClientProperties()
+            {
+                cbSize = (uint)Marshal.SizeOf<AudioClientProperties>(),
+                bIsOffload = 1,
+                eCategory = AudioStreamCategory.Media,
+                Options = AudioClientStreamOptions.Raw
+            });
+        }
     }
 
     /// <summary>

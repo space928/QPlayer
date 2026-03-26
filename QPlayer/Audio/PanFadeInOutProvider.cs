@@ -1,6 +1,7 @@
 ﻿using NAudio.Wave;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 using System.Threading;
 
@@ -9,16 +10,12 @@ namespace QPlayer.Audio;
 public class PanFadeInOutProvider : ISamplePositionProvider
 {
     private readonly ISamplePositionProvider source;
-    private readonly Lock lockObj = new();
-    private FadeState state;
     private float volume = 1;
     private float pan = 0;
-    private FadeType fadeType;
 
     public PanFadeInOutProvider(ISamplePositionProvider source, bool startSilent = false)
     {
         this.source = source;
-        state = FadeState.Ready;
         if (startSilent)
             volume = 0;
         else
@@ -70,13 +67,17 @@ public class PanFadeInOutProvider : ISamplePositionProvider
     /// </summary>
     public long FadeOutStartTime { get; set; }
 
+    public FadeType FadeType { get; set; }
+
     public int Read(float[] buffer, int offset, int count)
     {
-        int numSource = source.Read(buffer, offset, count);
-        int offsetSource = offset;
-        int num = numSource;
         int channels = source.WaveFormat.Channels;
         long fadePos = Position / channels;
+
+        int numSource = source.Read(buffer, offset, count);
+
+        int offsetSource = offset;
+        int num = numSource;
         if (fadePos < FadeInDuration)
         {
             int numFaded = FadeSamples(buffer, offset, numSource, 0, volume, fadePos, FadeInDuration);
@@ -85,7 +86,7 @@ public class PanFadeInOutProvider : ISamplePositionProvider
         }
         if (fadePos + numSource / channels >= FadeOutStartTime)
         {
-            int numFaded = FadeSamples(buffer, offset, numSource, volume, 0, fadePos - FadeOutStartTime, FadeOutDuration);
+            int numFaded = FadeSamples(buffer, offset, num, volume, 0, fadePos - FadeOutStartTime, FadeOutDuration);
             offset += numFaded;
             num -= numFaded;
         }
@@ -118,15 +119,15 @@ public class PanFadeInOutProvider : ISamplePositionProvider
         int channels = source.WaveFormat.Channels;
 
         int toTake = Math.Min(count, (int)(fadeDuration - fadeTime) * channels);
-        float sumGain = startGain + endGain;
-        float rlen = 1f / fadeDuration;
+        float delta = endGain - startGain;
+        float rlen = 1f / (fadeDuration - 1);
 
-        switch (fadeType)
+        switch (FadeType)
         {
             case FadeType.Linear:
                 for (i = offset; i < offset + toTake; i += channels)
                 {
-                    float frac = startGain - (Math.Max(0, fadeTime) * rlen) * sumGain;
+                    float frac = startGain + (Math.Max(0, fadeTime) * rlen) * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     fadeTime++;
@@ -137,7 +138,7 @@ public class PanFadeInOutProvider : ISamplePositionProvider
                 {
                     float t = Math.Max(0, fadeTime) * rlen;
                     t *= t;
-                    float frac = startGain - t * sumGain;
+                    float frac = startGain + t * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     fadeTime++;
@@ -148,7 +149,7 @@ public class PanFadeInOutProvider : ISamplePositionProvider
                 {
                     float t = Math.Max(0, fadeTime) * rlen;
                     t = MathF.Sqrt(t);
-                    float frac = startGain - t * sumGain;
+                    float frac = startGain + t * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     fadeTime++;
@@ -161,7 +162,7 @@ public class PanFadeInOutProvider : ISamplePositionProvider
                     float t2 = t * t;
                     float t3 = t2 * t;
                     t = -2 * t3 + 3 * t2;
-                    float frac = startGain - t * sumGain;
+                    float frac = startGain + t * delta;
                     for (int c = 0; c < channels; c++)
                         buffer[i + c] *= frac;
                     fadeTime++;

@@ -15,6 +15,29 @@ public class DelayBuffer
         delayBuff = new float[BitOperations.RoundUpToPowerOf2(maxDelayTime) << 1];
     }
 
+    public void Clear()
+    {
+        delayBuff.AsSpan().Clear();
+        headPos = 0;
+    }
+
+    /// <summary>
+    /// Copies the desired number of samples from the delay line to the given buffer. May not entirely fill the given 
+    /// buffer if the delay line doesn't contain that many samples.
+    /// </summary>
+    /// <param name="dst"></param>
+    /// <param name="delaySamples"></param>
+    /// <returns></returns>
+    public Span<float> GetDelayed(Span<float> dst, int delaySamples)
+    {
+        var first = GetDelayed(dst.Length, delaySamples, out var second);
+        first.CopyTo(dst);
+        if (second.Length > 0)
+            second.CopyTo(dst[first.Length..]);
+
+        return dst[..(first.Length + second.Length)];
+    }
+
     public Span<float> GetDelayed(int count, int delaySamples, out Span<float> secondHalf)
     {
         // Rewind the head based on how much we're delaying and how many samples we need to retrieve
