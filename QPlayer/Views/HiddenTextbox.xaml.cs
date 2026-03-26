@@ -37,7 +37,11 @@ public partial class HiddenTextbox : UserControl
             return;
         editing = true;
         TextFieldInst.Visibility = Visibility.Visible;
-        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, TextFieldInst.TextBox.Focus);
+        Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () =>
+        {
+            TextFieldInst.TextBox.Focus();
+            TextFieldInst.TextBox.SelectAll();
+        });
     }
 
     private void Label_MouseDoubleClick(object sender, MouseButtonEventArgs e)

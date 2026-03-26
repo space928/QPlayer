@@ -194,6 +194,7 @@ public partial class SoundCueViewModel : CueViewModel
         fadeInOutProvider.FadeInDuration = Math.Max((int)(FadeIn * fadeInOutProvider.WaveFormat.SampleRate), 5);
         fadeInOutProvider.FadeOutDuration = Math.Max((int)(FadeOut * fadeInOutProvider.WaveFormat.SampleRate), 5);
         fadeInOutProvider.FadeOutStartTime = (long)((Duration - TimeSpan.FromSeconds(FadeOut)).TotalSeconds * fadeInOutProvider.WaveFormat.SampleRate);
+        fadeInOutProvider.FadeType = fadeType;
         volumeFadeProvider.Volume = MathF.Pow(10, Volume / 20f);
         mainViewModel.AudioPlaybackManager.PlaySound(fadeInOutProvider, (x) => Stop());
     }

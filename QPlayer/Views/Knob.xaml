@@ -12,7 +12,7 @@
             <Grid Height="{Binding ActualWidth, RelativeSource={RelativeSource Self}}">
                 <Ellipse x:Name="KnobEllipse" 
                          MouseDown="KnobEllipse_MouseDown" MouseUp="KnobEllipse_MouseUp" MouseMove="KnobEllipse_MouseMove" MouseLeave="KnobEllipse_MouseLeave"
-                         StrokeThickness="1">
+                         StrokeThickness="1" ToolTip="{Binding ValueText}">
                     <Ellipse.Style>
                         <Style TargetType="{x:Type Ellipse}">
                             <Setter Property="Fill" Value="{DynamicResource AREghZyBrush.Primary.2.Background.Static}"/>
