@@ -78,15 +78,13 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
     } = true;
     public float InputGain { get; set; } = 1;
 
-    public float CrestFactor { get; set; }
     public float Hold
     {
         get => hold / (float)(fs * channelCount);
         set => hold = Math.Max(5, (int)(value * (fs * channelCount)));
     }
-    public float Tilt { get; set; }
-    public float Dbg { get; set; }
-    public float Eq { get; set; }
+    public float CompRatio { get; set; }
+    public float CompGain { get; set; }
 
     public long Position
     {
@@ -187,11 +185,7 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         // Smooth compression
         delay.GetDelayed(compSpan, _attack);
         EQSampleProvider.ApplyFilter(emphHist, 0, channelCount, emphasisFilt, compSpan);
-        for (int i = 0; i < compSpan.Length; i++)
-            compSpan[i] = MathF.Abs(compSpan[i]) * Eq;
-        VectorExtensions.ClipGR(compSpan, threshold);
-        for (int i = 0; i < compSpan.Length; i++)
-            compSpan[i] = compSpan[i] * (1 - Dbg) + Dbg; // reduce ratio
+        VectorExtensions.SoftGR(compSpan, threshold, CompRatio, 0.5f, CompGain);
         EQSampleProvider.ApplyFilter(compEqHist, 0, channelCount, compLPF, compSpan);
 
         // Peak EQ to emphasise perceptually loudest frequencies
@@ -202,7 +196,7 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
 
         // Min hold
         int holdTime = Math.Max(_attack, hold);
-        float decayRate = MathF.PI / (float)holdTime * 0.15f; // 0.15f seems good
+        float decayRate = MathF.PI / (float)holdTime * 0.2f; // 0.15f seems good
         float minVal = minHoldVal;
         int minTime = minHoldTime;
         for (int i = 0; i < read; i++)
@@ -258,10 +252,11 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         EQSampleProvider.ApplyFilter(smoothEqHist, 0, channelCount, smootherLPF, envSpan);
 
         // Combine with compressor
-        if (CrestFactor <= 1e-8f)
+        float combineSmoothing = 0;// 0.1f;
+        if (combineSmoothing <= 1e-8f)
             VectorExtensions.Min(envSpan, compSpan);
         else
-            VectorExtensions.SmoothMin(envSpan, compSpan, CrestFactor);
+            VectorExtensions.SmoothMin(envSpan, compSpan, combineSmoothing);
 
         // TODO: > 2 channel support?
         // TODO: Partial linking can sound better
@@ -288,8 +283,7 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         meterLastG = meterMin;
 
         var delayed = delay.GetDelayed(buffer.AsSpan(offset, read), attack);
-        VectorExtensions.Multiply(delayed, envSpan);
-        VectorExtensions.HardClip(delayed, threshold);
+        VectorExtensions.MulClip(delayed, envSpan, threshold);
 
 #if DEBUG && true
         if (WriteWave)

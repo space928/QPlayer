@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿using CommunityToolkit.Mvvm.Input;
+using NAudio.Wave;
 using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.SourceGenerator;
@@ -17,18 +18,18 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
     [Reactive] private bool enabled;
     [Reactive, Knob, Range()] private float inputGain = 0f;
     [Reactive, Knob, Range()] private float threshold = -1.5f;
-    [Reactive, Knob, Range()] private float attack = 0.5f;
+    // [Reactive, Knob, Range()] private float attack = 0.5f;
     [Reactive, Knob, Range()] private float release = 30f;
-    [Reactive, ModelSkip] private float crestFactor = 0;
-    [Reactive, ModelSkip] private float hold = 0;
-    [Reactive, ModelSkip] private float tilt = 0;
-    [Reactive, ModelSkip] private float dbg = 1;
-    [Reactive, ModelSkip] private float eq = 1;
+    [Reactive, ModelSkip] private float compRatio = 0.2f;
+    [Reactive, ModelSkip] private float compGain = 1;
     [Reactive, ModelSkip] private bool write = false;
 
     [Reactive("GR"), ModelSkip] private float gr;
     [Reactive("DBG_Meter"), ModelSkip] private float dbg_meter;
 
+    [Reactive] private readonly RelayCommand autoGainCommand;
+
+    private readonly MainViewModel mainVM;
     private AudioLimiterSampleProvider? limiter;
     private ISamplePositionProvider? source;
     private readonly Dispatcher dispatcher;
@@ -57,9 +58,11 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
     }
     public AudioLimiterSampleProvider? LimiterSampleProvider => limiter;
 
-    public AudioLimiterViewModel()
+    public AudioLimiterViewModel(MainViewModel mainVM)
     {
         dispatcher = Dispatcher.CurrentDispatcher;
+        this.mainVM = mainVM;
+        autoGainCommand = new(() => AutoGain());
 
         PropertyChanged += (o, e) =>
         {
@@ -95,10 +98,36 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
         return;
     }
 
-    static float LinToDb(float x)
+    /// <summary>
+    /// Sets the <see cref="InputGain"/> to a level that ensures none of the sound cues in the 
+    /// cue stack will exceed 0dBfs when playing individually.
+    /// </summary>
+    /// <param name="headroomDb">The amount of headroom to leave in dB from full-scale, positive 
+    /// values attenuate, negative values will push cues into the limiter.</param>
+    public void AutoGain(float headroomDb = 0)
     {
-        return 20 * MathF.Log10(x);
+        float peak = float.MinValue;
+        foreach (var cue in mainVM.Cues)
+        {
+            if (cue is not SoundCueViewModel scue)
+                continue;
+
+            if (scue.WaveForm.PeakFile is not PeakFile peakFile)
+                continue;
+
+            peak = MathF.Max(peak, peakFile.peak * DbToLin(scue.Volume));
+            // Note that this doesn't take EQ gain into consideration, but this can probably just be caught by the limiter anyway so it's no big deal.
+        }
+
+        // Convert to gain in dB needed to attenuate the maximum peak level, and adjus the gain to give the requested headroom.
+        float gain = -LinToDb(peak);
+        gain -= headroomDb;
+
+        InputGain = gain;
     }
+
+    private static float LinToDb(float x) => 20 * MathF.Log10(x);
+    private static float DbToLin(float x) => MathF.Pow(10, x / 20);
 
     private void Configure()
     {
@@ -107,16 +136,14 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
 
         limiter.Enabled = enabled;
         limiter.InputGain = MathF.Pow(10, inputGain / 20f);
-        limiter.AttackTime = release * 0.001f / 20;
+        limiter.AttackTime = release * 0.001f / 30;
         limiter.ReleaseTime = release * 0.001f;
         limiter.Threshold = MathF.Pow(10, threshold / 20f);
         limiter.SamplesPerNotification = limiter.WaveFormat.SampleRate / 30;
 
-        limiter.CrestFactor = crestFactor;
         limiter.Hold = release * 0.001f / 6;
-        limiter.Tilt = tilt;
-        limiter.Dbg = dbg;
-        limiter.Eq = eq;
+        limiter.CompRatio = 0.75f;
+        limiter.CompGain = compGain;
         limiter.WriteWave = write;
     }
 

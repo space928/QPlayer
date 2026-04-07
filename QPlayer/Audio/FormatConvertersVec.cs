@@ -17,28 +17,30 @@ public class Pcm8BitToSampleProviderVec(IWaveProvider source) : SampleProviderCo
         EnsureSourceBuffer(count);
         int read = source.Read(sourceBuffer, 0, count);
 
-        var srcSpan = MemoryMarshal.Cast<byte, sbyte>(sourceBuffer);
-        int j = 0;
-        int i = offset;
-        int end = offset + read;
-
-        if (read > 16 && Avx2.IsSupported)
+        fixed (byte* srcBytes = &sourceBuffer[0])
         {
-            ref var srcRef = ref MemoryMarshal.GetReference(srcSpan);
-            ref var dstRef = ref MemoryMarshal.GetReference(buffer);
-            for (; i < end - (Vector256<float>.Count - 1); i += Vector256<float>.Count)
+            var srcPtr = (sbyte*)srcBytes;
+            nuint i = (nuint)offset;
+            nuint end = i + (nuint)read;
+
+            if (read > 16 && Avx2.IsSupported)
             {
-                var vi = Avx2.ConvertToVector256Int32((byte*)Unsafe.AsPointer(ref Unsafe.Add(ref srcRef, j)));
-                var vf = Avx.ConvertToVector256Single(vi);
-                vf.StoreUnsafe(ref dstRef, (nuint)i);
-                j += Vector256<float>.Count;
+                ref var dstRef = ref MemoryMarshal.GetReference(buffer);
+                for (; i < end - (nuint)(Vector256<float>.Count - 1); i += (nuint)Vector256<float>.Count)
+                {
+                    var vi = Avx2.ConvertToVector256Int32(srcPtr);
+                    var vf = Avx.ConvertToVector256Single(vi) * (1 / 128f);
+                    vf -= Vector256<float>.One;
+                    vf.StoreUnsafe(ref dstRef, i);
+                    srcPtr += Vector256<float>.Count;
+                }
             }
-        }
 
-        for (; i < offset + read; i++)
-        {
-            buffer[i] = srcSpan[j] / 128f;
-            j++;
+            for (; i < end; i++)
+            {
+                buffer[i] = *srcPtr * (1 / 128f) - 1;
+                srcPtr++;
+            }
         }
 
         return read;
@@ -52,28 +54,29 @@ public class Pcm16BitToSampleProviderVec(IWaveProvider source) : SampleProviderC
         EnsureSourceBuffer(count << 1);
         int read = source.Read(sourceBuffer, 0, count << 1) >> 1;
 
-        var srcSpan = MemoryMarshal.Cast<byte, short>(sourceBuffer);
-        int j = 0;
-        int i = offset;
-        int end = offset + read;
-
-        if (read > 16 && Avx2.IsSupported)
+        fixed (byte* srcBytes = &sourceBuffer[0])
         {
-            ref var srcRef = ref MemoryMarshal.GetReference(srcSpan);
-            ref var dstRef = ref MemoryMarshal.GetReference(buffer);
-            for (; i < end - (Vector256<float>.Count - 1); i += Vector256<float>.Count)
+            var srcPtr = (short*)srcBytes;
+            nuint i = (nuint)offset;
+            nuint end = i + (nuint)read;
+
+            if (read > 16 && Avx2.IsSupported)
             {
-                var vi = Avx2.ConvertToVector256Int32((short*)Unsafe.AsPointer(ref Unsafe.Add(ref srcRef, j)));
-                var vf = Avx.ConvertToVector256Single(vi) * (1 / 32768f);
-                vf.StoreUnsafe(ref dstRef, (nuint)i);
-                j += Vector256<float>.Count;
+                ref var dstRef = ref MemoryMarshal.GetReference(buffer);
+                for (; i < end - (nuint)(Vector256<float>.Count - 1); i += (nuint)Vector256<float>.Count)
+                {
+                    var vi = Avx2.ConvertToVector256Int32(srcPtr);
+                    var vf = Avx.ConvertToVector256Single(vi) * (1 / 32768f);
+                    vf.StoreUnsafe(ref dstRef, i);
+                    srcPtr += Vector256<float>.Count;
+                }
             }
-        }
 
-        for (; i < end; i++)
-        {
-            buffer[i] = srcSpan[j] / 32768f;
-            j++;
+            for (; i < end; i++)
+            {
+                buffer[i] = *srcPtr * (1 / 32768f);
+                srcPtr++;
+            }
         }
 
         return read;
@@ -82,20 +85,24 @@ public class Pcm16BitToSampleProviderVec(IWaveProvider source) : SampleProviderC
 
 public class Pcm24BitToSampleProviderVec(IWaveProvider source) : SampleProviderConverterBase(source)
 {
-    public override int Read(float[] buffer, int offset, int count)
+    public override unsafe int Read(float[] buffer, int offset, int count)
     {
         EnsureSourceBuffer(count * 3);
         int read = source.Read(sourceBuffer, 0, count * 3) / 3;
 
-        ref var srcRef = ref MemoryMarshal.GetReference(sourceBuffer);
-        int j = 0;
-        for (int i = offset; i < offset + read; i++)
+        fixed (byte* srcBytes = &sourceBuffer[0])
         {
-            int x = Unsafe.ReadUnaligned<int>(in Unsafe.Add(ref srcRef, j));
-            //x = (x >> 16) | ((x & 0xffff) << 8);
-            x <<= 8;
-            buffer[i] = x * 4.65661287e-10f; // 1/2^31
-            j += 3;
+            var srcPtr = srcBytes;
+            nint i = offset;
+            nint end = offset + read;
+
+            for (; i < end; i++)
+            {
+                int x = *srcPtr;
+                x <<= 8;
+                buffer[i] = x * 4.65661287e-10f; // 1/2^31
+                srcPtr += 3;
+            }
         }
 
         return read;
@@ -104,33 +111,34 @@ public class Pcm24BitToSampleProviderVec(IWaveProvider source) : SampleProviderC
 
 public class Pcm32BitToSampleProviderVec(IWaveProvider source) : SampleProviderConverterBase(source)
 {
-    public override int Read(float[] buffer, int offset, int count)
+    public override unsafe int Read(float[] buffer, int offset, int count)
     {
         EnsureSourceBuffer(count * 4);
         int read = source.Read(sourceBuffer, 0, count * 4) / 4;
 
-        var srcSpan = MemoryMarshal.Cast<byte, int>(sourceBuffer);
-        int j = 0;
-        int i = offset;
-        int end = offset + read;
-
-        if (read > 16 && Avx2.IsSupported)
+        fixed (byte* srcBytes = &sourceBuffer[0])
         {
-            ref var srcRef = ref MemoryMarshal.GetReference(srcSpan);
-            ref var dstRef = ref MemoryMarshal.GetReference(buffer);
-            for (; i < end - (Vector256<float>.Count - 1); i += Vector256<float>.Count)
+            var srcPtr = (int*)srcBytes;
+            nuint i = (nuint)offset;
+            nuint end = i + (nuint)read;
+
+            if (read > 16 && Avx2.IsSupported)
             {
-                var vi = Vector256.LoadUnsafe(in srcRef, (nuint)j);
-                var vf = Avx.ConvertToVector256Single(vi) * 4.65661287e-10f; // 1/2^31
-                vf.StoreUnsafe(ref dstRef, (nuint)i);
-                j += Vector256<int>.Count;
+                ref var dstRef = ref MemoryMarshal.GetReference(buffer);
+                for (; i < end - (nuint)(Vector256<float>.Count - 1); i += (nuint)Vector256<float>.Count)
+                {
+                    var vi = Avx.LoadVector256(srcPtr);
+                    var vf = Avx.ConvertToVector256Single(vi) * 4.65661287e-10f; // 1/2^31
+                    vf.StoreUnsafe(ref dstRef, (nuint)i);
+                    srcPtr += Vector256<float>.Count;
+                }
             }
-        }
 
-        for (; i < offset + read; i++)
-        {
-            buffer[i] = srcSpan[j] / 2.14748365E+09f;
-            j++;
+            for (; i < end; i++)
+            {
+                buffer[i] = *srcPtr * 4.65661287e-10f; // 1/2^31
+                srcPtr++;
+            }
         }
 
         return read;

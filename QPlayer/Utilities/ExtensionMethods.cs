@@ -161,14 +161,6 @@ public static partial class ExtensionMethods
         }
     }
 
-    public static void HandleCollectionValueChange<T>(ObservableCollection<T> collection, T obj)
-    {
-        // This should trigger a Replace collection changed notification
-        // TODO: This is a hopelessly stupid way of doing this
-        int ind = collection.IndexOf(obj);
-        collection[ind] = collection[ind];
-    }
-
     /*private static Func<PointCollection, IList<System.Windows.Point>>? pointCollectionBackingCollectionGetter = null;
     private static Func<PointCollection, IList<System.Windows.Point>> PointCollectionBackingCollectionGetter
     {

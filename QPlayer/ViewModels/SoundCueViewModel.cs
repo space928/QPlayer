@@ -58,7 +58,7 @@ public partial class SoundCueViewModel : CueViewModel
     private bool shouldSendRemoteStatus;
     private string? thisNodeName;
     private QAudioFileReader? audioFile;
-    private LoopingSampleProvider<QAudioFileReader>? loopingAudioStream;
+    private LoopingSampleProvider? loopingAudioStream;
     private PanFadeInOutProvider? fadeInOutProvider;
     private FadingSampleProvider? volumeFadeProvider;
     //private readonly Timer audioProgressUpdater;
@@ -331,7 +331,7 @@ public partial class SoundCueViewModel : CueViewModel
 
         try
         {
-            audioFile = new(path);
+            audioFile = new(path, AudioBufferingDispatcher.Default);
             // Hook up the different sample providers.
             loopingAudioStream = new(audioFile, LoopMode == LoopMode.LoopedInfinite, LoopMode != LoopMode.OneShot ? LoopCount : 1);
             // The EQ sample provider isn't compatible with the resampler (if the resampler comes after it in the chain)
@@ -354,7 +354,7 @@ public partial class SoundCueViewModel : CueViewModel
                 {
                     var pk = (PeakFile?)x;
                     waveFormRenderer.PeakFile = pk;
-                    loopingAudioStream.PeakFile = pk;
+                    audioFile.PeakFile = pk;
                     // A peak file contains the measured length of the audio file, which for compressed files will differ from the estimated length.
                     OnPropertyChanged(nameof(Duration));
                 }, x.Result);

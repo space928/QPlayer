@@ -66,4 +66,12 @@ public partial class LogWindow : Window
         if (autoScrollToBottom && LogListBox != null && LogListBox.Items.Count > 0)
             LogListBox.ScrollIntoView(LogListBox.Items[^1]);
     }
+
+    private void AudioBufferDbgCheckbox_Checked(object sender, RoutedEventArgs e)
+    {
+        bool active = (AudioBufferDbgCheckbox.IsChecked ?? false);
+        ViewModel.AudioBufferDispatcherDebug.ShouldUpdate = active;
+        AudioBufferDbgControl.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
+        LogListBox.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+    }
 }

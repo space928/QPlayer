@@ -119,6 +119,8 @@ public partial class MainViewModel : ObservableObject
             BindingOperations.EnableCollectionSynchronization(logList, logListLock);
         }
     }
+    public AudioBufferDispatcherViewModel AudioBufferDispatcherDebug { get; private set; }
+
     public string WindowTitle => $"QPlayer – {ProjectSettings.Title}";
     public string VersionString
     {
@@ -164,7 +166,6 @@ public partial class MainViewModel : ObservableObject
     public MSCManager MSCManager => mscManager;
     public PersistantDataManager PersistantDataManager => persistantDataManager;
 
-    private volatile bool fastUpdateInProgress;
     private ShowFile showFile;
     private List<string>? captureResolvedPaths;
     private Dictionary<string, string>? packedPaths;
@@ -377,6 +378,8 @@ public partial class MainViewModel : ObservableObject
                 OpenSpecificProjectExecute(args[1]);
             }
         }
+
+        AudioBufferDispatcherDebug = new();
     }
 
     public bool OnExit()

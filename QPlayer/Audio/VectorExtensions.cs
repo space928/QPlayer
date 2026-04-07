@@ -194,6 +194,15 @@ internal static class VectorExtensions
             a[i] *= b[i];
     }
 
+    /// <summary>
+    /// Pans a span of interleaved stereo samples left or right.
+    /// <code>
+    /// Lout = Lin * 1 - max(0,pan)
+    /// Rout = Rin * 1 + min(0,pan)
+    /// </code>
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <param name="pan"></param>
     public static void ApplyPan(Span<float> buffer, float pan)
     {
         int len = buffer.Length;
@@ -224,6 +233,12 @@ internal static class VectorExtensions
         }
     }
 
+    /// <summary>
+    /// Computes the element-wise maximum of a signal and a constant.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <returns></returns>
     public static Span<float> Max(Span<float> x, float y)
     {
         nuint i = 0;
@@ -249,6 +264,12 @@ internal static class VectorExtensions
         return x;
     }
 
+    /// <summary>
+    /// Computes the element-wise maximum of two signals.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <returns></returns>
     public static Span<float> Max(Span<float> x, Span<float> y)
     {
         nuint i = 0;
@@ -309,6 +330,14 @@ internal static class VectorExtensions
         return x;
     }
 
+    /// <summary>
+    /// Computes the smooth-minimum of two signals using quadratic interpolation.
+    /// See: https://iquilezles.org/articles/smin/
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <param name="k">The blending factor [0-1]. Must be > 0.</param>
+    /// <returns></returns>
     public static Span<float> SmoothMin(Span<float> x, ReadOnlySpan<float> y, float k)
     {
         /*
@@ -324,17 +353,16 @@ internal static class VectorExtensions
         nuint l = (nuint)x.Length;
         ref var xRef = ref MemoryMarshal.GetReference(x);
         ref var yRef = ref MemoryMarshal.GetReference(y);
-        float qk = k * 4;
-        float ik = 1 / (qk * 4);
+        float ik = .25f / k;
         if (Avx2.IsSupported && x.Length > Vector256<float>.Count * 2)
         {
-            var vqk = Vector256.Create(qk);
+            var vk = Vector256.Create(k);
             var vik = Vector256.Create(ik);
             for (; i < l - (nuint)Vector256<float>.Count; i += (nuint)Vector256<float>.Count)
             {
                 var vx = Vector256.LoadUnsafe(in xRef, i);
                 var vy = Vector256.LoadUnsafe(in yRef, i);
-                var vh = Avx.Max(vqk - Vector256.Abs(vx - vy), Vector256<float>.Zero);
+                var vh = Avx.Max(vk - Vector256.Abs(vx - vy), Vector256<float>.Zero);
                 vx = Avx.Min(vx, vy) - vh * vh * vik;
                 vx.StoreUnsafe(ref xRef, i);
             }
@@ -343,7 +371,7 @@ internal static class VectorExtensions
         {
             ref var px = ref Unsafe.Add(ref xRef, i);
             var py = Unsafe.Add(ref yRef, i);
-            float h = MathF.Max(qk - MathF.Abs(px - py), 0);
+            float h = MathF.Max(k - MathF.Abs(px - py), 0);
             px = MathF.Min(px, py) - h * h * ik;
         }
 
@@ -470,8 +498,7 @@ internal static class VectorExtensions
             {
                 var vx = Vector256.LoadUnsafe(in xRef, i);
                 vx = Vector256.Abs(vx);
-                var v1 = Vector256.GreaterThan(vx, threshVec);
-                vx = Avx.BlendVariable(Vector256<float>.One, threshVec / vx, v1);
+                vx = Avx.Min(Vector256<float>.One, threshVec / vx);
                 vx.StoreUnsafe(ref xRef, i);
             }
         }
@@ -479,7 +506,64 @@ internal static class VectorExtensions
         {
             ref var px = ref Unsafe.Add(ref xRef, i);
             var v = MathF.Abs(px);
-            px = v > threshold ? threshold / v : 1;
+            px = MathF.Min(threshold / v, 1);
+        }
+
+        return x;
+    }
+
+    /// <summary>
+    /// Computes the gain reduction (fraction) required to clip a signal x by threshold.
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="threshold">The threshold level at which to start reducing gain.</param>
+    /// <param name="ratio">Value between 0-1, where 1 is brickwall limiting.</param>
+    /// <param name="knee">Value between 0-1, where 0 is a hard knee. Value must be > 0.</param>
+    /// <param name="gain">Gain multiplier applied to the input signal before clipping.</param>
+    /// <returns></returns>
+    public static Span<float> SoftGR(Span<float> x, float threshold, float ratio, float knee, float gain)
+    {
+        /*
+         h(a, b, k) = max(k - abs(a - b), 0)
+         smin(a, b, k) = min(a, b) - h(a, b, k)**2 * 1/4k
+         gr = smin(1, threshold/x, knee) * ratio + 1 - ratio
+         */
+        // Precompute a few constants we'll need
+        float rm = 1 - ratio;
+        float ik = 0.25f / knee;
+
+        nuint i = 0;
+        nuint l = (nuint)x.Length;
+        ref var xRef = ref MemoryMarshal.GetReference(x);
+        if (Avx2.IsSupported && Fma.IsSupported && x.Length > Vector256<float>.Count * 2)
+        {
+            var vt = Vector256.Create(threshold);
+            var vk = Vector256.Create(knee);
+            var vr = Vector256.Create(ratio);
+            var vrm = Vector256.Create(rm);
+            var vik = Vector256.Create(ik);
+            var vg = Vector256.Create(gain);
+            var vo = Vector256<float>.One;
+            var vz = Vector256<float>.Zero;
+            for (; i < l - (nuint)Vector256<float>.Count; i += (nuint)Vector256<float>.Count)
+            {
+                var vx = Vector256.LoadUnsafe(in xRef, i);
+                vx = Vector256.Abs(vx) * vg;
+                var a = vt / vx;
+                var h = Avx.Max(vk - Vector256.Abs(vo - a), vz);
+                var s = Avx.Min(vo, a) - h * h * vik;
+                vx = Fma.MultiplyAdd(s, vr, vrm);
+                vx.StoreUnsafe(ref xRef, i);
+            }
+        }
+        for (; i < l; i++)
+        {
+            ref var px = ref Unsafe.Add(ref xRef, i);
+            var x1 = MathF.Abs(px) * gain;
+            var a = threshold / x1;
+            var h = MathF.Max(knee - MathF.Abs(1 - a), 0);
+            var s = MathF.Min(1, a) - h * h * ik;
+            px = s * ratio + rm;
         }
 
         return x;
@@ -490,6 +574,48 @@ internal static class VectorExtensions
         // https://www.desmos.com/calculator/dq0mjejv3t
 
         throw new NotImplementedException();
+    }
+
+    /// <summary>
+    /// Multiplies two signals x and y element-wise and then clamps the resulting signal between [-c, c].
+    /// </summary>
+    /// <param name="x"></param>
+    /// <param name="y"></param>
+    /// <param name="c"></param>
+    /// <returns></returns>
+    public static Span<float> MulClip(Span<float> x, ReadOnlySpan<float> y, float c)
+    {
+        nuint i = 0;
+        nuint l = (nuint)x.Length;
+        ArgumentOutOfRangeException.ThrowIfNotEqual(l, (nuint)y.Length);
+        ref var xRef = ref MemoryMarshal.GetReference(x);
+        ref var yRef = ref MemoryMarshal.GetReference(y);
+        if (Avx2.IsSupported && x.Length > Vector256<float>.Count * 2)
+        {
+            var vmax = Vector256.Create(-c);
+            var vmin = Vector256.Create(c);
+            for (; i < l - (nuint)Vector256<float>.Count; i += (nuint)Vector256<float>.Count)
+            {
+                var v = Vector256.LoadUnsafe(in xRef, i);
+                v *= Vector256.LoadUnsafe(in yRef, i);
+                v = Avx.Max(v, vmax);
+                v = Avx.Min(v, vmin);
+                v.StoreUnsafe(ref xRef, i);
+            }
+        }
+        for (; i < l; i++)
+        {
+            ref var p = ref Unsafe.Add(ref xRef, i);
+            float p1 = p * Unsafe.Add(ref yRef, i);
+            if (p1 > c)
+                p = c;
+            else if (p1 < -c)
+                p = -c;
+            else
+                p = p1;
+        }
+
+        return x;
     }
 
     public static Span<float> HardClip(Span<float> x, float y)

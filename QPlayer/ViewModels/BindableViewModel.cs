@@ -155,8 +155,6 @@ public abstract class BindableViewModelIL<Model> : BindableViewModel<Model>
 
     private static BindingsCollection BuildBindings(Type vmType, Type modelType)
     {
-        // TODO: This could be made more efficient and introduce compile-time checks if we
-        // did this with source-generation instead. 
         StringDict<BindingDelegate> vmToModelBindings = [];
         List<BindingDelegate> modelToVmBindings = [];
         BindingsCollection bindings = new(vmType, modelType, vmToModelBindings, modelToVmBindings);
@@ -205,15 +203,15 @@ public abstract class BindableViewModelIL<Model> : BindableViewModel<Model>
 
             case nameof(Path): scue.path = MainViewModel?.ResolvePath(MainViewModel.ResolvePath(Path), false) ?? Path; break;
 
-            if (scue.eq == null)
+            if (scue.compGain == null)
             {
-                scue.eq = new();
+                scue.compGain = new();
                 // Use the default values from the vm
-                vm.EQ.ToModel(scue.eq);
+                vm.EQ.ToModel(scue.compGain);
             }
             else
             {
-                vm.EQ.FromModel(scue.eq);
+                vm.EQ.FromModel(scue.compGain);
             }
 
             model.band1 = new(LowFreq, LowGain, .7f, EQBandShape.LowShelf);
