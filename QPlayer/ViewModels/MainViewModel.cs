@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using JetBrains.Profiler.Api;
 using Microsoft.Win32;
 using QPlayer.Audio;
 using QPlayer.Models;
@@ -20,14 +19,13 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Timer = System.Timers.Timer;
 using System.Numerics;
+using System.ComponentModel;
 
 namespace QPlayer.ViewModels;
 
@@ -294,6 +292,7 @@ public partial class MainViewModel : ObservableObject
             };
             return observable;
         }));
+        SetDefaultColumnWidths();
         projectFilePath = null;
         activeCues = [];
         cues = [];
@@ -341,11 +340,7 @@ public partial class MainViewModel : ObservableObject
             }
         };
         ProjectSettings = new(this);
-        ProjectSettings.PropertyChanged += (o, e) =>
-        {
-            if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
-                OnPropertyChanged(nameof(WindowTitle));
-        };
+        ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
 
         audioPlaybackManager.OnMixerMeter += MainAudioMeter.ProcessSample;
 
@@ -446,6 +441,8 @@ public partial class MainViewModel : ObservableObject
                 _ => StatusInfoBrush
             };
         }
+
+        // GC.Collect(0, GCCollectionMode.Forced, false, false);
     }
 
     private void AutoSave(object? sender, EventArgs e)
@@ -643,7 +640,7 @@ public partial class MainViewModel : ObservableObject
     {
         //dbg_cueStartTime = DateTime.Now;
         //Log($"[Playback Debugging] Go command started! {dbg_cueStartTime:HH:mm:ss.ffff}");
-        MeasureProfiler.StartCollectingData("Go Execute");
+        // MeasureProfiler.StartCollectingData("Go Execute");
 
         // Get the cue to run
         var cue = SelectedCue;
@@ -1084,12 +1081,13 @@ public partial class MainViewModel : ObservableObject
         StopExecute();
 
         showFile = show;
-        ProjectSettings = new ProjectSettingsViewModel(this);
-        ProjectSettings.PropertyChanged += (o, e) =>
+        if (ProjectSettings != null)
         {
-            if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
-                OnPropertyChanged(nameof(WindowTitle));
-        };
+            ProjectSettings.Dispose();
+            ProjectSettings.PropertyChanged -= ProjectSettings_PropertyChanged;
+        }
+        ProjectSettings = new ProjectSettingsViewModel(this);
+        ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
         ProjectSettings.Bind(show.showSettings);
         ProjectSettings.SyncFromModel();
 
@@ -1589,6 +1587,34 @@ public partial class MainViewModel : ObservableObject
             throw new FileNotFoundException(path);
 
         return assembly.GetManifestResourceStream(resourceName) ?? throw new FileNotFoundException(path);
+    }
+
+    private void ProjectSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
+            OnPropertyChanged(nameof(WindowTitle));
+    }
+
+    private void SetDefaultColumnWidths()
+    {
+        int[] widths = [
+            50,
+            60,
+            38,
+            68,
+            250,
+            54,
+            48,
+            58,
+            58,
+            72
+        ];
+
+        if (columnWidths.Count < widths.Length)
+            return;
+
+        for (int i = 0; i < widths.Length; i++)
+            columnWidths[i].Value = widths[i];
     }
 }
 

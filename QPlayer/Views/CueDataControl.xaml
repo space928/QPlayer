@@ -73,8 +73,8 @@
             Converter={StaticResource TimeSpanStringConverter}, 
             ConverterParameter=False}" 
                Grid.Column="8" VerticalContentAlignment="Center"/>
-        <Label Content="{Binding LoopMode}" 
-               ContentTemplate="{StaticResource LoopModeTemplate}" 
-               VerticalContentAlignment="Center" Grid.Column="9"/>
+        <local:HiddenComboBox SelectedIndex="{Binding LoopMode, Mode=TwoWay, Converter={StaticResource LoopModeConverter}}" ItemsSource="{Binding LoopModeVals}" 
+                      InactiveContent="{Binding LoopMode}" InactiveContentTemplate="{StaticResource LoopModeTemplate}" 
+                      VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="9" IsTabStop="False"/>
     </Grid>
 </UserControl>

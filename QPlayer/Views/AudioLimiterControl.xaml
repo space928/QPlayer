@@ -50,19 +50,19 @@
                 <RowDefinition/>
             </Grid.RowDefinitions>
             <Grid.Resources>
-                <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+                <Style TargetType="local:MeterBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                     <Setter Property="Foreground" Value="#fb21"/>
                             <!--<Setter Property="Foreground" Value="#f12f"/>-->
                 </Style>
             </Grid.Resources>
             <TextBlock Text="GR" VerticalAlignment="Center" Margin="4,0,0,0"/>
-            <ProgressBar Minimum="0" Maximum="30" Value="{Binding GR}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="1" RenderTransformOrigin="0.5,0.5">
-                <ProgressBar.RenderTransform>
+            <local:MeterBar Minimum="0" Maximum="30" Value="{Binding GR}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="1" RenderTransformOrigin="0.5,0.5">
+                <local:MeterBar.RenderTransform>
                     <TransformGroup>
                         <RotateTransform Angle="180"/>
                     </TransformGroup>
-                </ProgressBar.RenderTransform>
-            </ProgressBar>
+                </local:MeterBar.RenderTransform>
+            </local:MeterBar>
 
             <!--<ProgressBar Minimum="-100" Maximum="10" Value="{Binding DBG_Meter}" Height="10" VerticalAlignment="Center" HorizontalAlignment="Stretch" Grid.Column="1" Grid.Row="1" RenderTransformOrigin="0.5,0.5">
             </ProgressBar>-->

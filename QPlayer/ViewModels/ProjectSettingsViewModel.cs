@@ -19,7 +19,7 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(ShowSettings))]
 [View(typeof(ProjectSettingsEditor))]
-public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
+public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>, IDisposable
 {
     #region Bindable Properties
     [Reactive] private string title = "Untitled";
@@ -225,6 +225,11 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>
         limiter.InputSampleProvider = mainViewModel.AudioPlaybackManager.MixerSampleProvider;
         if (limiter.LimiterSampleProvider is ISamplePositionProvider provider)
             mainViewModel.AudioPlaybackManager.RegisterMasterChain(provider);
+    }
+
+    public void Dispose()
+    {
+        limiter?.Dispose();
     }
 
     public override void SyncToModel()

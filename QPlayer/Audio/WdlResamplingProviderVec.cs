@@ -10,8 +10,8 @@ using System.Threading.Channels;
 using System.Threading.Tasks;
 
 // Until the resampling bug can be fixed, we'll use the old resampler
-// using Resampler = QPlayer.Audio.WdlResampler;
-using Resampler = NAudio.Dsp.WdlResampler;
+using Resampler = QPlayer.Audio.WdlResampler;
+// using Resampler = NAudio.Dsp.WdlResampler;
 
 namespace QPlayer.Audio;
 
@@ -32,20 +32,20 @@ public class WdlResamplingProviderVec : ISamplePositionProvider
         waveFormat = WaveFormat.CreateIeeeFloatWaveFormat(newSampleRate, channels);
         this.channels = waveFormat.Channels;
         
-        //resampler = new Resampler(source.WaveFormat.SampleRate, newSampleRate, interp: true, 2, sinc: false);
+        resampler = new Resampler(source.WaveFormat.SampleRate, newSampleRate, interp: true, 2, sinc: false);
         
-        resampler = new();
+        /*resampler = new();
         resampler.SetMode(true, 2, false);
         //resampler.SetMode(false, 0, true);
         resampler.SetRates(source.WaveFormat.SampleRate, newSampleRate);
-        resampler.SetFeedMode(false);
+        resampler.SetFeedMode(false);*/
     }
 
     public int Read(float[] buffer, int offset, int count)
     {
         int dstFrames = count / channels;
         int srcFrames = resampler.ResamplePrepare(dstFrames, channels, out float[] srcBuff, out int srcOffset);
-        int nsamples_in = source.Read(srcBuff, srcOffset, srcFrames * channels) / channels;
-        return resampler.ResampleOut(buffer, offset, nsamples_in, dstFrames, channels) * channels;
+        int nframes_in = source.Read(srcBuff, srcOffset, srcFrames * channels) / channels;
+        return resampler.ResampleOut(buffer, offset, nframes_in, dstFrames, channels) * channels;
     }
 }

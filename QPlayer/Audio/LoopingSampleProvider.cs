@@ -1,5 +1,5 @@
 ﻿using NAudio.Wave;
-using QPlayer.Models;
+using QPlayer.ViewModels;
 using System;
 
 namespace QPlayer.Audio;
@@ -11,17 +11,7 @@ namespace QPlayer.Audio;
 public class LoopingSampleProvider : ISamplePositionProvider
 {
     private readonly QAudioFileReader input;
-    private readonly double bytesPerSample;
     private readonly double mcSampleRate;
-    private readonly int alignmentSize;
-    private readonly int channelCount;
-    /// <summary>
-    /// Annoyingly, the media foundation reader class uses an estimate when 
-    /// seeking (even when seeking to a specific byte offset), so we need 
-    /// to do some trickery when seeking in this reader to get a slightly 
-    /// more accurate seek.
-    /// </summary>
-    private readonly bool mediaFoundationPositionHack;
 
     private bool infinite;
     private int loops;
@@ -29,6 +19,7 @@ public class LoopingSampleProvider : ISamplePositionProvider
     private long playedLoops = 0;
     private long startTime;
     private long endTime;
+    private bool justSeeked = false;
 
     public LoopingSampleProvider(QAudioFileReader input, bool infinite = true, int loops = 1)
     {
@@ -41,11 +32,8 @@ public class LoopingSampleProvider : ISamplePositionProvider
         // This should correspond with the multiple of samples we must read from input.Read(), it should be
         // related to wf.BlockAlign, but for all intents and purposes we just use wf.Channels. This might not 
         // be correct for compressed formats.
-        channelCount = alignmentSize = wf.Channels;//~(wf.BlockAlign - 1) << 2;
         // This is used for seeking within the file, for compressed files (especially if VBR) this isn't very accurate
         // if the peak file is loaded, the timing information within will be used instead.
-        bytesPerSample = wf.AverageBytesPerSecond / (double)wf.SampleRate / wf.Channels;
-        mediaFoundationPositionHack = input is QAudioFileReader qAudioFileReader && qAudioFileReader.IsMediaFoundationReader;
     }
 
     public WaveFormat WaveFormat => input.WaveFormat;
@@ -61,7 +49,11 @@ public class LoopingSampleProvider : ISamplePositionProvider
     public long SrcPosition
     {
         get => input.SamplePosition;
-        set => input.SamplePosition = value;
+        set
+        {
+            input.SamplePosition = value;
+            justSeeked = true;
+        }
     }
 
     /// <summary>
@@ -156,7 +148,15 @@ public class LoopingSampleProvider : ISamplePositionProvider
     /// <summary>
     /// The time in samples to start playback from.
     /// </summary>
-    public long StartSample { get => startTime; set => startTime = input.Align(value); }
+    public long StartSample
+    {
+        get => startTime;
+        set
+        {
+            startTime = input.Align(value);
+            input.StartSamplePosition = startTime;
+        }
+    }
     /// <summary>
     /// The time in samples to stop playback at (or the 'out' loop point of the loop).
     /// </summary>
@@ -167,7 +167,7 @@ public class LoopingSampleProvider : ISamplePositionProvider
     public TimeSpan StartTime
     {
         get => TimeSpan.FromSeconds(startTime / mcSampleRate);
-        set => startTime = input.Align((long)(value.TotalSeconds * mcSampleRate));
+        set => StartSample = (long)(value.TotalSeconds * mcSampleRate);
     }
     /// <summary>
     /// The time at which to stop playback (for a single loop).
@@ -219,9 +219,13 @@ public class LoopingSampleProvider : ISamplePositionProvider
                 // stream hasn't ended). Hence we pad with some silence if needed and return early.
                 if (totalRead < count)
                     buffer.AsSpan(offset + totalRead, count - totalRead).Clear();
+                // Unless we just seeked (which is bound to result in a gap) warn of any out of sample errors.
+                if (!justSeeked)
+                    MainViewModel.Log($"Audio file couldn't be read fast enough for real-time playback! Ensure the disk/cpu isn't overloaded.\n{input.FileName}", MainViewModel.LogLevel.Warning);
                 return count;
             }
 
+            justSeeked = false;
             if (totalRead >= count)
                 break;
 
@@ -240,8 +244,6 @@ public class LoopingSampleProvider : ISamplePositionProvider
         } while (true);
 
         return totalRead;
-
-        // TODO: QID 10 of the test file doesn't loop correctly, defo an issue with seeking (samplePosition is set right, but we end up to early in the buffer i think)
 
         bool HasReachedLoopEnd(int lastRead) => lastRead == 0 || (endTime != 0 && SrcPosition >= endTime);
     }

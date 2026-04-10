@@ -16,7 +16,7 @@ public partial class ReactiveObjectGenerator : IIncrementalGenerator
 #if DEBUG
         if (!Debugger.IsAttached)
         {
-            //Debugger.Launch();
+            // Debugger.Launch();
         }
 #endif 
 

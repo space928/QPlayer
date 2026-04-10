@@ -25,7 +25,7 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
     private int hold = 1;
     private float threshold;
 
-#if DEBUG
+#if DEBUG && false
     private readonly WaveFileWriter waveWriter;
     private bool wasWriting;
 #endif
@@ -130,7 +130,7 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         }, WaveFormat.SampleRate);
         UpdateSmootherCoeffs(attack);
 
-#if DEBUG
+#if DEBUG && false
         waveWriter = new($"qplayer-test-lim-{GetHashCode()}.wav", new(48000, 2));
 #endif
     }
@@ -285,7 +285,7 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         var delayed = delay.GetDelayed(buffer.AsSpan(offset, read), attack);
         VectorExtensions.MulClip(delayed, envSpan, threshold);
 
-#if DEBUG && true
+#if DEBUG && false
         if (WriteWave)
         {
             // Spit out GR into right channel

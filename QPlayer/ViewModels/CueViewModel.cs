@@ -92,7 +92,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive, Readonly, ModelSkip] private RelayCommand pauseCommand;
     [Reactive, Readonly, ModelSkip] private RelayCommand stopCommand;
     [Reactive, Readonly, ModelSkip] private RelayCommand selectCommand;
-    [Reactive, Readonly, ModelSkip] private static ObservableCollection<LoopMode>? loopModeVals;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? loopModeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<StopMode>? stopModeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
@@ -145,7 +145,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         stopCommand = new(Stop);
         selectCommand = new(SelectExecute);
 
-        LoopModeVals ??= new ObservableCollection<LoopMode>(Enum.GetValues<LoopMode>());
+        LoopModeVals ??= new ObservableCollection<string>(Enum.GetValues<LoopMode>().Select(x=>EnumToString(x)));
         StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
         FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
         TriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<TriggerMode>().Select(x=>EnumToString(x)));

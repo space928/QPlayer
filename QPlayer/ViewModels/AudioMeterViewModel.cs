@@ -8,11 +8,11 @@ namespace QPlayer.ViewModels;
 
 public partial class AudioMeterViewModel : ObservableObject
 {
-    [Reactive] private float peakL;
-    [Reactive] private float peakR;
-    [Reactive] private float rMSL;
-    [Reactive] private float rMSR;
-    [Reactive] private bool clip;
+    [Reactive, CachedNotification] private float peakL;
+    [Reactive, CachedNotification] private float peakR;
+    [Reactive, CachedNotification] private float rMSL;
+    [Reactive, CachedNotification] private float rMSR;
+    [Reactive, CachedNotification] private bool clip;
 
     private readonly Dispatcher dispatcher;
     private readonly DispatcherTimer timer;

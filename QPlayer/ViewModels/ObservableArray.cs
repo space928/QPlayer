@@ -23,7 +23,9 @@ public class ObservableArray<T> : ICollection<T>, INotifyCollectionChanged, INot
     }
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
+#pragma warning disable CS0067
     public event PropertyChangedEventHandler? PropertyChanged;
+#pragma warning restore CS0067
 
     public ObservableArray(T[] array)
     {

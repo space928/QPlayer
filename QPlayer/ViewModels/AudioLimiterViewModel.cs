@@ -13,19 +13,19 @@ namespace QPlayer.ViewModels;
 
 [Model(typeof(AudioLimiterSettings))]
 [View(typeof(AudioLimiterControl))]
-public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSettings>
+public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSettings>, IDisposable
 {
     [Reactive] private bool enabled;
     [Reactive, Knob, Range()] private float inputGain = 0f;
-    [Reactive, Knob, Range()] private float threshold = -1.5f;
+    [Reactive, Knob, Range()] private float threshold = -0.2f;
     // [Reactive, Knob, Range()] private float attack = 0.5f;
-    [Reactive, Knob, Range()] private float release = 30f;
+    [Reactive, Knob, Range()] private float release = 50f;
     [Reactive, ModelSkip] private float compRatio = 0.2f;
     [Reactive, ModelSkip] private float compGain = 1;
     [Reactive, ModelSkip] private bool write = false;
 
-    [Reactive("GR"), ModelSkip] private float gr;
-    [Reactive("DBG_Meter"), ModelSkip] private float dbg_meter;
+    [Reactive("GR"), ModelSkip, CachedNotification] private float gr;
+    [Reactive("DBG_Meter"), ModelSkip, CachedNotification] private float dbg_meter;
 
     [Reactive] private readonly RelayCommand autoGainCommand;
 
@@ -74,6 +74,12 @@ public partial class AudioLimiterViewModel : BindableViewModel<AudioLimiterSetti
         timer.Tick += Timer_Tick;
         timer.Interval = TimeSpan.FromMilliseconds(20);
         timer.Start();
+    }
+
+    public void Dispose()
+    {
+        timer.Stop();
+        timer.Tick -= Timer_Tick;
     }
 
     private void Timer_Tick(object? sender, EventArgs e)

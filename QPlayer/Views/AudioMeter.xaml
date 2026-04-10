@@ -18,7 +18,7 @@
             <RowDefinition/>
         </Grid.RowDefinitions>
         <Grid.Resources>
-            <Style TargetType="ProgressBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
+            <Style TargetType="local:MeterBar" BasedOn="{StaticResource {x:Type ProgressBar}}">
                 <Style.Triggers>
                     <DataTrigger Binding="{Binding Path=Clip}" Value="true">
                         <Setter Property="Foreground" Value="#fb21"/>
@@ -29,9 +29,9 @@
         </Grid.Resources>
         <TextBlock Text="L" VerticalAlignment="Center" Margin="4,0,0,0"/>
         <TextBlock Text="R" VerticalAlignment="Center" Margin="4,0,0,0" Grid.Row="1"/>
-        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding PeakL}" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
-        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding PeakR}" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
-        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding RMSL}" Opacity="0.5" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
-        <ProgressBar Minimum="-50" Maximum="0" Value="{Binding RMSR}" Opacity="0.5" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
+        <local:MeterBar Minimum="-50" Maximum="0" Value="{Binding PeakL}" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
+        <local:MeterBar Minimum="-50" Maximum="0" Value="{Binding PeakR}" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
+        <local:MeterBar Minimum="-50" Maximum="0" Value="{Binding RMSL}" Opacity="0.5" Height="10" VerticalAlignment="Bottom" HorizontalAlignment="Stretch" Grid.Column="1"/>
+        <local:MeterBar Minimum="-50" Maximum="0" Value="{Binding RMSR}" Opacity="0.5" Height="10" VerticalAlignment="Top" HorizontalAlignment="Stretch" Grid.Row="1" Grid.Column="1"/>
     </Grid>
 </UserControl>

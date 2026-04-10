@@ -64,7 +64,7 @@
         </DockPanel>
         <DockPanel ToolTip="Whether this cue should automatically loop after being triggered.">
             <Label Content="Loop"/>
-            <ComboBox SelectedItem="{Binding LoopMode}" ItemsSource="{Binding LoopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+            <ComboBox SelectedIndex="{Binding LoopMode, Converter={StaticResource LoopModeConverter}}" ItemsSource="{Binding LoopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
         </DockPanel>
         <DockPanel ToolTip="If this cue is set to loop, specifies how many times the cue should loop before ending.">
             <Label Content="Loop Count"/>

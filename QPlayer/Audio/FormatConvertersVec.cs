@@ -98,7 +98,7 @@ public class Pcm24BitToSampleProviderVec(IWaveProvider source) : SampleProviderC
 
             for (; i < end; i++)
             {
-                int x = *srcPtr;
+                int x = *(int*)srcPtr;
                 x <<= 8;
                 buffer[i] = x * 4.65661287e-10f; // 1/2^31
                 srcPtr += 3;

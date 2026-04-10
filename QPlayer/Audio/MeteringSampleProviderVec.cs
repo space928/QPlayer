@@ -112,8 +112,8 @@ public class MeteringSampleProviderVec : ISampleProvider
         var _framesPerfNotif = SamplesPerNotification;
         var permImm = Vector256.Create(4, 5, 6, 7, 0, 0, 0, 0);
         nuint i = 0;
-        nuint maxElem = (nuint)Math.Max(0, count - Vector256<float>.Count);
-        for (; i < maxElem; i += (nuint)Vector256<float>.Count)
+        nuint maxElem = (nuint)Math.Max(0, count - (Vector256<float>.Count * 2 - 1));
+        for (; i < maxElem; i += (nuint)Vector256<float>.Count * 2)
         {
             /*
              * We need to compute the sum and max of each left and right sample.

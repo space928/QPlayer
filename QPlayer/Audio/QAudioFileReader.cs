@@ -60,6 +60,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
     private volatile int bufStartCount = -1;
     private volatile bool reachedEnd;
     private int bufferPos;
+    private int startBufSamplesConsumed = 0;
     private bool isMediaFoundationReader;
     private PeakFile? peakFile;
     private long samplePosition;
@@ -219,12 +220,17 @@ public class QAudioFileReader : WaveStream, ISampleProvider
                 buf = _readBufA ? audioBufferA : audioBufferB;
                 //Debug.WriteLine($"Read swapped buffers read = {(readBufferA ? 'A': 'B')} avail = {nextLen}");
 
+                // Skip any samples arleady read by the start buffer
+                int newBufOffset = startBufSamplesConsumed;
+                startBufSamplesConsumed = 0;
+
                 // Get as many samples as we can
-                bufSpan = buf.AsSpan(0, Math.Min(remain, nextLen));
+                bufSpan = buf.AsSpan()[newBufOffset..nextLen]; 
+                bufSpan = bufSpan[..Math.Min(remain, bufSpan.Length)];
                 // Copy them to the remainder of the destination buffer
                 bufSpan.CopyTo(buffer.AsSpan(offset + written));
 
-                nextBuffPos = bufSpan.Length;
+                nextBuffPos = newBufOffset + bufSpan.Length;
                 retSamples = written + bufSpan.Length;
                 goto Done;
             }
@@ -249,6 +255,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
                     // Make sure to consume the samples from the main AB buffers even though we didn't actually
                     // take them (they might not even exist yet), audioStartBuffer should always be smaller than
                     // the audio buffers so I don't think we should need to worry about bufferPos overflowing.
+                    startBufSamplesConsumed += written;
                     nextBuffPos += written; 
                     retSamples = written;
                     goto Done;
@@ -440,6 +447,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         // Invalidate both buffers
         bufACount = -1;
         bufBCount = -1;
+        startBufSamplesConsumed = 0;
         // Debug.WriteLine($"    seek: invalidated buffers");
     }
 
@@ -453,7 +461,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             frac *= Length;
             bytePos = (long)frac;
         }
-        else if (peakFile.HasValue)
+        else if (peakFile.HasValue && false)
             bytePos = ComputeBytePosFromPeakFile(samplePos);
         else
             bytePos = (long)(samplePos * bytesPerSample);

@@ -9,7 +9,7 @@
 	<IsRoslynComponent>true</IsRoslynComponent>
 	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
 	<Title>QPlayer.SourceGenerator</Title>
-	<Version>0.1.36-pre</Version>
+	<Version>0.1.39-pre</Version>
 	<Authors>Thomas Mathieson</Authors>
 	<Copyright>Copyright © Thomas Mathieson 2026</Copyright>
 	<PackageProjectUrl>https://github.com/space928/QPlayer</PackageProjectUrl>

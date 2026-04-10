@@ -21,7 +21,7 @@ namespace QPlayer.Models;
 public struct PeakFile
 {
     public const uint FILE_MAGIC = ((byte)'Q') + ((byte)'P' << 8) + ((byte)'e' << 16) + ((byte)'k' << 24);
-    public const int FILE_VERSION = 4;
+    public const int FILE_VERSION = 5;
     public const string FILE_EXTENSION = ".qpek";
 
     /// <summary>

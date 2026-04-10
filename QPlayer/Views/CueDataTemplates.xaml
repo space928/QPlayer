@@ -14,6 +14,7 @@
     <util:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
     <util:GreaterThanConverter x:Key="GreaterThanConverter"/>
     <util:TriggerModeConverter x:Key="TriggerModeConverter"/>
+    <util:LoopModeConverter x:Key="LoopModeConverter"/>
     <DataTemplate x:Key="GroupIconTemplate" DataType="bool">
         <Rectangle/>
     </DataTemplate>
