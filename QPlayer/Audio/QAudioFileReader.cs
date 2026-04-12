@@ -2,10 +2,12 @@
 using NAudio.Wave.SampleProviders;
 using QPlayer.Models;
 using QPlayer.Utilities;
+using QPlayer.ViewModels;
 using System;
 using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Threading;
 
 namespace QPlayer.Audio;
@@ -473,8 +475,29 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         int read;
         do
         {
-            read = sampleProvider.Read(buffer, offset + totalRead, count - totalRead);
-            totalRead += read;
+            try
+            {
+                read = sampleProvider.Read(buffer, offset + totalRead, count - totalRead);
+                totalRead += read;
+            }
+            catch (COMException)
+            {
+                if (isMediaFoundationReader) 
+                {
+                    // Media foundation borked, try flushing the stream and trying again.
+                    var mf = (MediaFoundationReader)readerStream!;
+                    ref var imfReader = ref MediaFoundationInternals.GetIMFReader(mf);
+                    // imfReader.Flush(-3);
+                    if (imfReader != null)
+                    {
+                        Marshal.ReleaseComObject(imfReader);
+                        imfReader = null;
+                    }
+                    read = 0;
+                }
+                else
+                    throw;
+            }
         } while (read > 0 && totalRead < count);
 
         reachedEnd = read == 0;
@@ -493,8 +516,12 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             // The media foundation reader takes a few samples to 'warm up' before we get good
             // samples out of it. Hence, we rewind a bit further and deposit these bad samples
             // in a junk buffer.
-            readerStream!.Position = ComputeBytePos(Math.Max(0, newPos - s_junkBuffer.Length));
-            ReadExactly(s_junkBuffer, 0, s_junkBuffer.Length, out _);
+            long toRead = Math.Min(newPos, s_junkBuffer.LongLength);
+            long bytePos = ComputeBytePos(newPos - toRead);
+            if (readerStream!.Position != bytePos)
+                readerStream!.Position = bytePos;
+            if (toRead > 0)
+                ReadExactly(s_junkBuffer, 0, (int)toRead, out _);
         }
         else
         {
@@ -659,5 +686,11 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         // var endPos = lookup[lookupPos];
 
         return startPos + (long)(bytesPerSample * interp);// (endPos - startPos)
+    }
+
+    private static class MediaFoundationInternals
+    {
+        [UnsafeAccessor(UnsafeAccessorKind.Field, Name = "pReader")]
+        public static extern ref NAudio.MediaFoundation.IMFSourceReader GetIMFReader(MediaFoundationReader inst);
     }
 }

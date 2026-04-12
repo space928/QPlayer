@@ -88,18 +88,19 @@ public class AudioBufferingDispatcher
                         {
                             if (queuedWork.ContainsKey(audioFile))
                                 continue;
-                            if (audioFile.NeedsStartFilling)
+
+                            if (audioFile.NeedsFilling)
                             {
-                                lowPriorityWork.Enqueue(new() { reader = audioFile, fillStart = true });
                                 queuedWork.TryAdd(audioFile, 0);
-                            }
-                            else if (audioFile.NeedsFilling)
-                            {
                                 if (audioFile.SamplesRemaining < 10000)
                                     highPriorityWork.Enqueue(new() { reader = audioFile });
                                 else
                                     lowPriorityWork.Enqueue(new() { reader = audioFile });
+                            }
+                            else if (audioFile.NeedsStartFilling)
+                            {
                                 queuedWork.TryAdd(audioFile, 0);
+                                lowPriorityWork.Enqueue(new() { reader = audioFile, fillStart = true });
                             }
                         }
                     }
@@ -154,7 +155,7 @@ public class AudioBufferingDispatcher
             }
             catch (Exception ex)
             {
-                MainViewModel.Log(ex.Message, MainViewModel.LogLevel.Error);
+                MainViewModel.Log($"Error while reading audio: {ex.Message}", MainViewModel.LogLevel.Error);
             }
         }
     }
