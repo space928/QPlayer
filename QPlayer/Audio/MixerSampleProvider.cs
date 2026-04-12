@@ -45,6 +45,8 @@ public class MixerSampleProvider : ISamplePositionProvider
         firstRead = true;
     }
 
+    //private TimeSpan lastGCTime;
+
     public int Read(float[] buffer, int offset, int count)
     {
         if (firstRead)
@@ -52,6 +54,13 @@ public class MixerSampleProvider : ISamplePositionProvider
             firstRead = false;
             SetThreadPriority();
         }
+
+        /*var gcTime = GC.GetTotalPauseDuration();
+        if (gcTime - lastGCTime > TimeSpan.FromMilliseconds(20))
+        {
+            MainViewModel.Log($"Spent {gcTime - lastGCTime} in GC since last audio buffer!", MainViewModel.LogLevel.Warning);
+            lastGCTime = gcTime;
+        }*/
 
         sourceBuffer = BufferHelpers.Ensure(sourceBuffer, count);
         lock (mixerInputs)

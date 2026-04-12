@@ -302,6 +302,7 @@ public partial class SoundCueViewModel : CueViewModel
         if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
             return;
         mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
+        audioFile?.ReleaseBuffers();
     }
 
     private void UnloadAudioFile()

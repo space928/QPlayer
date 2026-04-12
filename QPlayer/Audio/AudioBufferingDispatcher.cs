@@ -88,17 +88,17 @@ public class AudioBufferingDispatcher
                         {
                             if (queuedWork.ContainsKey(audioFile))
                                 continue;
-                            if (audioFile.NeedsFilling)
+                            if (audioFile.NeedsStartFilling)
+                            {
+                                lowPriorityWork.Enqueue(new() { reader = audioFile, fillStart = true });
+                                queuedWork.TryAdd(audioFile, 0);
+                            }
+                            else if (audioFile.NeedsFilling)
                             {
                                 if (audioFile.SamplesRemaining < 10000)
                                     highPriorityWork.Enqueue(new() { reader = audioFile });
                                 else
                                     lowPriorityWork.Enqueue(new() { reader = audioFile });
-                                queuedWork.TryAdd(audioFile, 0);
-                            }
-                            else if (audioFile.NeedsStartFilling)
-                            {
-                                lowPriorityWork.Enqueue(new() { reader = audioFile, fillStart = true });
                                 queuedWork.TryAdd(audioFile, 0);
                             }
                         }
@@ -166,13 +166,18 @@ public class AudioBufferingDispatcher
         //if (audio.SamplePosition == 0)
         //    Debugger.Break();
 
-        if (work.fillStart)
-            audio.FillStartBuffer();
-        else
-            audio.FillBuffer();
-
-        queuedWork.TryRemove(audio, out _);
-        activeWorkDebug[ind] = "waiting";
+        try
+        {
+            if (work.fillStart)
+                audio.FillStartBuffer();
+            else
+                audio.FillBuffer();
+        }
+        finally
+        {
+            queuedWork.TryRemove(audio, out _);
+            activeWorkDebug[ind] = "waiting";
+        }
     }
 
     private struct WorkItem

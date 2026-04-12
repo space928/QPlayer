@@ -1,8 +1,9 @@
 ﻿using NAudio.Wave;
 using NAudio.Wave.SampleProviders;
 using QPlayer.Models;
+using QPlayer.Utilities;
 using System;
-using System.Diagnostics;
+using System.Buffers;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Threading;
@@ -50,26 +51,27 @@ public class QAudioFileReader : WaveStream, ISampleProvider
     private readonly double samplesPerByte;
     private readonly double bytesPerSample;
     private readonly int alignmentSize;
-    private readonly float[] audioBufferA;
-    private readonly float[] audioBufferB;
     private readonly float[] audioBufferStart; // A separate buffer to store just the start of the file, this is neeed for seemless looping.
+
+    private readonly static float[] s_junkBuffer;
+    private readonly static ArrayPool<float> s_audioBufferPool;
 
     private volatile bool readBufferA;
     private volatile int bufACount = -1;
     private volatile int bufBCount = -1;
     private volatile int bufStartCount = -1;
     private volatile bool reachedEnd;
+    private volatile bool isUsingAudioBuffer = false;
+    private float[]? audioBufferA;
+    private float[]? audioBufferB;
     private int bufferPos;
     private int startBufSamplesConsumed = 0;
     private bool isMediaFoundationReader;
     private PeakFile? peakFile;
     private long samplePosition;
     private long startSamplePosition;
-    private long nextReaderBytePosition = -1;
+    private long nextReaderSamplePosition = -1;
 
-    // TODO: For large projects, this could get heavy on the memory usage, this is currently >1MB of memory per-cue.
-    // For memory-constrained platforms (like rpi) this could cause problems. We could introduce some smarts (dynamically
-    // renting arrays for the A/B buffers as needed, and uses a smaller fixed start buffer).
     private const int BUFFER_LENGTH = 48000 * 2; // 1 second at 48KHz stereo
 
     public string FileName { get; init; }
@@ -143,11 +145,17 @@ public class QAudioFileReader : WaveStream, ISampleProvider
     /// <summary>
     /// Gets whether this reader has an empty buffer waiting to be filled with <see cref="FillBuffer"/>.
     /// </summary>
-    internal bool NeedsFilling => (readBufferA ? bufBCount : bufACount) < 0;
+    internal bool NeedsFilling => audioBufferA != null && (readBufferA ? bufBCount : bufACount) < 0;
     /// <summary>
     /// Gets whether this reader has an empty start buffer waiting to be filled <see cref="FillStartBuffer"/>.
     /// </summary>
     internal bool NeedsStartFilling => bufStartCount < 0;
+
+    static QAudioFileReader()
+    {
+        s_junkBuffer = new float[512];
+        s_audioBufferPool = new FixedArrayPool<float>(BUFFER_LENGTH, 4, 32);
+    }
 
     public QAudioFileReader(string fileName, AudioBufferingDispatcher? dispatcher = null)
     {
@@ -167,14 +175,35 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         samplesPerByte = ((double)waveFormat.SampleRate * waveFormat.Channels) / waveFormat.AverageBytesPerSecond;
         bytesPerSample = 1 / samplesPerByte;
 
-        audioBufferA = new float[BUFFER_LENGTH];
-        audioBufferB = new float[BUFFER_LENGTH];
+        audioBufferA = null;
+        audioBufferB = null;
         audioBufferStart = new float[BUFFER_LENGTH / 4];
 
         readerSem = new(1);
 
         this.dispatcher = dispatcher;// ?? AudioBufferingDispatcher.Default;
         this.dispatcher?.RegisterAudioFile(this);
+    }
+
+    /// <summary>
+    /// Releases the internal buffers used by this reader so they can be reused elsewhere. Call this 
+    /// method when the audio file is not being played.
+    /// </summary>
+    public void ReleaseBuffers()
+    {
+        var bufA = Interlocked.Exchange(ref audioBufferA, null);
+        var bufB = Interlocked.Exchange(ref audioBufferB, null);
+
+        // It's possible for the array pool to reallocate this buffer to another reader while it's
+        // still being read from which could result in bad samples being played. Just wait until
+        // the current Read call finishes (we expect it to have finished before this method is
+        // called, but just in case, we wait).
+        SpinWait spinner = default;
+        while (isUsingAudioBuffer)
+            spinner.SpinOnce();
+
+        s_audioBufferPool.Return(bufA!);
+        s_audioBufferPool.Return(bufB!);
     }
 
     /// <inheritdoc cref="Read(float[], int, int, bool)"/>
@@ -185,7 +214,9 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         int retSamples;
         int nextBuffPos = bufferPos;
         bool _readBufA = readBufferA;
+        isUsingAudioBuffer = true;
         var buf = _readBufA ? audioBufferA : audioBufferB;
+        buf ??= AcquireBuffers(_readBufA);
         var len = _readBufA ? bufACount : bufBCount;
         var bufSpan = nextBuffPos < len ? buf.AsSpan()[nextBuffPos..len] : Span<float>.Empty;
 
@@ -217,7 +248,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
                     bufBCount = -1;
                 _readBufA ^= true; // As soon as this is swapped, our original bufSpan could be invalid, and nextBufCount is invalid.
                 readBufferA = _readBufA;
-                buf = _readBufA ? audioBufferA : audioBufferB;
+                buf = _readBufA ? audioBufferA! : audioBufferB!;
                 //Debug.WriteLine($"Read swapped buffers read = {(readBufferA ? 'A': 'B')} avail = {nextLen}");
 
                 // Skip any samples arleady read by the start buffer
@@ -225,7 +256,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
                 startBufSamplesConsumed = 0;
 
                 // Get as many samples as we can
-                bufSpan = buf.AsSpan()[newBufOffset..nextLen]; 
+                bufSpan = buf.AsSpan()[newBufOffset..nextLen];
                 bufSpan = bufSpan[..Math.Min(remain, bufSpan.Length)];
                 // Copy them to the remainder of the destination buffer
                 bufSpan.CopyTo(buffer.AsSpan(offset + written));
@@ -256,7 +287,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
                     // take them (they might not even exist yet), audioStartBuffer should always be smaller than
                     // the audio buffers so I don't think we should need to worry about bufferPos overflowing.
                     startBufSamplesConsumed += written;
-                    nextBuffPos += written; 
+                    nextBuffPos += written;
                     retSamples = written;
                     goto Done;
                 }
@@ -280,8 +311,21 @@ public class QAudioFileReader : WaveStream, ISampleProvider
 
     Done:
         bufferPos = nextBuffPos;
-        Interlocked.Add(ref samplePosition, retSamples);
+        Interlocked.Add(ref samplePosition, Math.Max(0, retSamples));
+        isUsingAudioBuffer = false;
         return retSamples;
+
+        float[] AcquireBuffers(bool _readBufA)
+        {
+            var buf1 = s_audioBufferPool.Rent(BUFFER_LENGTH);
+            var buf2 = s_audioBufferPool.Rent(BUFFER_LENGTH);
+            audioBufferA = buf1;
+            audioBufferB = buf2;
+            if (_readBufA)
+                return buf1;
+            else
+                return buf2;
+        }
     }
 
     /// <summary>
@@ -303,21 +347,26 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             return Read(buffer, offset, count);
 
         // In offline reading, keep reading until the buffer is full or we read 0 samples, indicating the end of a stream.
-        int totalRead = Read(buffer, offset, count);
-        if (totalRead == 0)
-            return 0;
-        else if (totalRead < 0)
-            totalRead = 0;
-
-        while (totalRead < count)
+        int totalRead = 0;
+        try
         {
-            FillBuffer();
-            int read = Read(buffer, offset + totalRead, count - totalRead);
-            totalRead += Math.Max(0, read); // Clamp any -1 (which indicates samples are not ready yet)
-            if (read == 0) // End of stream
-                break;
-        }
+            readerSem.Wait();
+            // Read the next reader position and reset it atomically to avoid the need for a lock
+            var newPos = Interlocked.Exchange(ref nextReaderSamplePosition, -1);
+            if (newPos != -1)
+                SeekReaderInternal(newPos);
 
+            totalRead = ReadExactly(buffer, offset, count, out var _reachedEnd);
+
+            if (_reachedEnd)
+                reachedEnd = true;
+        }
+        finally
+        {
+            readerSem.Release();
+        }
+        Interlocked.Add(ref samplePosition, totalRead);
+        bufACount = bufBCount = -1;
         return totalRead;
     }
 
@@ -336,35 +385,30 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         bool writeBufB = readBufferA;
         var buf = writeBufB ? audioBufferB : audioBufferA;
         // Debug.WriteLine($"Filling buffer {(writeBufB ? 'B' : 'A')}");
-        if ((writeBufB ? bufBCount : bufACount) >= 0)
+        if (buf == null || (writeBufB ? bufBCount : bufACount) >= 0)
             return -1;
 
         int totalRead = 0;
         try
         {
-            readerSem.Wait(); 
+            readerSem.Wait();
             // Read the next reader position and reset it atomically to avoid the need for a lock
-            var newPos = Interlocked.Exchange(ref nextReaderBytePosition, -1);
+            var newPos = Interlocked.Exchange(ref nextReaderSamplePosition, -1);
             if (newPos != -1)
-            {
-                // The stream needs repositioning
-                readerStream!.Position = newPos;
-            }
+                SeekReaderInternal(newPos);
 
-            int read = 0;
-            do
-            {
-                read = sampleProvider.Read(buf, totalRead, buf.Length - totalRead);
-                totalRead += read;
-            } while (read > 0 && totalRead < buf.Length);
+            totalRead = ReadExactly(buf, 0, buf.Length, out var _reachedEnd);
 
-            if (read == 0)
+            if (_reachedEnd)
                 reachedEnd = true;
         }
         finally
         {
             readerSem.Release();
         }
+
+        //MainViewModel.Log($"Filled buffer {(writeBufB ? 'B' : 'A')} with {totalRead} samples from thread {Environment.CurrentManagedThreadId}\n" +
+        //    $"{VectorExtensions.PrintSignal(buf.AsSpan(0, totalRead), channelCount)}");
 
         if (writeBufB)
             bufBCount = totalRead;
@@ -396,15 +440,10 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             // writing to position. Additionally, we can't use the SeekReader method as it has other
             // side effects.
             readerStartPos = readerStream!.Position;
-            readerStream!.Position = ComputeBytePos(startSamplePosition);
-            int read = 0;
-            do
-            {
-                read = sampleProvider.Read(audioBufferStart, totalRead, audioBufferStart.Length - totalRead);
-                totalRead += read;
-            } while (read > 0 && totalRead < audioBufferStart.Length);
+            SeekReaderInternal(startSamplePosition);
+            totalRead = ReadExactly(audioBufferStart, 0, audioBufferStart.Length, out var _reachedEnd);
 
-            if (read == 0)
+            if (_reachedEnd)
                 reachedEnd = true;
         }
         finally
@@ -420,9 +459,55 @@ public class QAudioFileReader : WaveStream, ISampleProvider
     }
 
     /// <summary>
-    /// Seeks the internal wave reader to the given sample position. Automatically invalidates the sample buffer if needed.
+    /// Repeatedly reads from the <see cref="sampleProvider"/> until either the requested number of samples are 
+    /// read, or the sample provider returns 0 samples.
+    /// </summary>
+    /// <param name="buffer">The buffer to read into.</param>
+    /// <param name="offset">The offset into the buffer to start writing.</param>
+    /// <param name="count">How many samples to read.</param>
+    /// <param name="reachedEnd">Whether the <see cref="sampleProvider"/> returned 0 samples on the last read.</param>
+    /// <returns>The number of samples read.</returns>
+    private int ReadExactly(float[] buffer, int offset, int count, out bool reachedEnd)
+    {
+        int totalRead = 0;
+        int read;
+        do
+        {
+            read = sampleProvider.Read(buffer, offset + totalRead, count - totalRead);
+            totalRead += read;
+        } while (read > 0 && totalRead < count);
+
+        reachedEnd = read == 0;
+
+        return totalRead;
+    }
+
+    /// <summary>
+    /// Repositions the internal <see cref="readerStream"/> safely, and warms it up by reading into the junk buffer.
     /// </summary>
     /// <param name="newPos"></param>
+    private void SeekReaderInternal(long newPos)
+    {
+        if (isMediaFoundationReader)
+        {
+            // The media foundation reader takes a few samples to 'warm up' before we get good
+            // samples out of it. Hence, we rewind a bit further and deposit these bad samples
+            // in a junk buffer.
+            readerStream!.Position = ComputeBytePos(Math.Max(0, newPos - s_junkBuffer.Length));
+            ReadExactly(s_junkBuffer, 0, s_junkBuffer.Length, out _);
+        }
+        else
+        {
+            readerStream!.Position = ComputeBytePos(newPos);
+        }
+    }
+
+    /// <summary>
+    /// Intelligently seeks this <see cref="QAudioFileReader"/> to the given sample position, reusing existing buffers if 
+    /// possible. Automatically invalidates the sample buffer if needed. The underlying <see cref="readerStream"/> is not
+    /// repositioned until the next read.
+    /// </summary>
+    /// <param name="newPos">The position in samples to seek to.</param>
     private void SeekReader(long newPos)
     {
         long delta = newPos - samplePosition;
@@ -440,8 +525,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         }
 
         // Seek the reader stream (asynchronously)
-        long bytePos = ComputeBytePos(newPos);
-        Volatile.Write(ref nextReaderBytePosition, bytePos);
+        Volatile.Write(ref nextReaderSamplePosition, newPos);
         reachedEnd = false;
 
         // Invalidate both buffers
@@ -537,6 +621,7 @@ public class QAudioFileReader : WaveStream, ISampleProvider
             dispatcher?.UnregisterAudioFile(this);
             readerStream.Dispose();
             readerStream = null;
+            ReleaseBuffers();
         }
 
         base.Dispose(disposing);
