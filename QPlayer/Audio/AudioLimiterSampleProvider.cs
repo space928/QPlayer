@@ -12,38 +12,52 @@ namespace QPlayer.Audio;
 public class AudioLimiterSampleProvider : ISamplePositionProvider
 {
     private readonly ISamplePositionProvider source;
-    private readonly DelaySampleProvider delay;
+    private readonly DelayBuffer delay;
     private readonly int channelCount;
     private readonly int fs;
     private readonly float[] envBuff;
+    private readonly float[] compressBuff;
+    private readonly EQSampleProvider.FilterCoeffs emphasisFilt;
+    private readonly EQSampleProvider.FilterCoeffs compLPF;
+    private EQSampleProvider.FilterCoeffs smootherLPF;
     private int attack = 1;
     private int release = 1;
+    private int hold = 1;
     private float threshold;
-    private readonly Lock lockObj;
+
+#if DEBUG && false
+    private readonly WaveFileWriter waveWriter;
+    private bool wasWriting;
+#endif
 
     // State
     private float minHoldVal = 1;
     private int minHoldTime = int.MaxValue;
     private float relLastMin = 0;
     private float relLastRes = 1;
-    private float smoothV1 = 1;
-    private float smoothV2 = 1;
     private int meterSampleCount;
     private float meterLastG = 1;
+    private readonly double[] emphHist = new double[16];
+    private readonly double[] compEqHist = new double[16];
+    private readonly double[] smoothEqHist = new double[16];
 
-    const int BLOCK_SIZE = 1024;
-    const int MAX_ATTACK = 4096;
+    const int BLOCK_SIZE = 4096;
+    const int MAX_LOOKAHEAD = 1024 * 32; // Roughly 0.4 s at 48Khz stereo
 
     public float AttackTime
     {
         get => attack / (float)(fs * channelCount);
-        set => attack = Math.Clamp((int)(value * (fs * channelCount)), 5, MAX_ATTACK);
+        set
+        {
+            attack = Math.Clamp((int)(value * fs) * channelCount, 5 * channelCount, MAX_LOOKAHEAD);
+            UpdateSmootherCoeffs(attack);
+        }
     }
 
     public float ReleaseTime
     {
         get => release / (float)(fs * channelCount);
-        set => release = Math.Max(5, (int)(value * (fs * channelCount)));
+        set => release = Math.Max(5 * channelCount, (int)(value * fs) * channelCount);
     }
 
     public float Threshold
@@ -52,8 +66,25 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         set => threshold = value;
     }
 
-    public bool Enabled { get; set; } = true;
+    public bool Enabled
+    {
+        get => field;
+        set
+        {
+            if (field != value)
+                Reset();
+            field = value;
+        }
+    } = true;
     public float InputGain { get; set; } = 1;
+
+    public float Hold
+    {
+        get => hold / (float)(fs * channelCount);
+        set => hold = Math.Max(5, (int)(value * (fs * channelCount)));
+    }
+    public float CompRatio { get; set; }
+    public float CompGain { get; set; }
 
     public long Position
     {
@@ -71,16 +102,66 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
     /// <summary>
     /// An event raised every <see cref="SamplesPerNotification"/> samples with metering information.
     /// </summary>
-    public event Action<float>? OnMeter;
+    public event Action<float, float>? OnMeter;
+
+    public bool WriteWave { get; set; }
 
     public AudioLimiterSampleProvider(ISamplePositionProvider source)
     {
         this.source = source;
         this.channelCount = source.WaveFormat.Channels;
         this.fs = source.WaveFormat.SampleRate;
-        lockObj = new();
         envBuff = new float[BLOCK_SIZE];
-        delay = new(source, MAX_ATTACK);
+        compressBuff = new float[BLOCK_SIZE];
+        delay = new(MAX_LOOKAHEAD);
+        emphasisFilt = EQSampleProvider.CalculateFilterCoefficients(new Models.EQBand()
+        {
+            freq = 1200,
+            gain = 6,
+            q = 0.4f,
+            shape = Models.EQBandShape.Bell
+        }, WaveFormat.SampleRate);
+        compLPF = EQSampleProvider.CalculateFilterCoefficients(new Models.EQBand()
+        {
+            freq = 12,
+            gain = 0,
+            q = 0.9f,
+            shape = Models.EQBandShape.LowPass
+        }, WaveFormat.SampleRate);
+        UpdateSmootherCoeffs(attack);
+
+#if DEBUG && false
+        waveWriter = new($"qplayer-test-lim-{GetHashCode()}.wav", new(48000, 2));
+#endif
+    }
+
+    public void Reset()
+    {
+        minHoldVal = 1;
+        minHoldTime = int.MaxValue;
+        relLastMin = 0;
+        relLastRes = 1;
+        meterSampleCount = 0;
+        meterLastG = 1;
+        emphHist.AsSpan().Clear();
+        compEqHist.AsSpan().Clear();
+        smoothEqHist.AsSpan().Clear();
+        delay.Clear();
+        OnMeter?.Invoke(0, 0);
+        UpdateSmootherCoeffs(attack);
+    }
+
+    private void UpdateSmootherCoeffs(int attack)
+    {
+        int fs = WaveFormat.SampleRate * channelCount;
+        float t = MathF.Max(attack / (float)fs, 1e-6f);
+        smootherLPF = EQSampleProvider.CalculateFilterCoefficients(new Models.EQBand()
+        {
+            freq = 0.7f / t,
+            gain = 0,
+            q = 0.7f,
+            shape = Models.EQBandShape.LowPass
+        }, fs);
     }
 
     public int Read(float[] buffer, int offset, int count)
@@ -90,32 +171,38 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
             return source.Read(buffer, offset, count);
         }
 
-        using var _ = lockObj.EnterScope();
+        count = Math.Min(Math.Min(count, BLOCK_SIZE), MAX_LOOKAHEAD);
+        int read = source.Read(envBuff, 0, count);
+        var envSpan = envBuff.AsSpan(0, read);
+        var compSpan = compressBuff.AsSpan(0, read);
 
-        count = Math.Min(count, BLOCK_SIZE);
-        int read = delay.Read(envBuff, 0, count);
+        VectorExtensions.Multiply(envSpan, InputGain);
+        delay.Push(envSpan);
+
+        int _attack = attack; // Math.Clamp((int)(AttackTime * (1 + CrestFactor * lastCrest) * fs) * channelCount, 5 * channelCount, MAX_LOOKAHEAD);
+        int _release = Math.Max(release, _attack);
+
+        // Smooth compression
+        delay.GetDelayed(compSpan, _attack);
+        EQSampleProvider.ApplyFilter(emphHist, 0, channelCount, emphasisFilt, compSpan);
+        VectorExtensions.SoftGR(compSpan, threshold, CompRatio, 0.5f, CompGain);
+        EQSampleProvider.ApplyFilter(compEqHist, 0, channelCount, compLPF, compSpan);
+
+        // Peak EQ to emphasise perceptually loudest frequencies
+        // EQSampleProvider.ApplyFilter(emphHist, 0, channelCount, emphasisFilt, envSpan(0, read));
 
         // Clip
-        VectorExtensions.ClipGR(envBuff.AsSpan(0, read), InputGain, threshold);
-
-        // Moving min --> vey slow, replaced with min-hold
-        /*movingMinDelay.Push(envBuff.AsSpan(0, read));
-        for (int i = 0; i < read; i++)
-        {
-            var first = movingMinDelay.GetDelayed(attack, read - i, out var second);
-            float min = VectorExtensions.Min(first);
-            if (second.Length > 0)
-                min = MathF.Min(min, VectorExtensions.Min(second));
-            envBuff[i] = min;
-        }*/
+        VectorExtensions.ClipGR(envSpan, threshold);
 
         // Min hold
+        int holdTime = Math.Max(_attack, hold);
+        float decayRate = MathF.PI / (float)holdTime * 0.2f; // 0.15f seems good
         float minVal = minHoldVal;
         int minTime = minHoldTime;
         for (int i = 0; i < read; i++)
         {
-            float v = envBuff[i];
-            if (v < minVal || minTime >= attack)
+            float v = envSpan[i];
+            if (v < minVal || minTime >= holdTime)
             {
                 minTime = 0;
                 minVal = v;
@@ -123,59 +210,60 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
             else
             {
                 minTime++;
-                envBuff[i] = v;
+                // Cosine shaped decay on the hold to prevent snapping
+                float d = MathF.Cos(minTime * decayRate);
+                minVal = minVal * d - d + 1;
+                envSpan[i] = minVal;
             }
         }
         minHoldVal = minVal;
         minHoldTime = minTime;
 
         // Exponential release stage
-        float gradientFactor = 1f / (release + 1);
-        // releaseDelay.Push(envBuff.AsSpan(0, read));
+        float gradientFactor = 1f / (_release + 1);
+        // releaseDelay.Push(envSpan(0, read));
         float last = relLastMin;
         float output = relLastRes;
         for (int i = 0; i < read; i++)
         {
-            float min = envBuff[i];
+            float min = envSpan[i];
             output += (min - output) * gradientFactor;
             output = MathF.Min(output, min);
             last = min;
-            envBuff[i] = output;
+            envSpan[i] = output;
         }
         relLastMin = last;
         relLastRes = output;
 
-        // Smoothing - A weighted moving average (a convolution of a window function) --> tooo slowww
-        /*smootherDelay.Push(envBuff.AsSpan(0, read));
-        float recip = 1f/windowSum;
-        for (int i = 0; i < read; i++)
-        {
-            var first = smootherDelay.GetDelayed(attack, read - i, out var second);
-            float sum = VectorExtensions.Convolve(first, smootherWindow);
-            if (second.Length > 0)
-                sum += VectorExtensions.Convolve(second, smootherWindow.AsSpan(first.Length));
-            envBuff[i] = sum * recip;
-        }*/
         // Smoothing - Exponential/Constant rate hybrid
-        float rate = 5 / (float)attack;
+        /*float rate = 5 / (float)_attack;
         float v1 = smoothV1;
         float v2 = smoothV2;
         for (int i = 0; i < read; i++)
         {
-            var v = envBuff[i];
+            var v = envSpan[i];
             v1 = Math.Max(v, v1 + (v - 1) * rate);
             var n = v2 + (v1 - v2) * rate * 3;
             v2 = Math.Clamp(n, v1, 1);
-            envBuff[i] = v2;
+            envSpan[i] = v2;
         }
         smoothV1 = v1;
-        smoothV2 = v2;
+        smoothV2 = v2;*/
+        EQSampleProvider.ApplyFilter(smoothEqHist, 0, channelCount, smootherLPF, envSpan);
+
+        // Combine with compressor
+        float combineSmoothing = 0;// 0.1f;
+        if (combineSmoothing <= 1e-8f)
+            VectorExtensions.Min(envSpan, compSpan);
+        else
+            VectorExtensions.SmoothMin(envSpan, compSpan, combineSmoothing);
 
         // TODO: > 2 channel support?
+        // TODO: Partial linking can sound better
         if (channelCount == 2)
         {
             // Link stereo limiting by computing the min per 2-samples
-            VectorExtensions.StereoMin(envBuff);
+            VectorExtensions.StereoMin(envSpan);
         }
 
         int k = 0;
@@ -194,38 +282,35 @@ public class AudioLimiterSampleProvider : ISamplePositionProvider
         }
         meterLastG = meterMin;
 
-        if (MathF.Abs(envBuff[0]) > 1.5f)
-            Debugger.Break();
+        var delayed = delay.GetDelayed(buffer.AsSpan(offset, read), attack);
+        VectorExtensions.MulClip(delayed, envSpan, threshold);
 
-        read = delay.ReadDelayed(buffer, offset, read, attack);
-        VectorExtensions.Multiply(buffer.AsSpan(offset, read), envBuff.AsSpan(0, read));
-        VectorExtensions.Multiply(buffer.AsSpan(offset, read), InputGain);
+#if DEBUG && false
+        if (WriteWave)
+        {
+            // Spit out GR into right channel
+            for (int i = 1; i < read; i += 2)
+                delayed[i] = envSpan[i];
+            waveWriter.WriteSamples(buffer, offset, read);
+            wasWriting = true;
+        }
+        else if (wasWriting)
+        {
+            wasWriting = false;
+            waveWriter.Flush();
+        }
+#endif
+
         return read;
 
         void NotifySample(float meterMin)
         {
             float gr = 1 - meterMin;
-            OnMeter?.Invoke(gr);
+            OnMeter?.Invoke(gr, gr >= compressBuff[0] ? compressBuff[0] : 1);
+            //OnMeter?.Invoke(gr, lastCrest);
+            //OnMeter?.Invoke(lastCrest*10);
+            //OnMeter?.Invoke(_attack / (float)(fs * channelCount));
             meterSampleCount = 0;
         }
     }
-
-    /*[MemberNotNull(nameof(smootherWindow))]
-    private void CreateSmootherWindow()
-    {
-        smootherWindow = new float[attack];
-        // Blackmann window
-        float alpha = 0.16f;
-        float a0 = (1 - alpha) / 2;
-        float a1 = 0.5f;
-        float a2 = alpha / 2;
-        windowSum = 0;
-        for (int i = 0; i < smootherWindow.Length; i++)
-        {
-            float t = MathF.Tau * i / (float)smootherWindow.Length;
-            float x = a0 - a1 * MathF.Cos(t) + a2 * MathF.Cos(2 * t);
-            smootherWindow[i] = x;
-            windowSum += x;
-        }
-    }*/
 }

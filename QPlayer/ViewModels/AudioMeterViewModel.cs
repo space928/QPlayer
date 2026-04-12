@@ -8,14 +8,17 @@ namespace QPlayer.ViewModels;
 
 public partial class AudioMeterViewModel : ObservableObject
 {
-    [Reactive] private float peakL;
-    [Reactive] private float peakR;
-    [Reactive] private float rMSL;
-    [Reactive] private float rMSR;
-    [Reactive] private bool clip;
+    [Reactive, CachedNotification] private float peakL;
+    [Reactive, CachedNotification] private float peakR;
+    [Reactive, CachedNotification] private float rMSL;
+    [Reactive, CachedNotification] private float rMSR;
+    [Reactive, CachedNotification] private bool clip;
 
     private readonly Dispatcher dispatcher;
-    private DispatcherOperation? prevOperation;
+    private readonly DispatcherTimer timer;
+    private MeteringEvent meterEventA;
+    private MeteringEvent meterEventB;
+    private bool swap;
 
     public AudioMeterViewModel(Dispatcher dispatcher)
     {
@@ -24,43 +27,51 @@ public partial class AudioMeterViewModel : ObservableObject
         PeakR = -99;
         RMSL = -99;
         RMSR = -99;
+
+        timer = new(DispatcherPriority.Loaded, dispatcher);
+        timer.Tick += Timer_Tick;
+        timer.Interval = TimeSpan.FromMilliseconds(20);
+        timer.Start();
+    }
+
+    private void Timer_Tick(object? sender, EventArgs e)
+    {
+        MeteringEvent meter;
+        if (swap)
+            meter = meterEventB;
+        else
+            meter = meterEventA;
+
+        PeakL = ComputeMeter(PeakL, meter.peakL);
+        PeakR = ComputeMeter(PeakR, meter.peakR);
+        RMSL = ComputeMeter(RMSL, meter.rmsL);
+        RMSR = ComputeMeter(RMSR, meter.rmsR);
+        Clip = peakL >= -1e-9f || peakR >= -1e-9f;
     }
 
     public void ProcessSample(MeteringEvent meter)
     {
-        var prev = prevOperation;
-        if (prev != null && (prev.Status == DispatcherOperationStatus.Executing || prev.Status == DispatcherOperationStatus.Pending))
-            return;
-
-        prevOperation = dispatcher.InvokeAsync(() =>
-        {
-            PeakL = ComputeMeter(PeakL, meter.peakL);
-            PeakR = ComputeMeter(PeakR, meter.peakR);
-            RMSL = ComputeMeter(RMSL, meter.rmsL);
-            RMSR = ComputeMeter(RMSR, meter.rmsR);
-            Clip = peakL >= -1e-9f || peakR >= -1e-9f;
-        }, DispatcherPriority.Loaded);
-
-        static float ComputeMeter(float prev, float next)
-        {
-            float x = prev;
-            x = DbToLin(x);
-            if (next > x)
-                x = next;
-            else
-                x *= 0.96f;
-            x = MathF.Min(MathF.Max(x, 1e-10f), 1);
-            return LinToDb(x);
-        }
-
-        static float LinToDb(float x)
-        {
-            return 20 * MathF.Log10(x);
-        }
-
-        static float DbToLin(float x)
-        {
-            return MathF.Pow(10, x / 20);
-        }
+        if (swap)
+            meterEventA = meter;
+        else
+            meterEventB = meter;
+        swap ^= true;
+        return;
     }
+
+    private static float ComputeMeter(float prev, float next)
+    {
+        float x = prev;
+        x = DbToLin(x);
+        if (next > x)
+            x = next;
+        else
+            x *= 0.96f;
+        x = MathF.Min(MathF.Max(x, 1e-10f), 1);
+        return LinToDb(x);
+    }
+
+    private static float LinToDb(float x) => 20 * MathF.Log10(x);
+
+    private static float DbToLin(float x) => MathF.Pow(10, x / 20);
 }

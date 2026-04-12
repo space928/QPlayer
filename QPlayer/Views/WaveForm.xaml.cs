@@ -34,6 +34,8 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
     private double timeHandleMouseOffset = 0;
     private TimeSpan timeOutStart = TimeSpan.Zero;
 
+    private static readonly PropertyChangedEventArgs playbackMarkerPos_ChangedArgs = new(nameof(PlaybackMarkerPos));
+
     [Reactive("Enabled")] private bool Enabled_Template => waveFormWindow == null || waveFormWindow == window || waveFormWindow.DataContext != SoundCue;
     public Visibility WaveFormVisible => Enabled ? Visibility.Visible : Visibility.Hidden;
     public Visibility InvWaveFormVisible => Enabled ? Visibility.Hidden : Visibility.Visible;
@@ -83,7 +85,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         DependencyProperty.Register("WaveFormRenderer", typeof(WaveFormRenderer), typeof(WaveForm), new PropertyMetadata(WaveFormRendererUpdated));
 
     public event PropertyChangedEventHandler? PropertyChanged;
-    public event PropertyChangedEventHandler? PropertyChanging;
+    public event PropertyChangingEventHandler? PropertyChanging;
 
     #endregion
 
@@ -136,7 +138,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
         switch (e.PropertyName)
         {
             case (nameof(vm.SoundCue.PlaybackTime)):
-                vm.OnPropertyChanged(nameof(PlaybackMarkerPos));
+                vm.OnPropertyChanged(playbackMarkerPos_ChangedArgs);
                 break;
             case (nameof(vm.SoundCue.StartTime)):
             case (nameof(vm.SoundCue.PlaybackDuration)):
@@ -155,7 +157,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
             case nameof(vm.WaveFormRenderer.ViewStart):
             case nameof(vm.WaveFormRenderer.ViewEnd):
             case nameof(vm.WaveFormRenderer.WaveFormDrawing):
-                vm.OnPropertyChanged(nameof(PlaybackMarkerPos));
+                vm.OnPropertyChanged(playbackMarkerPos_ChangedArgs);
                 vm.UpdateTimePositions();
                 break;
             case nameof(vm.WaveFormRenderer.PeakFile):
@@ -178,7 +180,7 @@ public partial class WaveForm : UserControl, INotifyPropertyChanged
             return;
 
         WaveFormRenderer.Size = (Graph.ActualWidth, Graph.ActualHeight);
-        OnPropertyChanged(nameof(PlaybackMarkerPos));
+        OnPropertyChanged(playbackMarkerPos_ChangedArgs);
         UpdateTimePositions();
     }
 

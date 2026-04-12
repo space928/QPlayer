@@ -8,7 +8,10 @@
              mc:Ignorable="d" 
              d:DesignHeight="450" d:DesignWidth="800" d:DataContext="{d:DesignInstance Type=vm:SoundCueViewModel}">
     <Grid x:Name="ProgressBarGrid" DataContext="{Binding RelativeSource={RelativeSource AncestorType=local:PlaybackProgressBar}}">
-        <ProgressBar HorizontalAlignment="Stretch" Value="{Binding Progress, Mode=OneWay}"/>
+        <Grid.Resources>
+            <Style TargetType="local:MeterBar" BasedOn="{StaticResource {x:Type ProgressBar}}"/>
+        </Grid.Resources>
+        <local:MeterBar HorizontalAlignment="Stretch" Value="{Binding Progress, Mode=OneWay}"/>
         <Label Name="PlaybackTimeLabel" Content="{Binding PlaybackTimeStringShort}" VerticalContentAlignment="Center" HorizontalContentAlignment="Center"/>
     </Grid>
 </UserControl>

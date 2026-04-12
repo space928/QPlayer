@@ -26,7 +26,7 @@ public partial class PlaybackProgressBar : UserControl, INotifyPropertyChanged, 
         _ => $"{cueVM.Duration:mm\\:ss}",
     };
 
-    [Reactive("Progress")]
+    [Reactive("Progress"), CachedNotification]
     private double Progress_Template
     {
         get

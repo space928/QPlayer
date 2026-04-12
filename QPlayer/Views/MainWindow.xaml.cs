@@ -124,6 +124,13 @@ public partial class MainWindow : Window
         foreach (object binding in InputBindings)
             if (binding is KeyBinding keyBinding)
                 keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
+
+        var vm = (MainViewModel)DataContext;
+        vm.OnScrollCueList += delta =>
+        {
+            CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.ContentVerticalOffset + delta.Y);
+            CueListScrollViewer.ScrollToHorizontalOffset(CueListScrollViewer.ContentHorizontalOffset + delta.X);
+        };
     }
 
     public void Window_Closing(object sender, CancelEventArgs e)
@@ -263,6 +270,11 @@ public partial class MainWindow : Window
                                 vm.MoveCue(cue, dstIndex++);
                             }*/
                             break;
+                        case ".qproj":
+                            {
+                                vm.OpenSpecificProjectExecute(file);
+                                break;
+                            }
                         default:
                             break;
                     }
@@ -290,7 +302,7 @@ public partial class MainWindow : Window
             if (mousePos.Y < 50)
             {
                 CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset - 15);
-            } 
+            }
             else if (mousePos.Y > CueListScrollViewer.ActualHeight - 50)
             {
                 CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset + 15);

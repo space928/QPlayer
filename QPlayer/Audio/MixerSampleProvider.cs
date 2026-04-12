@@ -5,6 +5,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Runtime;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
@@ -24,6 +25,7 @@ public class MixerSampleProvider : ISamplePositionProvider
 
     public WaveFormat WaveFormat { get; private set; }
     public long Position { get => pos; set => throw new NotImplementedException(); }
+    public int SourceCount => mixerInputs.Count;
 
     public event EventHandler<SampleProviderEventArgs>? MixerInputEnded;
 
@@ -43,6 +45,8 @@ public class MixerSampleProvider : ISamplePositionProvider
         firstRead = true;
     }
 
+    //private TimeSpan lastGCTime;
+
     public int Read(float[] buffer, int offset, int count)
     {
         if (firstRead)
@@ -51,29 +55,39 @@ public class MixerSampleProvider : ISamplePositionProvider
             SetThreadPriority();
         }
 
+        /*var gcTime = GC.GetTotalPauseDuration();
+        if (gcTime - lastGCTime > TimeSpan.FromMilliseconds(20))
+        {
+            MainViewModel.Log($"Spent {gcTime - lastGCTime} in GC since last audio buffer!", MainViewModel.LogLevel.Warning);
+            lastGCTime = gcTime;
+        }*/
+
         sourceBuffer = BufferHelpers.Ensure(sourceBuffer, count);
         lock (mixerInputs)
         {
-            if (mixerInputs.Count == 0)
+            int inputCount = mixerInputs.Count;
+            if (inputCount == 0)
             {
                 // Why are we using this instead of Array.Clear?
                 // Because this float array is actually (usually) a byte array in disguise.
-                // But since the array knows this, it ends up nott clearing enough items.
+                // But since the array knows this, it ends up not clearing enough items.
                 // Hence, we treat it as a span which behaves as expected.
                 buffer.AsSpan(offset, count).Clear();
                 return count;
             }
 
-            // Copy the first input to the output buffer
-            int read = mixerInputs[0].Read(buffer, offset, count);
+            // Copy the last input to the output buffer
+            int read = mixerInputs[^1].Read(buffer, offset, count);
             if (read < count)
             {
-                InputEnded(0);
+                InputEnded(inputCount - 1);
                 buffer.AsSpan(offset + read, count - read).Clear();
             }
 
             // Read each subsequant input and add them to the buffer
-            for (int i = 1; i < mixerInputs.Count; i++)
+            // Mixer inputs are read in reverse order so that if the
+            // input list is removed from, inputs won't be missed.
+            for (int i = inputCount - 2; i >= 0; i--)
             {
                 read = mixerInputs[i].Read(sourceBuffer, 0, count);
                 if (read < count)

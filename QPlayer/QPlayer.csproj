@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<Title>QPlayer</Title>
-		<Version>1.11.6</Version>
+		<Version>1.11.10</Version>
 		<Authors>Thomas Mathieson</Authors>
 		<Company>Thomas Mathieson</Company>
 		<Copyright>©️ Thomas Mathieson 2026</Copyright>
@@ -16,12 +16,18 @@
 		<ApplicationIcon>Resources\Icon.ico</ApplicationIcon>
 		<Platforms>AnyCPU;x86;x64</Platforms>
 		<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+		<!--<ServerGarbageCollection>false</ServerGarbageCollection>-->
+		<!--<ConcurrentGarbageCollection>true</ConcurrentGarbageCollection>-->
 	</PropertyGroup>
 
 	<PropertyGroup Condition="'$(Configuration)'=='Release'">
 		<DebugType>none</DebugType>
 		<CopyRefAssembliesToPublishDirectory>false</CopyRefAssembliesToPublishDirectory>
 	</PropertyGroup>
+
+	<ItemGroup>
+		<RuntimeHostConfigurationOption Include="System.GC.ConserveMemory" Value="2" />
+	</ItemGroup>
 
 	<ItemGroup>
 		<None Remove="Resources\CascadiaMono-Regular.ttf" />
@@ -81,7 +87,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
-		<PackageReference Include="JetBrains.Profiler.Api" Version="1.4.10" />
+		<!--<PackageReference Include="JetBrains.Profiler.Api" Version="1.4.10" />-->
 		<PackageReference Include="NAudio" Version="2.2.1" />
 		<PackageReference Include="OscCoreNetStd2" Version="1.1.4" />
 		<PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2.2" />

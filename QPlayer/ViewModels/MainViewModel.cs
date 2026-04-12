@@ -1,6 +1,5 @@
 ﻿using CommunityToolkit.Mvvm.ComponentModel;
 using CommunityToolkit.Mvvm.Input;
-using JetBrains.Profiler.Api;
 using Microsoft.Win32;
 using QPlayer.Audio;
 using QPlayer.Models;
@@ -20,13 +19,13 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Media;
 using System.Windows.Threading;
-using Timer = System.Timers.Timer;
+using System.Numerics;
+using System.ComponentModel;
 
 namespace QPlayer.ViewModels;
 
@@ -118,6 +117,8 @@ public partial class MainViewModel : ObservableObject
             BindingOperations.EnableCollectionSynchronization(logList, logListLock);
         }
     }
+    public AudioBufferDispatcherViewModel AudioBufferDispatcherDebug { get; private set; }
+
     public string WindowTitle => $"QPlayer – {ProjectSettings.Title}";
     public string VersionString
     {
@@ -126,6 +127,8 @@ public partial class MainViewModel : ObservableObject
             var assembly = Assembly.GetAssembly(typeof(MainViewModel));
             if (assembly == null)
                 return string.Empty;
+            if (string.IsNullOrEmpty(assembly.Location))
+                return $"Version {assembly.GetName().Version}";
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
             return $"Version {versionInfo.ProductVersion}";
         }
@@ -137,13 +140,16 @@ public partial class MainViewModel : ObservableObject
             var assembly = Assembly.GetAssembly(typeof(MainViewModel));
             if (assembly == null)
                 return string.Empty;
+            if (string.IsNullOrEmpty(assembly.Location))
+                return $"Copyright Thomas Mathieson";
             var versionInfo = FileVersionInfo.GetVersionInfo(assembly.Location);
             return $"Copyright {versionInfo.LegalCopyright}";
         }
     }
     public string Clock => $"{DateTime.Now:HH:mm:ss}";
     public ObservableCollection<RecentFile> RecentFiles => persistantDataManager.RecentFiles;
-    public event Action? OnRegisterCueTypes;
+    internal event Action? OnRegisterCueTypes;
+    internal event Action<Vector2>? OnScrollCueList;
     #endregion
 
     /// <summary>
@@ -158,7 +164,6 @@ public partial class MainViewModel : ObservableObject
     public MSCManager MSCManager => mscManager;
     public PersistantDataManager PersistantDataManager => persistantDataManager;
 
-    private volatile bool fastUpdateInProgress;
     private ShowFile showFile;
     private List<string>? captureResolvedPaths;
     private Dictionary<string, string>? packedPaths;
@@ -167,9 +172,9 @@ public partial class MainViewModel : ObservableObject
     private static readonly List<Window> openWindows = [];
     private static readonly object logListLock = new();
     private readonly JsonSerializerOptions jsonSerializerOptions;
-    private readonly Timer fastUpdateTimer;
-    private readonly Timer slowUpdateTimer;
-    private readonly Timer autosaveTimer;
+    private readonly DispatcherTimer fastUpdateTimer;
+    private readonly DispatcherTimer slowUpdateTimer;
+    private readonly DispatcherTimer autosaveTimer;
     private readonly AudioPlaybackManager audioPlaybackManager;
     private readonly SynchronizationContext syncContext;
     private readonly Dispatcher dispatcher;
@@ -268,19 +273,13 @@ public partial class MainViewModel : ObservableObject
         downCommand = new(() => SelectedCueInd++);
         preloadCommand = new(PreloadExecute);
 
-        fastUpdateTimer = new(40);
-        fastUpdateTimer.AutoReset = true;
-        fastUpdateTimer.Elapsed += FastUpdate;
+        fastUpdateTimer = new(TimeSpan.FromMilliseconds(40), DispatcherPriority.Background, FastUpdate, Dispatcher.CurrentDispatcher);
         fastUpdateTimer.Start();
 
-        slowUpdateTimer = new(TimeSpan.FromMilliseconds(250));
-        slowUpdateTimer.AutoReset = true;
-        slowUpdateTimer.Elapsed += SlowUpdate;
+        slowUpdateTimer = new(TimeSpan.FromMilliseconds(250), DispatcherPriority.Background, SlowUpdate, Dispatcher.CurrentDispatcher);
         slowUpdateTimer.Start();
 
-        autosaveTimer = new(TimeSpan.FromMinutes(5));
-        autosaveTimer.AutoReset = true;
-        autosaveTimer.Elapsed += AutoSave;
+        autosaveTimer = new(TimeSpan.FromMinutes(5), DispatcherPriority.Background, AutoSave, Dispatcher.CurrentDispatcher);
         autosaveTimer.Start();
 
         columnWidths = new(Enumerable.Repeat<float>(60, 32).Select(x =>
@@ -293,6 +292,7 @@ public partial class MainViewModel : ObservableObject
             };
             return observable;
         }));
+        SetDefaultColumnWidths();
         projectFilePath = null;
         activeCues = [];
         cues = [];
@@ -340,11 +340,7 @@ public partial class MainViewModel : ObservableObject
             }
         };
         ProjectSettings = new(this);
-        ProjectSettings.PropertyChanged += (o, e) =>
-        {
-            if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
-                OnPropertyChanged(nameof(WindowTitle));
-        };
+        ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
 
         audioPlaybackManager.OnMixerMeter += MainAudioMeter.ProcessSample;
 
@@ -377,21 +373,14 @@ public partial class MainViewModel : ObservableObject
                 OpenSpecificProjectExecute(args[1]);
             }
         }
+
+        AudioBufferDispatcherDebug = new();
     }
 
     public bool OnExit()
     {
-        if (ActiveCues.Count > 0)
-        {
-            var mbRes = MessageBox.Show("Cues are currently playing! Do you want to exit QPlayer anyway?",
-            "Exit QPlayer",
-            MessageBoxButton.OKCancel,
-            MessageBoxImage.Warning, MessageBoxResult.Cancel);
-
-            // Abort exit
-            if (mbRes == MessageBoxResult.Cancel)
-                return false;
-        }
+        if (!RunningCuesCheck())
+            return false;
 
         if (!UnsavedChangedCheck(true))
             return false;
@@ -408,80 +397,62 @@ public partial class MainViewModel : ObservableObject
         return true;
     }
 
-    private void FastUpdate(object? sender, ElapsedEventArgs e)
+    private void FastUpdate(object? sender, EventArgs e)
     {
-        // Skip this update if one is already in progress.
-        if (fastUpdateInProgress)
-            return;
-
-        fastUpdateInProgress = true;
         try
         {
-            dispatcher.Invoke(() =>
+            // Ask each active cue to update it's UI status if it needs too.
+            // Reverse iterate the list, since cues can stop themselves. If a cue stops/starts another cue
+            // during this iteration then a cue may be invoked twice/skipped. This is fine so long as we 
+            // have eventual consistency.
+            for (int i = ActiveCues.Count - 1; i >= 0; i--)
             {
-                try
-                {
-                    fastUpdateInProgress = true;
-
-                    // Ask each active cue to update it's UI status if it needs too.
-                    // Reverse iterate the list, since cues can stop themselves. If a cue stops/starts another cue
-                    // during this iteration then a cue may be invoked twice/skipped. This is fine so long as we 
-                    // have eventual consistency.
-                    for (int i = ActiveCues.Count - 1; i >= 0; i--)
-                    {
-                        var cue = ActiveCues[i];
-                        cue.UpdateUIStatus();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    Log($"Error while updating cue status: {ex.Message}\n{ex}", LogLevel.Error);
-                }
-                finally
-                {
-                    fastUpdateInProgress = false;
-                }
-            }, DispatcherPriority.Background);
+                var cue = ActiveCues[i];
+                cue.UpdateUIStatus();
+            }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            Log($"Error while updating cue status: {ex.Message}\n{ex}", LogLevel.Error);
+        }
     }
 
-    private void SlowUpdate(object? sender, ElapsedEventArgs e)
+    private void SlowUpdate(object? sender, EventArgs e)
     {
         OnPropertyChanged(nameof(Clock));
 
-        syncContext.Post(_ =>
-        {
-            OnSlowUpdate?.Invoke();
-            PluginLoader.OnSlowUpdate();
+        OnSlowUpdate?.Invoke();
+        PluginLoader.OnSlowUpdate();
 
-            if (DateTime.Now - lastLogStatusMessageTime > TimeSpan.FromSeconds(5))
+        if (DateTime.Now - lastLogStatusMessageTime > TimeSpan.FromSeconds(5))
+        {
+            StatusText = $"Ready – {Cues.Count} cues in project";
+            StatusTextColour = StatusInfoBrush;
+        }
+        else
+        {
+            StatusText = lastLogStatusMessage;
+            StatusTextColour = lastLogStatusLevel switch
             {
-                StatusText = $"Ready – {Cues.Count} cues in project";
-                StatusTextColour = StatusInfoBrush;
-            }
-            else
-            {
-                StatusText = lastLogStatusMessage;
-                StatusTextColour = lastLogStatusLevel switch
-                {
-                    LogLevel.Info => StatusInfoBrush,
-                    LogLevel.Debug => StatusInfoBrush,
-                    LogLevel.Warning => StatusWarningBrush,
-                    LogLevel.Error => StatusErrorBrush,
-                    _ => StatusInfoBrush
-                };
-            }
-        }, null);
+                LogLevel.Info => StatusInfoBrush,
+                LogLevel.Debug => StatusInfoBrush,
+                LogLevel.Warning => StatusWarningBrush,
+                LogLevel.Error => StatusErrorBrush,
+                _ => StatusInfoBrush
+            };
+        }
+
+        // GC.Collect(0, GCCollectionMode.Forced, false, false);
     }
 
-    private void AutoSave(object? sender, ElapsedEventArgs e)
+    private void AutoSave(object? sender, EventArgs e)
     {
         if (EnableAutosave)
         {
             string path = Path.Combine(persistantDataManager.AutoBackDir, $"autoback{autoBackInd + 1}.qproj");
             autoBackInd = (autoBackInd + 1) % 5;
-            SaveProjectAsync(path, false, false).ContinueWith((_) => Log($"Autosaved project to '{path}'."));
+            Task.Run(() =>
+                SaveProjectAsync(path, false, false).ContinueWith((_) => Log($"Autosaved project to '{path}'.")));
         }
     }
 
@@ -490,6 +461,8 @@ public partial class MainViewModel : ObservableObject
     {
         Log("Creating new project...");
         if (!UnsavedChangedCheck())
+            return;
+        if (!RunningCuesCheck())
             return;
 
         ProjectFilePath = null;
@@ -585,6 +558,11 @@ public partial class MainViewModel : ObservableObject
             ProgressBoxViewModel.Visible = Visibility.Collapsed;
             return;
         }
+        if (!RunningCuesCheck())
+        {
+            ProgressBoxViewModel.Visible = Visibility.Collapsed;
+            return;
+        }
         if (!string.IsNullOrEmpty(path))
         {
             Dispatcher.Yield();
@@ -662,7 +640,7 @@ public partial class MainViewModel : ObservableObject
     {
         //dbg_cueStartTime = DateTime.Now;
         //Log($"[Playback Debugging] Go command started! {dbg_cueStartTime:HH:mm:ss.ffff}");
-        MeasureProfiler.StartCollectingData("Go Execute");
+        // MeasureProfiler.StartCollectingData("Go Execute");
 
         // Get the cue to run
         var cue = SelectedCue;
@@ -696,6 +674,11 @@ public partial class MainViewModel : ObservableObject
             cue = next;
         }
         SelectedCueInd = i;
+    }
+
+    public void ScrollCueList(Vector2 delta)
+    {
+        OnScrollCueList?.Invoke(delta);
     }
 
     public void PauseExecute()
@@ -864,6 +847,7 @@ public partial class MainViewModel : ObservableObject
     /// <returns><see langword="true"/> if the cue was found.</returns>
     public bool FindCue(object id, [NotNullWhen(true)] out CueViewModel? cue)
     {
+        cue = null;
         switch (id)
         {
             case int idInt:
@@ -873,7 +857,10 @@ public partial class MainViewModel : ObservableObject
             case decimal idDec:
                 return cuesDict.TryGetValue(idDec, out cue);
             case string idString:
-                return cuesDict.TryGetValue(decimal.Parse(idString, numberFormat), out cue);
+                if (decimal.TryParse(idString, numberFormat, out var idNum))
+                    return cuesDict.TryGetValue(idNum, out cue);
+                else
+                    return false;
             default:
                 cue = null;
                 Log($"Couldn't find cue with ID: {id}!", LogLevel.Warning);
@@ -1063,6 +1050,27 @@ public partial class MainViewModel : ObservableObject
         return true;
     }
 
+    /// <summary>
+    /// Checks if any cues are currently running, and if so prompts the user if they want to cancel the next operation.
+    /// </summary>
+    /// <param name="canCancel"></param>
+    /// <returns>false if the user decided to cancel the current operation.</returns>
+    public bool RunningCuesCheck(bool canCancel = true)
+    {
+        if (ActiveCues.Count > 0)
+        {
+            var mbRes = MessageBox.Show("Cues are currently playing! Do you want to exit QPlayer anyway?",
+            "Exit QPlayer",
+            MessageBoxButton.OKCancel,
+            MessageBoxImage.Warning, MessageBoxResult.Cancel);
+
+            // Abort exit
+            if (mbRes == MessageBoxResult.Cancel)
+                return false;
+        }
+        return true;
+    }
+
     private void LoadShowfileModel(ShowFile show)
     {
         ProgressBoxViewModel.Progress = 0.3f;
@@ -1073,12 +1081,13 @@ public partial class MainViewModel : ObservableObject
         StopExecute();
 
         showFile = show;
-        ProjectSettings = new ProjectSettingsViewModel(this);
-        ProjectSettings.PropertyChanged += (o, e) =>
+        if (ProjectSettings != null)
         {
-            if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
-                OnPropertyChanged(nameof(WindowTitle));
-        };
+            ProjectSettings.Dispose();
+            ProjectSettings.PropertyChanged -= ProjectSettings_PropertyChanged;
+        }
+        ProjectSettings = new ProjectSettingsViewModel(this);
+        ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
         ProjectSettings.Bind(show.showSettings);
         ProjectSettings.SyncFromModel();
 
@@ -1578,6 +1587,34 @@ public partial class MainViewModel : ObservableObject
             throw new FileNotFoundException(path);
 
         return assembly.GetManifestResourceStream(resourceName) ?? throw new FileNotFoundException(path);
+    }
+
+    private void ProjectSettings_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        if (e.PropertyName == nameof(ProjectSettingsViewModel.Title))
+            OnPropertyChanged(nameof(WindowTitle));
+    }
+
+    private void SetDefaultColumnWidths()
+    {
+        int[] widths = [
+            50,
+            60,
+            38,
+            68,
+            250,
+            54,
+            48,
+            58,
+            58,
+            72
+        ];
+
+        if (columnWidths.Count < widths.Length)
+            return;
+
+        for (int i = 0; i < widths.Length; i++)
+            columnWidths[i].Value = widths[i];
     }
 }
 

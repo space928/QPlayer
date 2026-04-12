@@ -27,6 +27,13 @@ public sealed class ReactiveAttribute(string? propName = null) : Attribute
 }
 
 /// <summary>
+/// When this property is updated use a cached instance of <see cref="System.ComponentModel.PropertyChangedEventArgs"/>.
+/// </summary>
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+public sealed class CachedNotification : Attribute
+{ }
+
+/// <summary>
 /// By default, when this property is updated, the old value is compared to the new value using the 
 /// <c>==</c> operator, and only if the value are different is the setter and property change 
 /// notification invoked. This attribute skips this check, this can be useful if no <c>==</c> is 

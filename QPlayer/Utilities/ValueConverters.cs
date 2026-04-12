@@ -142,3 +142,17 @@ public class TriggerModeConverter : IValueConverter
         return (TriggerMode)(int)value;
     }
 }
+
+[ValueConversion(typeof(LoopMode), typeof(int))]
+public class LoopModeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (int)(LoopMode)value;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (LoopMode)(int)value;
+    }
+}

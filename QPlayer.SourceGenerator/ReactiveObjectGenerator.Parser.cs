@@ -5,6 +5,7 @@ using QPlayer.SourceGenerator;
 using System;
 using System.Collections.Generic;
 using System.Collections.Immutable;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
@@ -135,7 +136,8 @@ public partial class ReactiveObjectGenerator
             var type = symbol.Type;
             bool nullable = varSyntax.Type.Kind() == SyntaxKind.NullableType;
             var typeName = type.ToDisplayString(NullableFlowState.None, SymbolDisplayFormat.FullyQualifiedFormat);
-
+            if (nullable && typeName.Length > 0 && typeName[^1] != '?') // Confusingly, sometimes we need to append the nullable symbol ourselves.
+                typeName += '?';
             var propName = fieldName;
             string? docComment = reactiveNode.TargetSymbol.GetDocumentationCommentXml();
 
@@ -177,8 +179,8 @@ public partial class ReactiveObjectGenerator
             var type = symbol.Type;
             bool nullable = varSyntax.Type.Kind() == SyntaxKind.NullableType;
             var typeName = type.ToDisplayString(NullableFlowState.None, SymbolDisplayFormat.FullyQualifiedFormat);//type.ToString();
-                                                                                                                  //if (nullable)
-                                                                                                                  //    typeName = typeName + '?';
+            if (nullable && typeName.Length > 0 && typeName[^1] != '?') // Confusingly, sometimes we need to append the nullable symbol ourselves.
+                typeName += '?';
             var propName = FormatPropName(fieldName);
             string? docComment = reactiveNode.TargetSymbol.GetDocumentationCommentXml();
 
@@ -215,6 +217,7 @@ public partial class ReactiveObjectGenerator
             string? bindingPath = null;
             bool skipBinding = false;
             var reactiveDependants = ImmutableArray.CreateBuilder<string>();
+            bool cachedNotification = false;
             foreach (var attrib in attributes)
             {
                 var args = attrib.ConstructorArguments;
@@ -253,6 +256,9 @@ public partial class ReactiveObjectGenerator
                         break;
                     case nameof(SkipEqualityCheckAttribute):
                         skipCompare = true;
+                        break;
+                    case nameof(CachedNotification):
+                        cachedNotification = true;
                         break;
 
                     case nameof(ModelCustomBindingAttribute):
@@ -300,7 +306,7 @@ public partial class ReactiveObjectGenerator
 
             reactiveProps = new(getFunc, getInline, setAction, setInline, propTemplate,
                 accessibility, reactiveDependants.DrainToImmutable().AsEquatable(), 
-                privateSet, skipCompare);
+                privateSet, skipCompare, cachedNotification);
             bindingProps = new(bindingVM2M, bindingM2VM, bindingPath, skipBinding);
             return null;
         }
@@ -336,6 +342,6 @@ public partial class ReactiveObjectGenerator
         BindablePropertyParams BindableParams);
     public record ReactivePropertyParams(string? OnGetFunc, bool GetInline, string? OnSetAction, bool SetInline,
         string? PropTemplate, string? CustomAccessibility, EquatableArray<string> ReactiveDependants, 
-        bool PrivateSet, bool SkipCompare);
+        bool PrivateSet, bool SkipCompare, bool CachePropNotif);
     public record BindablePropertyParams(string? BindingVM2M, string? BindingM2VM, string? BindingPath, bool SkipBinding);
 }

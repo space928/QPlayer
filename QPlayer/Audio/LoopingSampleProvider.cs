@@ -1,5 +1,5 @@
 ﻿using NAudio.Wave;
-using QPlayer.Models;
+using QPlayer.ViewModels;
 using System;
 
 namespace QPlayer.Audio;
@@ -8,31 +8,20 @@ namespace QPlayer.Audio;
 /// A sample provider for <see cref="WaveStream"/> which handles looping and start/end time.
 /// </summary>
 /// <typeparam name="T"></typeparam>
-public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveStream, ISampleProvider
+public class LoopingSampleProvider : ISamplePositionProvider
 {
-    private readonly T input;
-    private readonly double bytesPerSample;
+    private readonly QAudioFileReader input;
     private readonly double mcSampleRate;
-    private readonly int alignmentSize;
-    private readonly int channelCount;
-    /// <summary>
-    /// Annoyingly, the media foundation reader class uses an estimate when 
-    /// seeking (even when seeking to a specific byte offset), so we need 
-    /// to do some trickery when seeking in this reader to get a slightly 
-    /// more accurate seek.
-    /// </summary>
-    private readonly bool mediaFoundationPositionHack;
 
     private bool infinite;
     private int loops;
-    private long samplePosition;
     private long totalPosition;
     private long playedLoops = 0;
     private long startTime;
     private long endTime;
-    private PeakFile? peakFile;
+    private bool justSeeked = false;
 
-    public LoopingSampleProvider(T input, bool infinite = true, int loops = 1)
+    public LoopingSampleProvider(QAudioFileReader input, bool infinite = true, int loops = 1)
     {
         this.input = input;
         this.infinite = infinite;
@@ -43,11 +32,8 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         // This should correspond with the multiple of samples we must read from input.Read(), it should be
         // related to wf.BlockAlign, but for all intents and purposes we just use wf.Channels. This might not 
         // be correct for compressed formats.
-        channelCount = alignmentSize = wf.Channels;//~(wf.BlockAlign - 1) << 2;
         // This is used for seeking within the file, for compressed files (especially if VBR) this isn't very accurate
         // if the peak file is loaded, the timing information within will be used instead.
-        bytesPerSample = wf.AverageBytesPerSecond / (double)wf.SampleRate / wf.Channels;
-        mediaFoundationPositionHack = input is QAudioFileReader qAudioFileReader && qAudioFileReader.IsMediaFoundationReader;
     }
 
     public WaveFormat WaveFormat => input.WaveFormat;
@@ -55,39 +41,18 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
     /// <summary>
     /// The length in samples (estimate, for compressed inputs) of the input stream.
     /// </summary>
-    public long SrcLength
-    {
-        get
-        {
-            if (peakFile.HasValue)
-                return peakFile.Value.length * channelCount; // The peak file stores the mono length, hence multiply by channel count
-            else
-                return (long)(input.Length / bytesPerSample);
-        }
-    }
+    public long SrcLength => input.NumSamples;
 
     /// <summary>
     /// The position in samples (estimate) within the input stream.
     /// </summary>
     public long SrcPosition
     {
-        get => samplePosition;
+        get => input.SamplePosition;
         set
         {
-            value = Align(value);
-            if (mediaFoundationPositionHack)
-            {
-                // Lerp 0 to input.Length by our current playback fraction.
-                var frac = value / (double)SrcLength;
-                frac *= input.Length;
-                input.Position = (long)frac;
-            }
-            else if (peakFile.HasValue)
-                input.Position = ComputeBytePosFromPeakFile(value);
-            else
-                input.Position = (long)(value * bytesPerSample);
-
-            samplePosition = value;
+            input.SamplePosition = value;
+            justSeeked = true;
         }
     }
 
@@ -168,32 +133,49 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
         }
     }
 
+    /// <summary>
+    /// Whether this sample provider should loop the sample indefinitely. Ignores the <see cref="Loops"/> value.
+    /// </summary>
     public bool Infinite { get => infinite; set => infinite = value; }
+    /// <summary>
+    /// The maximum number of this sample provider can play. Use <see cref="Reset"/> to reset the loop counter.
+    /// </summary>
     public int Loops { get => loops; set => loops = value; }
+    /// <summary>
+    /// The current number of complete loops of the input sample that have been played since the last call to <see cref="Reset"/>.
+    /// </summary>
     public long PlayedLoops => playedLoops;
     /// <summary>
     /// The time in samples to start playback from.
     /// </summary>
-    public long StartSample { get => startTime; set => startTime = Align(value); }
+    public long StartSample
+    {
+        get => startTime;
+        set
+        {
+            startTime = input.Align(value);
+            input.StartSamplePosition = startTime;
+        }
+    }
     /// <summary>
     /// The time in samples to stop playback at (or the 'out' loop point of the loop).
     /// </summary>
-    public long EndSample { get => endTime; set => endTime = Align(value); }
+    public long EndSample { get => endTime; set => endTime = input.Align(value); }
+    /// <summary>
+    /// The time to start playback from.
+    /// </summary>
     public TimeSpan StartTime
     {
         get => TimeSpan.FromSeconds(startTime / mcSampleRate);
-        set => startTime = Align((long)(value.TotalSeconds * mcSampleRate));
+        set => StartSample = (long)(value.TotalSeconds * mcSampleRate);
     }
+    /// <summary>
+    /// The time at which to stop playback (for a single loop).
+    /// </summary>
     public TimeSpan EndTime
     {
         get => TimeSpan.FromSeconds(endTime / mcSampleRate);
-        set => endTime = Align((long)(value.TotalSeconds * mcSampleRate));
-    }
-
-    public PeakFile? PeakFile
-    {
-        get => peakFile;
-        set => peakFile = value;
+        set => endTime = input.Align((long)(value.TotalSeconds * mcSampleRate));
     }
 
     /// <summary>
@@ -214,40 +196,68 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
 
     public int Read(float[] buffer, int offset, int count)
     {
-        int read = ReadInternal(buffer, offset, count);
-        int totalRead = read;
-        if (read < count)
+        int read;
+        int totalRead = 0;
+        int lastTotal = -1;
+        do
         {
-            // Try again, if we actually got 0 samples this time, it must be the end of the file.
-            read = ReadInternal(buffer, offset + read, count - read);
-            totalRead += read;
-        }
+            // We always read at least twice, I can't remember exactly why, but seems safe in case the source
+            // was waiting for another call to refresh it's buffers.
+            read = ReadInternal(buffer, offset + totalRead, count - totalRead);
+            totalRead += Math.Max(0, read);
 
-        if (read == 0 || (endTime != 0 && samplePosition >= endTime))
-        {
-            // We reached the end of the sample, loop
-            SrcPosition = startTime;
-            playedLoops++;
-            LoopCompleted?.Invoke();
-
-            // To prevent the playback manager from removing this sample at the end of the loop,
-            // repeateadly keep reading until the count is satisfied
-            if (infinite || playedLoops < loops)
+            do
             {
-                do
-                {
-                    offset += read;
-                    count -= read;
-                    read = ReadInternal(buffer, offset, count);
-                    totalRead += read;
-                } while (count > 0);
+                read = ReadInternal(buffer, offset + totalRead, count - totalRead);
+                totalRead += Math.Max(0, read);
             }
-        }
+            while (totalRead < count && read > 0);
+
+            if (read == -1)
+            {
+                // This means no more samples are available yet, but more samples might be available later (ie the
+                // stream hasn't ended). Hence we pad with some silence if needed and return early.
+                if (totalRead < count)
+                    buffer.AsSpan(offset + totalRead, count - totalRead).Clear();
+                // Unless we just seeked (which is bound to result in a gap) warn of any out of sample errors.
+                if (!justSeeked)
+                    MainViewModel.Log($"Audio file couldn't be read fast enough for real-time playback! Ensure the disk/cpu isn't overloaded.\n{input.FileName}", MainViewModel.LogLevel.Warning);
+                return count;
+            }
+
+            justSeeked = false;
+            if (totalRead >= count)
+                break;
+
+            if (HasReachedLoopEnd(read))
+            {
+                // We reached the end of the sample, loop
+                SrcPosition = startTime;
+                playedLoops++;
+                LoopCompleted?.Invoke();
+
+                // Safety hatch, in case we keep reading 0 samples.
+                if (totalRead <= lastTotal)
+                    break;
+                lastTotal = totalRead;
+            }
+        } while (true);
 
         return totalRead;
+
+        bool HasReachedLoopEnd(int lastRead) => lastRead == 0 || (endTime != 0 && SrcPosition >= endTime);
     }
 
-    public int ReadInternal(float[] buffer, int offset, int count)
+    /// <summary>
+    /// Reads samples from the source until we reach the end of a loop (or file) or 
+    /// the buffer is full (whichever happens sooner). Returns 0 if no more loops
+    /// should be played.
+    /// </summary>
+    /// <param name="buffer"></param>
+    /// <param name="offset"></param>
+    /// <param name="count"></param>
+    /// <returns></returns>
+    private int ReadInternal(float[] buffer, int offset, int count)
     {
         // If we have no more loops to play, return no samples
         if (count == 0 || (!infinite && playedLoops >= loops))
@@ -255,37 +265,12 @@ public class LoopingSampleProvider<T> : ISamplePositionProvider where T : WaveSt
 
         // Limit count if it would exceed the end time
         if (endTime != 0)
-            count = Math.Max(0, (int)Math.Min((long)count, endTime - samplePosition));
+            count = Math.Max(0, (int)Math.Min((long)count, endTime - SrcPosition));
 
         int read = input.Read(buffer, offset, count);
-        samplePosition += read;
-        totalPosition += read;
+        // SrcPosition += read;
+        totalPosition += Math.Max(0, read);
 
         return read;
-    }
-
-    private long Align(long pos)
-    {
-        int align = alignmentSize;
-        if (align == 2)
-            return pos & (-2);
-
-        return (pos / align) * align;
-    }
-
-    private long ComputeBytePosFromPeakFile(long samplePos)
-    {
-        var lookup = peakFile!.Value.samplePosToBytePos;
-        var increment = peakFile!.Value.samplePosIncrement;
-
-        // return (long)((samplePos / (double)peakFile!.Value.length / 2) * input.Length);
-
-        var lookupPos = samplePos / increment;
-        var interp = samplePos & (increment - 1);
-
-        var startPos = lookupPos == 0 ? 0 : lookup[lookupPos - 1];
-        // var endPos = lookup[lookupPos];
-
-        return startPos + (long)(bytesPerSample * interp);// (endPos - startPos)
     }
 }

@@ -2,6 +2,7 @@
 using NAudio.Wave.SampleProviders;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -19,7 +20,7 @@ public class MeteringSampleProviderVec : ISampleProvider
     private readonly float[] rmsSamples;
     private readonly int channels;
 
-    private int sampleCount;
+    private int frameCount;
 
     /// <summary>
     /// The number of samples to read between each metering event.
@@ -77,18 +78,18 @@ public class MeteringSampleProviderVec : ISampleProvider
                 rmsSamples[j] += val * val;
             }
 
-            sampleCount++;
-            if (sampleCount >= SamplesPerNotification)
+            frameCount++;
+            if (frameCount >= SamplesPerNotification)
             {
                 OnMeter(new()
                 {
-                    samplesMeasured = sampleCount,
+                    samplesMeasured = frameCount,
                     peakL = maxSamples[0],
                     peakR = maxSamples[1],
-                    rmsL = MathF.Sqrt(rmsSamples[0] / sampleCount),
-                    rmsR = MathF.Sqrt(rmsSamples[1] / sampleCount)
+                    rmsL = MathF.Sqrt(rmsSamples[0] / frameCount),
+                    rmsR = MathF.Sqrt(rmsSamples[1] / frameCount)
                 });
-                sampleCount = 0;
+                frameCount = 0;
                 maxSamples.AsSpan().Clear();
                 rmsSamples.AsSpan().Clear();
             }
@@ -99,18 +100,20 @@ public class MeteringSampleProviderVec : ISampleProvider
 
     private int ReadStereo(float[] buffer, int offset, int count)
     {
-        if (!Vector256.IsHardwareAccelerated || count < Vector256<float>.Count * 2)
+        if (!Avx2.IsSupported || count < Vector256<float>.Count * 2)
             return 0;
 
         ref var buffRef = ref buffer[offset];
         var maxSample = Vector64.LoadUnsafe(ref maxSamples[0]).ToVector128();
         var rmsSample = Vector64.LoadUnsafe(ref rmsSamples[0]).ToVector128();
-        var _sampleCount = sampleCount;
-        var _samplesPerfNotif = SamplesPerNotification;
+        var maxSampleVec = Vector256<float>.Zero;
+        var rmsSampleVec = Vector256<float>.Zero;
+        var _frameCount = frameCount;
+        var _framesPerfNotif = SamplesPerNotification;
         var permImm = Vector256.Create(4, 5, 6, 7, 0, 0, 0, 0);
         nuint i = 0;
-        nuint maxElem = (nuint)Math.Max(0, count - Vector256<float>.Count);
-        for (; i < maxElem; i += (nuint)Vector256<float>.Count)
+        nuint maxElem = (nuint)Math.Max(0, count - (Vector256<float>.Count * 2 - 1));
+        for (; i < maxElem; i += (nuint)Vector256<float>.Count * 2)
         {
             /*
              * We need to compute the sum and max of each left and right sample.
@@ -127,38 +130,51 @@ public class MeteringSampleProviderVec : ISampleProvider
              *  p4 = p2 + p3
              *  L = p4[0]; R = p4[1]
              */
-            var vec = Vector256.LoadUnsafe(ref buffRef, i);
+            // Load two adjacent vectors
+            var vecA = Vector256.LoadUnsafe(ref buffRef, i);
+            var vecB = Vector256.LoadUnsafe(ref buffRef, i + (nuint)Vector256<float>.Count);
 
-            var vecAbs = Vector256.Abs(vec);
-            var max = Avx.Max(vecAbs, Avx2.PermuteVar8x32(vecAbs, permImm)).GetLower();
-            max = Sse.Max(max, Sse2.Shuffle(max.AsInt32(), (byte)(2 + (3 << 2))).AsSingle());
-            maxSample = Sse.Max(maxSample, max);
+            var vmax = Avx.Max(Vector256.Abs(vecA), Vector256.Abs(vecB));
+            maxSampleVec = Avx.Max(maxSampleVec, vmax);
 
-            var vecSqr = vec * vec;
-            var rms = (vecSqr + Avx2.PermuteVar8x32(vecSqr, permImm)).GetLower();
-            rms += Sse2.Shuffle(rms.AsInt32(), (byte)(2 + (3 << 2))).AsSingle();
-            rmsSample += rms;
+            var vsqr = vecA * vecA + vecB * vecB;
+            rmsSampleVec += vsqr;
 
-            _sampleCount += Vector256<float>.Count / 2;
-            if (_sampleCount > _samplesPerfNotif)
-                NotifySample(ref maxSample, ref rmsSample, ref _sampleCount);
+            _frameCount += Vector256<float>.Count / 2;
+            if (_frameCount > _framesPerfNotif)
+                NotifySample(ref maxSample, ref rmsSample, ref _frameCount);
         }
 
         // Write our locals back out to the instance fields
-        sampleCount = _sampleCount;
+        ReduceVecs();
+        frameCount = _frameCount;
         maxSample.GetLower().StoreUnsafe(ref maxSamples[0]);
         rmsSample.GetLower().StoreUnsafe(ref rmsSamples[0]);
 
         return (int)i;
 
+        void ReduceVecs()
+        {
+            var max = Avx.Max(maxSampleVec, Avx2.PermuteVar8x32(maxSampleVec, permImm)).GetLower();
+            max = Sse.Max(max, Sse2.Shuffle(max.AsInt32(), (byte)(2 + (3 << 2))).AsSingle());
+            maxSample = Sse.Max(maxSample, max);
+
+            var rms = (rmsSampleVec + Avx2.PermuteVar8x32(rmsSampleVec, permImm)).GetLower();
+            rms += Sse2.Shuffle(rms.AsInt32(), (byte)(2 + (3 << 2))).AsSingle();
+            rmsSample += rms;
+            rmsSampleVec = Vector256<float>.Zero; // Zero the vector once it's been accumulated to prevent double counting
+        }
+
         void NotifySample(ref Vector128<float> maxSample, ref Vector128<float> rmsSample, ref int _sampleCount)
         {
+            ReduceVecs();
+
             var samplesRecip = Vector128.Create(1f / _sampleCount);
             rmsSample = Sse.Sqrt(Sse.Multiply(rmsSample, samplesRecip));
 
             OnMeter!(new()
             {
-                samplesMeasured = sampleCount,
+                samplesMeasured = frameCount,
                 peakL = maxSample[0],
                 peakR = maxSample[1],
                 rmsL = rmsSample[0],
@@ -177,7 +193,7 @@ public class MeteringSampleProviderVec : ISampleProvider
         var rmsSample = Vector128<float>.Zero;
         nuint i = 0;
         nuint maxElem = (nuint)Math.Max(0, buffer.Length - Vector256<float>.Count);
-        if (Vector256.IsHardwareAccelerated)
+        if (Avx2.IsSupported)
         {
             var permImm = Vector256.Create(4, 5, 6, 7, 0, 0, 0, 0);
             for (; i < maxElem; i += (nuint)Vector256<float>.Count)
@@ -232,11 +248,11 @@ public class MeteringSampleProviderVec : ISampleProvider
         float maxSample = 0;
         float rmsSample = 0;
         nuint i = 0;
-        if (Vector256.IsHardwareAccelerated && buffer.Length > Vector256<float>.Count * 2)
+        if (Avx2.IsSupported && buffer.Length > Vector256<float>.Count * 2)
         {
             var maxSampleVec = Vector256<float>.Zero;
             var rmsSampleVec = Vector256<float>.Zero;
-            for (; i < (nuint)buffer.Length; i += (nuint)Vector256<float>.Count * 2)
+            for (; i < (nuint)(buffer.Length - (Vector256<float>.Count * 2 - 1)); i += (nuint)Vector256<float>.Count * 2)
             {
                 /*
                  * We need to compute the sum and max of each sample.

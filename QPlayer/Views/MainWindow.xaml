@@ -9,7 +9,7 @@
         xmlns:colorpicker="clr-namespace:ColorPicker;assembly=ColorPicker"
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
-        Title="{Binding WindowTitle}" Height="700" Width="1200" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
+        Title="{Binding WindowTitle}" Height="900" Width="1400" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
         Closing="Window_Closing" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>

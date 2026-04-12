@@ -21,7 +21,7 @@ namespace QPlayer.Models;
 public struct PeakFile
 {
     public const uint FILE_MAGIC = ((byte)'Q') + ((byte)'P' << 8) + ((byte)'e' << 16) + ((byte)'k' << 24);
-    public const int FILE_VERSION = 2;
+    public const int FILE_VERSION = 5;
     public const string FILE_EXTENSION = ".qpek";
 
     /// <summary>
@@ -53,6 +53,7 @@ public struct PeakFile
     public int fs;  // Sample rate
     public long length;  // The total number of uncompressed mono samples in the source file
     public PeakData[] peakDataPyramid;
+    public float peak;
 
     // File seeking helpers
     public int samplePosIncrement;
@@ -139,6 +140,10 @@ internal static class PeakFileReader
         peak.fs = reader.ReadInt32();
         peak.length = reader.ReadInt64();
 
+        if (peak.fs < 100 || peak.fs > 1000000)
+            throw new MalformedException($"Peak file is corrupt! " +
+                    $"Peak file sample rate is outside of a reasonable range = {peak.fs}");
+
         peak.samplePosIncrement = reader.ReadInt32();
 
         using BrotliStream br = new(stream, CompressionMode.Decompress);
@@ -156,6 +161,8 @@ internal static class PeakFileReader
             }
             peak.peakDataPyramid[i] = pyramid;
         }
+
+        peak.peak = compressedReader.ReadSingle();
 
         peak.samplePosToBytePos = new long[compressedReader.ReadInt32()];
         long sum = 0;
@@ -303,6 +310,7 @@ internal static class PeakFileWriter
         using TemporaryList<long> filePositions = [];
 
         // Generate the peaks for the first pyramid from the audio file
+        float maxPeak = 0;
         float[] sourceBuffer = new float[sourceAudio.WaveFormat.Channels * 4 * PeakFile.MIN_REDUCTION];
         int samplesPerSample = sourceBuffer.Length;
         PeakFile.PeakData pyramid = new();
@@ -318,7 +326,7 @@ internal static class PeakFileWriter
                 int toRead = samplesPerSample - read;
                 toRead = Math.Min(toRead, PeakFile.SAMPLE_POS_INCREMENT - filePosSamplesRead);
 
-                int lastRead = sourceAudio.Read(sourceBuffer, read, toRead);
+                int lastRead = sourceAudio.Read(sourceBuffer, read, toRead, true);
                 read += lastRead;
                 filePosSamplesRead += lastRead;
                 if (filePosSamplesRead == PeakFile.SAMPLE_POS_INCREMENT)
@@ -338,6 +346,8 @@ internal static class PeakFileWriter
             ushort peak = (ushort)(max * ushort.MaxValue);
             ushort rms = (ushort)(rmsFloat * ushort.MaxValue);
 
+            maxPeak = MathF.Max(maxPeak, max);
+
             samples.Add(new PeakFile.Sample() { peak = peak, rms = rms });
         } while (true);
 
@@ -347,6 +357,7 @@ internal static class PeakFileWriter
         peakFile.length /= sourceAudio.WaveFormat.Channels;
 
         peakFile.samplePosToBytePos = filePositions.ToArray();
+        peakFile.peak = maxPeak;
 
         // Now compute all subsequant pyramids from the previous pyramid
         int currReduction = PeakFile.MIN_REDUCTION << PeakFile.REDUCTION_STEP;
@@ -421,6 +432,8 @@ internal static class PeakFileWriter
                     compressedWriter.Write(sample.data);
                 }
             }
+
+            compressedWriter.Write(peakFile.peak);
 
             compressedWriter.Write(peakFile.samplePosToBytePos.Length);
             long lastSamplePos = 0;

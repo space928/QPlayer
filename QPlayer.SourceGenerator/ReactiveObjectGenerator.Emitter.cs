@@ -11,6 +11,7 @@ namespace QPlayer.SourceGenerator;
 
 public partial class ReactiveObjectGenerator
 {
+#pragma warning disable CS0162
     const bool LOG_PROP_CHANGE = false;
 
     private static void Emit(SourceProductionContext context, ReactiveObjectResult result)
@@ -24,6 +25,10 @@ public partial class ReactiveObjectGenerator
 
         Helpers.EmitFileHeader(sb, model.Namespace, model.EnableNullable || model.ModelType != null || !model.IsObservable, ["QPlayer.SourceGenerator"]);
 
+        sb.AppendLine("// Suppress any 'member may be null when exiting' warnings");
+        sb.AppendLine("#pragma warning disable CS8774");
+        sb.AppendLine();
+
         sb.AppendLine($"{model.Accessibility.GetText()} partial class {model.ClassName}");
         using (sb.EnterCurlyBracket())
         {
@@ -33,6 +38,13 @@ public partial class ReactiveObjectGenerator
                 {
                     sb.AppendLine($"///<summary>Backing field for <see cref='{prop.PropName}'/></summary>");
                     sb.AppendLine($"private {prop.FieldType} {prop.FieldName};");
+                    sb.AppendLine();
+                }
+
+                if (prop.ReactiveParams.CachePropNotif)
+                {
+                    sb.AppendLine($"private static readonly global::System.ComponentModel.PropertyChangingEventArgs {prop.FieldName}_ChangingEventArgs = new(\"{prop.PropName}\");");
+                    sb.AppendLine($"private static readonly global::System.ComponentModel.PropertyChangedEventArgs {prop.FieldName}_ChangedEventArgs = new(\"{prop.PropName}\");");
                     sb.AppendLine();
                 }
 
@@ -79,12 +91,12 @@ public partial class ReactiveObjectGenerator
                         //sb.AppendLine($"{prop.FieldName} = value;");
                         if (prop.ReactiveParams.OnSetAction != null)
                         {
-                            sb.AppendLine($"OnPropertyChanging(\"{prop.PropName}\");");
+                            GeneratePropChanging(sb, prop);
                             if (prop.ReactiveParams.SetInline)
                                 sb.AppendLine($"{prop.ReactiveParams.OnSetAction};");
                             else
                                 sb.AppendLine($"{prop.ReactiveParams.OnSetAction}(value);");
-                            sb.AppendLine($"OnPropertyChanged(\"{prop.PropName}\");");
+                            GeneratePropChanged(sb, prop);
                             if (LOG_PROP_CHANGE)
                                 sb.AppendLine($"System.Diagnostics.Debug.WriteLine($\"[PropChange] {prop.PropName} = {{{prop.PropName}}}\\t\\t(<- {{new System.Diagnostics.StackTrace().GetFrame(1).GetMethod()}})\");");
                         }
@@ -95,9 +107,9 @@ public partial class ReactiveObjectGenerator
                                 sb.AppendLine($"if ({propTemplate} == value)");
                                 sb.AppendLine("    return;");
                             }
-                            sb.AppendLine($"OnPropertyChanging(\"{prop.PropName}\");");
+                            GeneratePropChanging(sb, prop);
                             sb.AppendLine($"{propTemplate} = value;");
-                            sb.AppendLine($"OnPropertyChanged(\"{prop.PropName}\");");
+                            GeneratePropChanged(sb, prop);
                             if (LOG_PROP_CHANGE)
                                 sb.AppendLine($"System.Diagnostics.Debug.WriteLine($\"[PropChange] {prop.PropName} = {{{prop.PropName}}}\\t\\t(<- {{new System.Diagnostics.StackTrace().GetFrame(1).GetMethod()}})\");");
                         }
@@ -108,13 +120,16 @@ public partial class ReactiveObjectGenerator
                                 prefix = "this.";
                             if (prop.ReactiveParams.SkipCompare)
                             {
-                                sb.AppendLine($"OnPropertyChanging(\"{prop.PropName}\");");
+                                GeneratePropChanging(sb, prop);
                                 sb.AppendLine($"{prefix}{prop.FieldName} = value;");
-                                sb.AppendLine($"OnPropertyChanged(\"{prop.PropName}\");");
+                                GeneratePropChanged(sb, prop);
                             }
                             else
                             {
-                                sb.AppendLine($"if (!SetProperty(ref {prefix}{prop.FieldName}, value))");
+                                if (prop.ReactiveParams.CachePropNotif)
+                                    sb.AppendLine($"if (!SetPropertyCached(ref {prefix}{prop.FieldName}, value, {prop.FieldName}_ChangingEventArgs, {prop.FieldName}_ChangedEventArgs))");
+                                else
+                                    sb.AppendLine($"if (!SetProperty(ref {prefix}{prop.FieldName}, value))");
                                 sb.AppendLine("    return;");
                             }
                             if (LOG_PROP_CHANGE)
@@ -162,6 +177,20 @@ public partial class ReactiveObjectGenerator
                 }
                 sb.AppendLine();
 
+                sb.AppendLine("private void OnPropertyChanged(global::System.ComponentModel.PropertyChangedEventArgs args)");
+                using (sb.EnterCurlyBracket())
+                {
+                    sb.AppendLine("PropertyChanged?.Invoke(this, args);");
+                }
+                sb.AppendLine();
+
+                sb.AppendLine("private void OnPropertyChanging(global::System.ComponentModel.PropertyChangingEventArgs args)");
+                using (sb.EnterCurlyBracket())
+                {
+                    sb.AppendLine("PropertyChanging?.Invoke(this, args);");
+                }
+                sb.AppendLine();
+
                 sb.AppendLine("private bool SetProperty<T>(ref T field, T newValue, [global::System.Runtime.CompilerServices.CallerMemberName] string? propertyName = null)");
                 using (sb.EnterCurlyBracket())
                 {
@@ -177,6 +206,20 @@ public partial class ReactiveObjectGenerator
                 sb.AppendLine();
             }
 
+            sb.AppendLine("private bool SetPropertyCached<T>(ref T field, T newValue, global::System.ComponentModel.PropertyChangingEventArgs argsChanging, global::System.ComponentModel.PropertyChangedEventArgs argsChanged)");
+            using (sb.EnterCurlyBracket())
+            {
+                sb.AppendLine("if (global::System.Collections.Generic.EqualityComparer<T>.Default.Equals(field, newValue))");
+                sb.AppendLine("    return false;");
+                sb.AppendLine();
+                sb.AppendLine("OnPropertyChanging(argsChanging);");
+                sb.AppendLine("field = newValue;");
+                sb.AppendLine("OnPropertyChanged(argsChanged);");
+                sb.AppendLine();
+                sb.AppendLine("return true;");
+            }
+            sb.AppendLine();
+
             if (model.BaseModelType != null)
             {
                 GenerateBind(model, sb);
@@ -186,11 +229,30 @@ public partial class ReactiveObjectGenerator
         }
         sb.AppendLine();
 
+        sb.AppendLine("#pragma warning restore CS8774");
+        sb.AppendLine();
+
         var sourceText = SourceText.From(sb.ToString(), Encoding.UTF8);
 
         context.AddSource($"{model.ClassName}_ReactiveObject.g.cs", sourceText);
 
         //EmitStylableClass(context, result);
+    }
+
+    private static void GeneratePropChanging(IndentedStringBuilder sb, ReactiveObjectField prop)
+    {
+        if (prop.ReactiveParams.CachePropNotif)
+            sb.AppendLine($"OnPropertyChanging({prop.FieldName}_ChangingEventArgs);");
+        else
+            sb.AppendLine($"OnPropertyChanging(\"{prop.PropName}\");");
+    }
+
+    private static void GeneratePropChanged(IndentedStringBuilder sb, ReactiveObjectField prop)
+    {
+        if (prop.ReactiveParams.CachePropNotif)
+            sb.AppendLine($"OnPropertyChanged({prop.FieldName}_ChangedEventArgs);");
+        else
+            sb.AppendLine($"OnPropertyChanged(\"{prop.PropName}\");");
     }
 
     private static void GenerateBind(ReactiveObjectClass model, IndentedStringBuilder sb)
@@ -398,3 +460,5 @@ public partial class ReactiveObjectGenerator
         context.AddSource($"{model.ClassName}_Styles.g.cs", sourceText);
     }*/
 }
+
+#pragma warning restore CS0162
