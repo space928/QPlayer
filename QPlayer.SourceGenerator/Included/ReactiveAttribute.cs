@@ -107,6 +107,8 @@ public sealed class ModelBindsToAttribute(string modelPath) : Attribute
 /// <summary>
 /// Indicates that this property should not be automatically bound to a corresponding model property. Note that 
 /// properties for read-only fields are implicitly skipped from model binding as they cannot be written too.
+/// <para/>
+/// This attribute also implies the <see cref="NoUndoAttribute"/>.
 /// </summary>
 [System.AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = true, AllowMultiple = false)]
 public sealed class ModelSkipAttribute : Attribute
@@ -152,6 +154,14 @@ public sealed class CustomAccessibilityAttribute(string accessibilityModifiers) 
 {
     public string AccessibilityModifiers { get; } = accessibilityModifiers;
 }
+
+/// <summary>
+/// Prevents undo actions from being recorded on the property generated using a <see cref="ReactiveAttribute"/>.
+/// </summary>
+/// <param name="accessibilityModifiers">The accessibility modifiers to add to the generated property.</param>
+[AttributeUsage(AttributeTargets.Field | AttributeTargets.Property, Inherited = false, AllowMultiple = false)]
+public sealed class NoUndoAttribute : Attribute
+{ }
 
 /// <summary>
 /// Specifies the model type associated with this view model.

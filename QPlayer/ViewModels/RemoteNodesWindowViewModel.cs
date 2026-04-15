@@ -111,8 +111,8 @@ public partial class RemoteNodeGroupViewModel : ObservableObject, IDisposable
     public RemoteNodeGroupViewModel(MainViewModel mainViewModel, string remoteNode, IEnumerable<CueViewModel> cues)
     {
         this.mainViewModel = mainViewModel;
-        RemoteNode = remoteNode;
-        Cues = new(cues.ToList());
+        this.remoteNode = remoteNode;
+        Cues = new([.. cues]);
         Bind();
     }
 

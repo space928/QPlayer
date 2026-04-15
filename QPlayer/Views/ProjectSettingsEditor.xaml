@@ -27,7 +27,7 @@
             <Label Content="Show Date"/>
             <DatePicker Text="{Binding Date}" DockPanel.Dock="Right" Margin="8,0,0,0"/>
         </DockPanel>
-        <Label Content="Audio Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <Label Content="Audio Setup" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0" x:Name="AudioSetupHeader"/>
         <DockPanel>
             <Label Content="Sound Driver"/>
             <ComboBox SelectedItem="{Binding AudioOutputDriver}" ItemsSource="{Binding AudioOutputDriverValues}" DockPanel.Dock="Right" Margin="8,2,2,2" SelectionChanged="AudioDriver_SelectionChanged"/>

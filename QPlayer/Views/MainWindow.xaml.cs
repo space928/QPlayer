@@ -19,6 +19,7 @@ using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
+using System.Windows.Threading;
 
 namespace QPlayer;
 
@@ -218,7 +219,7 @@ public partial class MainWindow : Window
                 {
                     e.Effects = DragDropEffects.Copy;
 
-                    var copy = vm.DuplicateCueExecute(dataCue);
+                    var copy = vm.DuplicateCue(dataCue);
                     if (copy != null)
                         vm.MoveCue(copy, dstIndex);
                 }
@@ -326,12 +327,30 @@ public partial class MainWindow : Window
     private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var vm = (MainViewModel)DataContext;
-        if (vm.UnsavedChangedCheck())
-            Close();
+        Dispatcher.Invoke(async () =>
+        {
+            var canClose = await vm.UnsavedChangedCheck();
+            if (canClose)
+                Close();
+        });
     }
 
     private void OverlayConsume_KeyDown(object sender, KeyEventArgs e)
     {
         e.Handled = true;
+    }
+
+    private void AudioActiveText_MouseDown(object sender, MouseButtonEventArgs e)
+    {
+        CueEditor.SelectedItem = ProjectSetupTabItem;
+        Dispatcher.Invoke(ProjectSettingsEditorInst.AudioSetupHeader.BringIntoView);
+        var vm = (MainViewModel)DataContext;
+        if (!vm.IsAudioActive)
+            vm.OpenAudioDevice();
+    }
+
+    private void ShowMode_Checked(object sender, RoutedEventArgs e)
+    {
+        CueListControl.Focus();
     }
 }

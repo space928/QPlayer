@@ -45,6 +45,10 @@ public class AudioPlaybackManager : IDisposable
         }
     }
 
+    public event Action<bool>? DeviceStateChanged;
+
+    public bool IsDeviceActive => device != null;
+
     public AudioPlaybackManager(MainViewModel mainViewModel)
     {
         this.mainViewModel = mainViewModel;
@@ -124,6 +128,10 @@ public class AudioPlaybackManager : IDisposable
         deviceClosedEvent.Wait(200);
         device?.Dispose();
         device = null;
+        if (synchronizationContext != null)
+            synchronizationContext.Post(_ => DeviceStateChanged?.Invoke(false), null);
+        else
+            DeviceStateChanged?.Invoke(false);
     }
 
     private void DevicePlaybackStopped(object? sender, StoppedEventArgs e)
@@ -144,7 +152,13 @@ public class AudioPlaybackManager : IDisposable
                 }, null);
             });
         }
+        device?.Dispose();
+        device = null;
         deviceClosedEvent.Set();
+        if (synchronizationContext != null)
+            synchronizationContext.Post(_ => DeviceStateChanged?.Invoke(false), null);
+        else
+            DeviceStateChanged?.Invoke(false);
     }
 
     public async Task<(object? key, string identifier)[]> GetOutputDevices(AudioOutputDriver driver)
@@ -233,6 +247,10 @@ public class AudioPlaybackManager : IDisposable
         /*var sig = new SignalGenerator();
         PlaySound(sig);*/
         MainViewModel.Log($"Opened sound device '{key}' with driver '{driver}'!", MainViewModel.LogLevel.Info);
+        if (synchronizationContext != null)
+            synchronizationContext.Post(_ => DeviceStateChanged?.Invoke(true), null);
+        else
+            DeviceStateChanged?.Invoke(true);
     }
 
     private void SetWasapiProperties()

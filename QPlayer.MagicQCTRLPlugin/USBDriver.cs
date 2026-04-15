@@ -36,6 +36,14 @@ internal class USBDriver : IDisposable
     private Task? usbRXTask;
     private volatile bool isDisposing;
 
+    public void USBConnectAsync()
+    {
+        DeviceList.Local.Changed += (o, e) =>
+        {
+            USBConnect();
+        };
+    }
+
     /// <summary>
     /// Connect to the MagicQCTRL USB device.
     /// </summary>
@@ -45,7 +53,7 @@ internal class USBDriver : IDisposable
         RXMessages.Clear();
         OnConnectionStatusChanged?.Invoke(false);
 
-        foreach (var device in DeviceList.Local.GetAllDevices())
+        foreach (var device in DeviceList.Local.GetHidDevices())
         {
             // Log($"Found device: path={device.DevicePath}; canOpen={device.CanOpen}; name={device.GetFriendlyName()}; fsName={device.GetFileSystemName()}", LogLevel.Debug);
             try

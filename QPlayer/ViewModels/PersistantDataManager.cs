@@ -100,6 +100,7 @@ public class PersistantDataManager : ObservableObject
         try
         {
             using var f = File.OpenWrite(Path.Combine(dataDir, "recent_files.json"));
+            f.SetLength(0);
             JsonSerializer.Serialize(f, recentFiles.ToArray());
         }
         catch (Exception ex)

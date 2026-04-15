@@ -83,7 +83,7 @@ public class MSCManager
             if (mainViewModel.FindCue(msg.goData.qid, out var cue))
             {
                 mainViewModel.SelectedCue = cue;
-                mainViewModel.GoExecute();
+                mainViewModel.Go();
             }
             else
             {
@@ -97,7 +97,7 @@ public class MSCManager
             {
                 // TODO: Currently this ignores the fade time
                 mainViewModel.SelectedCue = cue;
-                mainViewModel.GoExecute();
+                mainViewModel.Go();
             }
             else
             {
@@ -120,7 +120,7 @@ public class MSCManager
                         cue.Stop();
                 }
                 else
-                    mainViewModel.StopExecute();
+                    mainViewModel.Stop();
             }
         }, syncContext);
         mscDriver.Subscribe(MSCCommands.Resume, msg =>
@@ -131,7 +131,7 @@ public class MSCManager
                     cue.Go();
             }
             else
-                mainViewModel.UnpauseExecute();
+                mainViewModel.Unpause();
         }, syncContext);
     }
 }

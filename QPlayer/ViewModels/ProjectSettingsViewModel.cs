@@ -31,8 +31,8 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>,
     [Reactive] private bool exclusiveMode;
     [Reactive] private int channelOffset;
     [Reactive] private readonly RelayCommand showAsioControlPanelCommand;
-    [Reactive] private AudioOutputDriver audioOutputDriver;
-    [Reactive, ModelCustomBinding(nameof(VM2M_AudioOutputDevice), nameof(M2VM_AudioOutputDevice))]
+    [Reactive, NoUndo] private AudioOutputDriver audioOutputDriver;
+    [Reactive, ModelCustomBinding(nameof(VM2M_AudioOutputDevice), nameof(M2VM_AudioOutputDevice)), NoUndo]
     public int selectedAudioOutputDeviceIndex;
 
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<AudioOutputDriver>? audioOutputDriverValues;

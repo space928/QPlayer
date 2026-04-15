@@ -218,6 +218,7 @@ public partial class ReactiveObjectGenerator
             bool skipBinding = false;
             var reactiveDependants = ImmutableArray.CreateBuilder<string>();
             bool cachedNotification = false;
+            bool noUndo = false;
             foreach (var attrib in attributes)
             {
                 var args = attrib.ConstructorArguments;
@@ -259,6 +260,9 @@ public partial class ReactiveObjectGenerator
                         break;
                     case nameof(CachedNotification):
                         cachedNotification = true;
+                        break;
+                    case nameof(NoUndoAttribute):
+                        noUndo = true;
                         break;
 
                     case nameof(ModelCustomBindingAttribute):
@@ -306,7 +310,7 @@ public partial class ReactiveObjectGenerator
 
             reactiveProps = new(getFunc, getInline, setAction, setInline, propTemplate,
                 accessibility, reactiveDependants.DrainToImmutable().AsEquatable(), 
-                privateSet, skipCompare, cachedNotification);
+                privateSet, skipCompare, cachedNotification, noUndo || skipBinding);
             bindingProps = new(bindingVM2M, bindingM2VM, bindingPath, skipBinding);
             return null;
         }
@@ -342,6 +346,6 @@ public partial class ReactiveObjectGenerator
         BindablePropertyParams BindableParams);
     public record ReactivePropertyParams(string? OnGetFunc, bool GetInline, string? OnSetAction, bool SetInline,
         string? PropTemplate, string? CustomAccessibility, EquatableArray<string> ReactiveDependants, 
-        bool PrivateSet, bool SkipCompare, bool CachePropNotif);
+        bool PrivateSet, bool SkipCompare, bool CachePropNotif, bool NoUndo);
     public record BindablePropertyParams(string? BindingVM2M, string? BindingM2VM, string? BindingPath, bool SkipBinding);
 }

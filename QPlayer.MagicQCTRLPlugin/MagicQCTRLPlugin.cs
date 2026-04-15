@@ -39,8 +39,8 @@ public class MagicQCTRLPlugin : QPlayerPlugin
             try
             {
                 driver = new();
-                var connected = driver.USBConnect();
-                if (!connected)
+                driver.USBConnectAsync();
+                if (!driver.IsConnected)
                 {
                     Thread.Sleep(500);
                     continue;
@@ -54,16 +54,14 @@ public class MagicQCTRLPlugin : QPlayerPlugin
                     Thread.Sleep(100);
                 }
 
-                if (!driver.IsConnected)
-                {
-                    throw new Exception("USB disconnected!");
-                }
+                throw new Exception("USB disconnected!");
             }
             catch (Exception ex)
             {
                 driver?.OnMessageReceived -= Driver_OnMessageReceived;
                 MainViewModel.Log($"MagicQCTRL disconnected due to an error: {ex.Message}", MainViewModel.LogLevel.Warning);
             }
+            driver?.Dispose();
         }
     }
 
@@ -90,28 +88,28 @@ public class MagicQCTRLPlugin : QPlayerPlugin
         {
             name = "STOP",
             keyColourOn = new(255, 20, 5),
-            onPress = Sync(() => vm?.StopExecute()),
+            onPress = Sync(() => vm?.Stop()),
         });
 
         SetKey(0, 2, 3, new()
         {
             name = "GO",
             keyColourOn = new(20, 255, 50),
-            onPress = Sync(() => vm?.GoExecute()),
+            onPress = Sync(() => vm?.Go()),
         });
 
         SetKey(0, 1, 0, new()
         {
             name = "Pause",
             keyColourOn = new(230, 190, 0),
-            onPress = Sync(() => vm?.PauseExecute()),
+            onPress = Sync(() => vm?.Pause()),
         });
 
         SetKey(0, 2, 0, new()
         {
             name = "Play",
             keyColourOn = new(230, 190, 0),
-            onPress = Sync(() => vm?.UnpauseExecute()),
+            onPress = Sync(() => vm?.Unpause()),
         });
 
         SetKey(0, 2, 1, new()

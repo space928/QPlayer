@@ -108,6 +108,8 @@ public partial class ReactiveObjectGenerator
                                 sb.AppendLine("    return;");
                             }
                             GeneratePropChanging(sb, prop);
+                            if (!prop.ReactiveParams.NoUndo && model.BaseModelType != null)
+                                sb.AppendLine($"global::QPlayer.ViewModels.UndoManager.RegisterAction(nameof({prop.PropName}), this, {propTemplate}, value);");
                             sb.AppendLine($"{propTemplate} = value;");
                             GeneratePropChanged(sb, prop);
                             if (LOG_PROP_CHANGE)
@@ -118,20 +120,16 @@ public partial class ReactiveObjectGenerator
                             string prefix = string.Empty;
                             if (prop.FieldName == "value")
                                 prefix = "this.";
-                            if (prop.ReactiveParams.SkipCompare)
+                            if (!prop.ReactiveParams.SkipCompare)
                             {
-                                GeneratePropChanging(sb, prop);
-                                sb.AppendLine($"{prefix}{prop.FieldName} = value;");
-                                GeneratePropChanged(sb, prop);
-                            }
-                            else
-                            {
-                                if (prop.ReactiveParams.CachePropNotif)
-                                    sb.AppendLine($"if (!SetPropertyCached(ref {prefix}{prop.FieldName}, value, {prop.FieldName}_ChangingEventArgs, {prop.FieldName}_ChangedEventArgs))");
-                                else
-                                    sb.AppendLine($"if (!SetProperty(ref {prefix}{prop.FieldName}, value))");
+                                sb.AppendLine($"if ({prefix}{prop.FieldName} == value)");
                                 sb.AppendLine("    return;");
                             }
+                            GeneratePropChanging(sb, prop);
+                            if (!prop.ReactiveParams.NoUndo && model.BaseModelType != null)
+                                sb.AppendLine($"global::QPlayer.ViewModels.UndoManager.RegisterAction(nameof({prop.PropName}), this, {prefix}{prop.FieldName}, value);");
+                            sb.AppendLine($"{prefix}{prop.FieldName} = value;");
+                            GeneratePropChanged(sb, prop);
                             if (LOG_PROP_CHANGE)
                                 sb.AppendLine($"System.Diagnostics.Debug.WriteLine($\"[PropChange] {prop.PropName} = {{{prop.PropName}}}\\t\\t(<- {{new System.Diagnostics.StackTrace().GetFrame(1).GetMethod()}})\");");
                         }
@@ -383,82 +381,6 @@ public partial class ReactiveObjectGenerator
         }
         sb.AppendLine();
     }
-
-    /// <summary>
-    /// Emits a factory class for making stylable properties for a given UIElement.
-    /// </summary>
-    /// <example>
-    /// /* Outputs the following code: */
-    /// 
-    /// // Factory method for a new stylable prop
-    /// public StylableProp<Colour> BgColour(Colour value)
-    /// {
-    ///     return new(value, Apply_Background);
-    /// }
-    /// 
-    /// private void Apply_Background(UIElement elem, StylableProp<Colour> prop)
-    /// {
-    ///     switch (elem)
-    ///     {
-    ///         case Button button:
-    ///             {
-    ///                 button.Background = prop.Value;
-    ///                 break;
-    ///             }
-    ///         default:
-    ///             throw ...
-    /// 	}
-    /// }
-    /// </example>
-    /// <param name="context"></param>
-    /// <param name="result"></param>
-    /*private static void EmitStylableClass(SourceProductionContext context, ReactiveObjectResult result)
-    {
-        if (result.Diagnostic != null)
-            context.ReportDiagnostic(result.Diagnostic);
-        if (result.Class is not ReactiveObjectClass model)
-            return;
-
-        IndentedStringBuilder sb = new();
-
-        Helpers.EmitFileHeader(sb, model.Namespace, model.EnableNullable, ["System.Runtime.CompilerServices", "ArgonUI.SourceGenerator", "ArgonUI.Styling", "ArgonUI.UIElements"]);
-
-        sb.AppendLine($"[GeneratedStyles(\"{model.Assembly}\", \"{model.ClassName}\")]");
-        sb.AppendLine($"{model.Accessibility.GetText()} static partial class {model.ClassName}_Styles");
-        using (sb.EnterCurlyBracket())
-        {
-            foreach (var prop in model.ReactiveFields)
-            {
-                if (prop.Stylable == null)
-                    continue;
-
-                // Generate a factory method
-                if (!string.IsNullOrEmpty(prop.DocComment))
-                    Helpers.PrintDocComment(sb, prop.DocComment!);
-                sb.AppendLine("/// <remarks>This is a factory method for a stylable property.</remarks>");
-                sb.AppendLine("/// <param name=\"value\">The initial value of the new stylable property.</param>");
-                sb.AppendLine($"public static StylableProp<{prop.FieldType}> {prop.PropName}({prop.FieldType} value)");
-                using (sb.EnterCurlyBracket())
-                {
-                    sb.AppendLine($"return new(value, Apply_{prop.PropName}, \"{prop.PropName}\");");
-                }
-                sb.AppendLine();
-
-                // Generate the Apply method
-                sb.AppendLine($"[MethodImpl(MethodImplOptions.AggressiveInlining)]");
-                sb.AppendLine($"private static void Apply_{prop.PropName}(UIElement elem, IStylableProperty prop)");
-                using (sb.EnterCurlyBracket())
-                {
-                    sb.AppendLine($"(({model.ClassName})elem).{prop.PropName} = ((StylableProp<{prop.FieldType}>)prop).Value;");
-                }
-                sb.AppendLine();
-            }
-        }
-
-        var sourceText = SourceText.From(sb.ToString(), Encoding.UTF8);
-
-        context.AddSource($"{model.ClassName}_Styles.g.cs", sourceText);
-    }*/
 }
 
 #pragma warning restore CS0162

@@ -156,3 +156,29 @@ public class LoopModeConverter : IValueConverter
         return (LoopMode)(int)value;
     }
 }
+
+[ValueConversion(typeof(bool), typeof(Visibility))]
+public class VisibilityConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        bool invert = false;
+        switch (parameter)
+        {
+            case bool b: invert = b; break;
+            case string s: invert = s == "True"; break;
+        }
+        return ((bool)value ^ invert) ? Visibility.Visible : Visibility.Collapsed;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        bool invert = false;
+        switch (parameter)
+        {
+            case bool b: invert = b; break;
+            case string s: invert = s == "True"; break;
+        }
+        return invert ^ (Visibility)value == Visibility.Visible;
+    }
+}

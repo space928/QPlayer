@@ -7,7 +7,7 @@
 		<EnableDynamicLoading>true</EnableDynamicLoading>
 		<UseWPF>true</UseWPF>
 
-		<Version>0.1.0</Version>
+		<Version>0.1.1</Version>
 		<Authors>Thomas Mathieson</Authors>
 		<Company>Thomas Mathieson</Company>
 		<Copyright>©️ Thomas Mathieson 2026</Copyright>
@@ -19,9 +19,6 @@
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 		<!--<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>-->
 	</PropertyGroup>
-	<Target Name="AfterBuild">
-		<Copy SourceFiles="$(OutDir)" DestinationFiles="..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\" />
-	</Target>
 	<ItemGroup>
 	  <PackageReference Include="HidSharp" Version="2.6.4" />
 	</ItemGroup>
@@ -35,4 +32,10 @@
 			<OutputItemType>Analyzer</OutputItemType>
 		</ProjectReference>
 	</ItemGroup>
+	<ItemGroup>
+		<OutputFiles Include="$(OutDir)\**\*.*"/>
+	</ItemGroup>
+	<Target Name="CopyDir" AfterTargets="Build">
+		<Copy SourceFiles="@(OutputFiles)" DestinationFolder="$(SolutionDir)\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\$(ProjectName)\" />
+	</Target>
 </Project>

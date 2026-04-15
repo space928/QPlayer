@@ -26,6 +26,11 @@ public static class CueFactory
 
     public static ICollection<RegisteredCueType> RegisteredCueTypes => registeredCueTypes.Values;
 
+    /// <summary>
+    /// Creates a new instance of a cue of the given type. Available cue types are those registered in <see cref="RegisteredCueTypes"/>.
+    /// </summary>
+    /// <param name="typeName"></param>
+    /// <returns></returns>
     public static Cue? CreateCue(string typeName)
     {
         if (registeredCueTypes.TryGetValue(typeName, out var registered))
@@ -33,6 +38,13 @@ public static class CueFactory
         return null;
     }
 
+    /// <summary>
+    /// Creates a new instance of a cue view model of the given type. Available cue types are those registered in <see cref="RegisteredCueTypes"/>.
+    /// End users should preferentially use <see cref="MainViewModel.CreateCue(string?, int, bool, CueViewModel?)"/>.
+    /// </summary>
+    /// <param name="typeName"></param>
+    /// <param name="mainViewModel"></param>
+    /// <returns></returns>
     public static CueViewModel? CreateViewModel(string typeName, MainViewModel mainViewModel)
     {
         if (registeredCueTypes.TryGetValue(typeName, out var registered))
@@ -40,6 +52,12 @@ public static class CueFactory
         return null;
     }
 
+    /// <summary>
+    /// Creates a new instance of a cue view model for a given cue and copies all of it's properties.
+    /// </summary>
+    /// <param name="cue"></param>
+    /// <param name="mainViewModel"></param>
+    /// <returns></returns>
     public static CueViewModel? CreateViewModelForCue(Cue cue, MainViewModel mainViewModel)
     {
         var vm = CreateViewModel(cue.GetType().Name, mainViewModel);
@@ -52,15 +70,27 @@ public static class CueFactory
         return vm;
     }
 
-    public static Cue? CreateCueForViewModel(CueViewModel vm)
+    /// <summary>
+    /// Creates a new instance of a cue for a given cue view modeland copies all of it's properties.
+    /// </summary>
+    /// <param name="vm">The view model to create a model for.</param>
+    /// <param name="copy"><see langword="false"/> to bind the <paramref name="vm"/> to the newly created 
+    /// model, <see langword="true"/> to only copy it's parameter.</param>
+    /// <returns></returns>
+    public static Cue? CreateCueForViewModel(CueViewModel vm, bool copy = false)
     {
         var vmType = vm.GetType();
         if (vmType.GetCustomAttribute<ModelAttribute>() is not ModelAttribute modelAttr)
             return null;
 
         var cue = Activator.CreateInstance(modelAttr.ModelType) as Cue;
+        var oldModel = vm.BoundModel;
         vm.Bind(cue);
         vm.SyncToModel();
+
+        // In copy mode, restore the original binding
+        if (copy)
+            vm.Bind(oldModel);
 
         return cue;
     }

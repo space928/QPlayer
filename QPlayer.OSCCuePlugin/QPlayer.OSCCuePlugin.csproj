@@ -20,9 +20,6 @@
 		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
 		<!--<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>-->
 	</PropertyGroup>
-	<Target Name="AfterBuild">
-		<Copy SourceFiles="$(OutDir)" DestinationFiles="..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\"/>
-	</Target>
 	<ItemGroup>
 		<ProjectReference Include="..\QPlayer\QPlayer.csproj">
 			<Private>false</Private>
@@ -33,4 +30,10 @@
 		  <OutputItemType>Analyzer</OutputItemType>
 	  </ProjectReference>
 	</ItemGroup>
+	<ItemGroup>
+		<OutputFiles Include="$(OutDir)\**\*.*"/>
+	</ItemGroup>
+	<Target Name="CopyDir" AfterTargets="Build">
+		<Copy SourceFiles="@(OutputFiles)" DestinationFolder="$(SolutionDir)\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\$(ProjectName)\" />
+	</Target>
 </Project>

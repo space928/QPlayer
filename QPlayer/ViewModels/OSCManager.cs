@@ -191,7 +191,7 @@ public class OSCManager
                     if (msg.Count > 1)
                     {
                         mainViewModel.SelectedCue = cue;
-                        mainViewModel.GoExecute();
+                        mainViewModel.Go();
                     }
                     else
                     {
@@ -204,7 +204,7 @@ public class OSCManager
                 }
             }
             else
-                mainViewModel.GoExecute();
+                mainViewModel.Go();
         }, syncContext);
         oscDriver.Subscribe("/qplayer/stop", msg =>
         {
@@ -214,7 +214,7 @@ public class OSCManager
                     cue.Stop();
             }
             else
-                mainViewModel.StopExecute();
+                mainViewModel.Stop();
         }, syncContext);
         oscDriver.Subscribe("/qplayer/pause", msg =>
         {
@@ -224,7 +224,7 @@ public class OSCManager
                     cue.Pause();
             }
             else
-                mainViewModel.PauseExecute();
+                mainViewModel.Pause();
         }, syncContext);
         oscDriver.Subscribe("/qplayer/unpause", msg =>
         {
@@ -234,7 +234,7 @@ public class OSCManager
                     cue.Go();
             }
             else
-                mainViewModel.UnpauseExecute();
+                mainViewModel.Unpause();
         }, syncContext);
         oscDriver.Subscribe("/qplayer/preload", msg =>
         {

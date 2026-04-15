@@ -206,4 +206,16 @@ public static partial class ExtensionMethods
         //[UnsafeAccessor(UnsafeAccessorKind.Field, Name = "_version")]
         //extern static ref int GetSetVersion(PointCollection c);
     }
+
+    /// <summary>
+    /// Creates an array segment over a portion of this array.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="arr"></param>
+    /// <param name="start">The index of the first element in the segment.</param>
+    /// <param name="count">The number of elements to take.</param>
+    /// <returns>A new array segment over the array.</returns>
+    public static ArraySegment<T> AsSegment<T>(this T[] arr, int start, int count) => new(arr, start, count);
+    /// <inheritdoc cref="AsSegment{T}(T[], int, int)"/>
+    public static ArraySegment<T> AsSegment<T>(this T[] arr, int start) => new(arr, start, arr.Length - start);
 }

@@ -57,8 +57,18 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         }
     }
     [Reactive, ModelBindsTo(nameof(Cue.parent))] private decimal? parentId;
-    public CueViewModel? Parent => ParentId != null ? (parent ??= mainViewModel?.Cues.FirstOrDefault(x => x.QID == ParentId)) : null;
-    [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush))] 
+    public CueViewModel? Parent
+    {
+        get
+        {
+            if (parentId == null)
+                return null;
+            if (mainViewModel?.FindCue(parentId.Value, out var parent) ?? false)
+                return parent;
+            return null;
+        }
+    }
+    [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush)), SkipEqualityCheck] 
     private ColorState colour;
     [Reactive] private string name = string.Empty;
     [Reactive] private string description = string.Empty;
@@ -66,14 +76,14 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive] private TriggerMode trigger;
     [Reactive] private bool enabled = true;
     [Reactive] private TimeSpan delay;
-    [Reactive, CustomAccessibility("public virtual"), ModelSkip, SkipEqualityCheck] private TimeSpan duration;
+    [Reactive, CustomAccessibility("public virtual"), ModelSkip, SkipEqualityCheck, NoUndo] private TimeSpan duration;
     [Reactive, ChangesProp(nameof(UseLoopCount))] private LoopMode loopMode;
     [Reactive] public int loopCount;
 
     [Reactive, Readonly, ModelSkip] protected MainViewModel? mainViewModel;
     public bool IsSelected => mainViewModel?.SelectedCue == this;
-    [Reactive, ModelSkip] private CueState state;
-    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip] 
+    [Reactive, ModelSkip, NoUndo] private CueState state;
+    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip, NoUndo] 
     private TimeSpan playbackTime;
     public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
     
@@ -297,8 +307,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     public void SelectExecute()
     {
-        if (mainViewModel != null)
-            mainViewModel.SelectedCue = this;
+        mainViewModel?.SelectedCue = this;
     }
 
     /// <summary>
@@ -317,50 +326,6 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     private static void VM2M_Colour(CueViewModel vm, Cue m) => m.colour = (SerializedColour)vm.Colour;
     private static void M2VM_Colour(CueViewModel vm, Cue m) => vm.Colour = (ColorState)m.colour;
-
-    /// <summary>
-    /// Propagates an update from the given property on this view model to it's bound model.
-    /// </summary>
-    /// <param name="propertyName">the property to update</param>
-    /// <exception cref="ArgumentNullException"></exception>
-    /*public virtual void ToModel(string propertyName)
-    {
-
-            case nameof(Parent): cueModel.parent = Parent?.QID; break;
-            case nameof(Colour):  break;
-    }*/
-
-    /*public static CueViewModel FromModel(Cue cue, MainViewModel mainViewModel)
-    {
-        if (cue.qid == cue.parent)
-            throw new ArgumentException($"Circular reference detected! Cue {cue.qid} has itself as a parent!");
-        CueViewModel viewModel = cue.type switch
-        {
-            CueType.GroupCue => GroupCueViewModel.FromModel(cue, mainViewModel),
-            CueType.DummyCue => DummyCueViewModel.FromModel(cue, mainViewModel),
-            CueType.SoundCue => SoundCueViewModel.FromModel(cue, mainViewModel),
-            CueType.TimeCodeCue => TimeCodeCueViewModel.FromModel(cue, mainViewModel),
-            CueType.StopCue => StopCueViewModel.FromModel(cue, mainViewModel),
-            CueType.VolumeCue => VolumeCueViewModel.FromModel(cue, mainViewModel),
-            _ => throw new ArgumentException($"Unknown cue type '{cue.type}'!"),
-        };
-        viewModel.mainViewModel = mainViewModel;
-
-        viewModel.QID = cue.qid;
-        viewModel.ParentId = cue.parent;
-        viewModel.Type = cue.type;
-        viewModel.Colour = (ColorState)cue.colour;
-        viewModel.Name = cue.name;
-        viewModel.Description = cue.description;
-        viewModel.RemoteNode = cue.remoteNode;
-        viewModel.Trigger = cue.trigger;
-        viewModel.Enabled = cue.enabled;
-        viewModel.Delay = cue.delay;
-        viewModel.LoopMode = cue.loopMode;
-        viewModel.LoopCount = cue.loopCount;
-
-        return viewModel;
-    }*/
 
     public static string EnumToString<T>(T type) where T : Enum
     {
