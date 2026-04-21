@@ -7,8 +7,10 @@ import starlightKbd from 'starlight-kbd'
 
 // https://astro.build/config
 export default defineConfig({
-	site: 'https://space928.github.io',
-	base: '/QPlayer',
+	//site: 'https://space928.github.io',
+	//base: '/QPlayer',
+	site: 'https://qplayer.eu',
+	base: '/',
 	image: {
 		service: passthroughImageService()/* {
 			entrypoint: 'astro/assets/services/sharp',
