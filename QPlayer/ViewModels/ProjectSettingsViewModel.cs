@@ -174,7 +174,7 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>,
 
         showAsioControlPanelCommand = new(mainViewModel.AudioPlaybackManager.OpenASIOControlPanel);
 
-        _ = AudioOutputDevices; // Update the list of audio devices...
+        // _ = AudioOutputDevices; // Update the list of audio devices...
         //if (SelectedAudioOutputDeviceIndex < audioOutputDevices.Length)
         //    mainViewModel.OpenAudioDevice();
 

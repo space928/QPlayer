@@ -44,9 +44,9 @@ public class IndentedStringBuilder
     /// // }
     /// </example>
     /// <returns></returns>
-    public IndentedCurlyBracket EnterCurlyBracket()
+    public IndentedCurlyBracket EnterCurlyBracket(bool addSemicolon = false)
     {
-        return new IndentedCurlyBracket(this);
+        return new IndentedCurlyBracket(this, addSemicolon);
     }
 
     /// <summary>
@@ -207,16 +207,21 @@ public class IndentedStringBuilder
     public readonly struct IndentedCurlyBracket : IDisposable
     {
         private readonly IndentedStringBuilder sb;
+        private readonly bool addSemicolon;
 
-        internal IndentedCurlyBracket(IndentedStringBuilder sb)
+        internal IndentedCurlyBracket(IndentedStringBuilder sb, bool addSemicolon = false)
         {
             this.sb = sb;
             sb.AppendLine("{").Indent();
+            this.addSemicolon = addSemicolon;
         }
 
         public readonly void Dispose()
         {
-            sb.UnIndent().AppendLine("}");
+            if (addSemicolon)
+                sb.UnIndent().AppendLine("};");
+            else
+                sb.UnIndent().AppendLine("}");
         }
     }
 

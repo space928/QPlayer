@@ -22,12 +22,12 @@
     <Color x:Key="AREghZyColour.Glyph.Selected"                   R="228" G="228" B="228" A="255"/>
     <Color x:Key="AREghZyColour.Glyph.Selected.Inactive"          R="218" G="218" B="218" A="255"/>
 
-    <Color x:Key="AREghZyColour.ColourfulGlyph.Static"            R="55" G="130" B="190" A="255"/>
-    <Color x:Key="AREghZyColour.ColourfulGlyph.Disabled"          R="85" G="135" B="175" A="255"/>
-    <Color x:Key="AREghZyColour.ColourfulGlyph.MouseOver"         R="45" G="125" B="215" A="255"/>
-    <Color x:Key="AREghZyColour.ColourfulGlyph.MouseDown"         R="50" G="135" B="200" A="255"/>
-    <Color x:Key="AREghZyColour.ColourfulGlyph.Selected"          R="50" G="115" B="185" A="255"/>
-    <Color x:Key="AREghZyColour.ColourfulGlyph.Selected.Inactive" R="55" G="120" B="200" A="255"/>
+    <Color x:Key="AREghZyColour.ColourfulGlyph.Static"            R="0" G="32" B="17" A="255"/>
+    <Color x:Key="AREghZyColour.ColourfulGlyph.Disabled"          R="0" G="80" B="42" A="255"/>
+    <Color x:Key="AREghZyColour.ColourfulGlyph.MouseOver"         R="40" G="172" B="42" A="255"/>
+    <Color x:Key="AREghZyColour.ColourfulGlyph.MouseDown"         R="21" G="222" B="29" A="255"/>
+    <Color x:Key="AREghZyColour.ColourfulGlyph.Selected"          R="12"  G="130" B="25"  A="255"/>
+    <Color x:Key="AREghZyColour.ColourfulGlyph.Selected.Inactive" R="10" G="100" B="18" A="255"/>
     <Color x:Key="AREghZyColour.Deep.1.Background.Static"         R="24" G="24" B="24" A="255"/>
     <Color x:Key="AREghZyColour.Deep.2.Background.Static"         R="28" G="28" B="28" A="255"/>
     <Color x:Key="AREghZyColour.Deep.3.Background.Static"         R="33" G="33" B="33" A="255"/>

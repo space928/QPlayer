@@ -13,6 +13,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
 {
     private readonly ISamplePositionProvider source;
     private readonly Lock lockObj = new();
+    private readonly SynchronizationContext? syncContext;
     private FadeState state;
     private long fadeTime;
     private long fadeDuration;
@@ -20,7 +21,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
     private float endVolume = 1;
     private FadeType fadeType;
     private Action<bool>? onCompleteAction;
-    private SynchronizationContext? synchronizationContext;
+    private bool useSyncOnComplete;
 
     public FadingSampleProvider(ISamplePositionProvider source, bool startSilent = false)
     {
@@ -30,6 +31,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
             startVolume = 0;
         else
             startVolume = 1;
+        syncContext = SynchronizationContext.Current;
     }
 
     public long Position
@@ -100,7 +102,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
             endVolume = volume;
             this.fadeType = fadeType;
             onCompleteAction = onComplete;
-            synchronizationContext = useSyncContext ? SynchronizationContext.Current : null;
+            useSyncOnComplete = useSyncContext;
             state = FadeState.Fading;
         }
     }
@@ -118,10 +120,7 @@ internal class FadingSampleProvider : ISamplePositionProvider
             state = FadeState.Ready;
             float t = GetFadeFraction(fadeTime / (float)fadeDuration, fadeType);
             startVolume = endVolume * t + startVolume * (1 - t);
-            if (synchronizationContext != null)
-                synchronizationContext.Post(x => onCompleteAction?.Invoke(false), null);
-            else
-                onCompleteAction?.Invoke(false);
+            InvokeActionOnMainThread(false);
             //onCompleteAction = null;
             //synchronizationContext = null;
         }
@@ -202,11 +201,18 @@ internal class FadingSampleProvider : ISamplePositionProvider
         {
             startVolume = endVolume;
             state = FadeState.Ready;
-            if (synchronizationContext != null)
-                synchronizationContext.Post(x => onCompleteAction?.Invoke(true), null);
-            else
-                onCompleteAction?.Invoke(true);
+            InvokeActionOnMainThread(true);
         }
+    }
+
+    private void InvokeActionOnMainThread(bool wasCancelled)
+    {
+        if (onCompleteAction == null)
+            return;
+        if (useSyncOnComplete && syncContext != null)
+            syncContext.Post(_ => onCompleteAction(wasCancelled), null);
+        else
+            onCompleteAction(wasCancelled);
     }
 
     private static float GetFadeFraction(float t, FadeType type)

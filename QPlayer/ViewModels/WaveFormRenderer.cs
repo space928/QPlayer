@@ -102,10 +102,10 @@ public partial class WaveFormRenderer : ObservableObject
     internal const string OnVMUpdate = "OnVMUpdate";
 
     // Accursed over-abstraction...
-    private readonly Brush peakBrush = new SolidColorBrush(Color.FromArgb(200, 10, 90, 255));
-    private readonly Pen peakPen;
-    private readonly Brush rmsBrush = new SolidColorBrush(Color.FromArgb(200, 10, 30, 220));
-    private readonly Pen rmsPen;
+    private static readonly Brush peakBrush = new SolidColorBrush(Color.FromArgb(200, 10, 90, 255));
+    private static readonly Pen peakPen;
+    private static readonly Brush rmsBrush = new SolidColorBrush(Color.FromArgb(200, 10, 30, 220));
+    private static readonly Pen rmsPen;
     private readonly GeometryDrawing geometryDrawingPeak;
     private readonly PathGeometry geometryPeak;
     private readonly PathFigure figurePeak;
@@ -130,10 +130,16 @@ public partial class WaveFormRenderer : ObservableObject
     private float width;
     private float height;
 
-    public WaveFormRenderer(SoundCueViewModel soundCue)
+    static WaveFormRenderer()
     {
         // Accursed over-abstraction... Blame Microsoft...
+        // TODO: Get the pens from xaml
         peakPen = new(peakBrush, 0);
+        rmsPen = new(rmsBrush, 0);
+    }
+
+    public WaveFormRenderer(SoundCueViewModel soundCue)
+    {
         figurePeak = new()
         {
             IsClosed = true,
@@ -146,7 +152,6 @@ public partial class WaveFormRenderer : ObservableObject
         geometryPeak.Figures.Add(figurePeak);
         geometryDrawingPeak = new GeometryDrawing(peakBrush, peakPen, geometryPeak);
 
-        rmsPen = new(rmsBrush, 0);
         figureRMS = new()
         {
             IsClosed = true,

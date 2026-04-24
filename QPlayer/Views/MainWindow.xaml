@@ -27,6 +27,8 @@
         <KeyBinding Key="OemCloseBrackets" Command="{Binding UnpauseCommand}"/>
         <KeyBinding Key="Up" Command="{Binding UpCommand}"/>
         <KeyBinding Key="Down" Command="{Binding DownCommand}"/>
+        <KeyBinding Gesture="Shift+Up" Command="{Binding SelUpCommand}"/>
+        <KeyBinding Gesture="Shift+Down" Command="{Binding SelDownCommand}"/>
         <KeyBinding Key="Delete" Command="{Binding DeleteCueCommand}"/>
         <KeyBinding Gesture="CTRL+N" Command="{Binding NewProjectCommand}"/>
         <KeyBinding Gesture="CTRL+O" Command="{Binding OpenProjectCommand}"/>

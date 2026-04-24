@@ -218,4 +218,20 @@ public static partial class ExtensionMethods
     public static ArraySegment<T> AsSegment<T>(this T[] arr, int start, int count) => new(arr, start, count);
     /// <inheritdoc cref="AsSegment{T}(T[], int, int)"/>
     public static ArraySegment<T> AsSegment<T>(this T[] arr, int start) => new(arr, start, arr.Length - start);
+
+    /// <summary>
+    /// Creates a new <see cref="TemporaryList{T}"/> from this enumerable.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="values"></param>
+    /// <returns></returns>
+    public static TemporaryList<T> ToTempList<T>(this IEnumerable<T> values) => new(values);
+
+    /// <summary>
+    /// Reverses the given enumerable efficiently. This may require enumerating the entire collection.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    public static IEnumerable<T> FastReverse<T>(this IEnumerable<T> source) => new FastReverseEnumerable<T>(source);
 }

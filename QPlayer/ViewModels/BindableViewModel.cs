@@ -47,6 +47,27 @@ public abstract class BindableViewModel<Model> : ObservableObject
     }
 
     /// <summary>
+    /// Copies the value of the named property from the <paramref name="__src"/> view model to this one. Only copies bindable properties.
+    /// </summary>
+    /// <param name="__src">The view model to copy from.</param>
+    /// <param name="__prop">The property to copy.</param>
+    /// <returns><see langword="true"/> if the property was copied</returns>
+    public virtual bool CopyRemoteProperty(BindableViewModel<Model> __src, string __prop)
+    {
+        return false;
+    }
+
+    /// <summary>
+    /// Checks if a given property on this object is automatically registers undo actions.
+    /// </summary>
+    /// <param name="__prop">The property name to check.</param>
+    /// <returns><see langword="true"/> if the given property is undoable.</returns>
+    public virtual bool IsPropertyUndoable(string __prop)
+    {
+        return false;
+    }
+
+    /// <summary>
     /// Copies all bound property values on this instance from the bound model.
     /// <br/>
     /// When using the source generator, this method is automatically implemented so long as the deriving 

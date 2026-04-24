@@ -4,6 +4,7 @@ using Microsoft.Win32;
 using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.SourceGenerator;
+using QPlayer.Utilities;
 using QPlayer.Views;
 using System;
 using System.Collections.Generic;
@@ -38,9 +39,17 @@ public partial class MainViewModel : ObservableObject
         set
         {
             var prev = selectedCueInd;
-            selectedCueInd = Math.Clamp(value, 0, Cues.Count);
-            SelectedCue?.OnFocussed();
-            if (prev != selectedCueInd)
+            HandleSelection(prev, ref value);
+
+            selectedCueInd = value;
+            foreach (var cue in cues)
+                NotifyCueSelectionChanged(cue);
+            /*if (prev >= 0 && prev < cues.Count)
+                cues[prev].OnSelectionChanged();
+            if (value >= 0 && value < cues.Count)
+                cues[value].OnSelectionChanged();*/
+
+            if (prev != value)
                 OnPropertyChanged(nameof(SelectedCue));
         }
     }
@@ -48,22 +57,16 @@ public partial class MainViewModel : ObservableObject
     private CueViewModel? SelectedCue_Template
     {
         get => SelectedCueInd >= 0 && SelectedCueInd < Cues.Count ? Cues[SelectedCueInd] : null;
-        set
-        {
-            if (value != null)
-            {
-                SelectedCueInd = Cues.IndexOf(value);
-                OnPropertyChanged(nameof(SelectedCueInd));
-                value.OnFocussed();
-            }
-        }
+        set => SelectedCueInd = FindCueIndex(value);
     }
+    [Reactive] private readonly ObservableSelectionSet<CueViewModel> multiSelection;
+    [Reactive] private SelectionMode selectionMode = SelectionMode.Normal;
     [Reactive] private readonly ObservableCollection<CueViewModel> cues;
     [Reactive] private readonly ObservableCollection<CueViewModel> activeCues;
     [Reactive] private readonly ObservableCollection<ObservableStruct<float>> columnWidths;
     [Reactive] private readonly ObservableCollection<CueViewModel> draggingCues;
     [Reactive] private bool enableAutosave = true;
-    [Reactive("ShowMode"), ChangesProp(nameof(EditMode))] 
+    [Reactive("ShowMode"), ChangesProp(nameof(EditMode))]
     private bool ShowMode_Template
     {
         get => showMode;
@@ -101,6 +104,8 @@ public partial class MainViewModel : ObservableObject
 
     [Reactive] private readonly EditModeCommand moveCueUpCommand;
     [Reactive] private readonly EditModeCommand moveCueDownCommand;
+    [Reactive] private readonly EditModeCommand selUpCommand;
+    [Reactive] private readonly EditModeCommand selDownCommand;
     [Reactive] private readonly EditModeCommand deleteCueCommand;
     [Reactive] private readonly EditModeCommand duplicateCueCommand;
 
@@ -186,6 +191,7 @@ public partial class MainViewModel : ObservableObject
     private List<string>? captureResolvedPaths;
     private Dictionary<string, string>? packedPaths;
     private int autoBackInd = 0;
+    private CueViewModel? prevPrimarySelectedCue;
     private static ObservableCollection<string> logList = [];
     private static readonly List<Window> openWindows = [];
     private static readonly object logListLock = new();
@@ -194,9 +200,8 @@ public partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer slowUpdateTimer;
     private readonly DispatcherTimer autosaveTimer;
     private readonly AudioPlaybackManager audioPlaybackManager;
-    private readonly SynchronizationContext syncContext;
     private readonly Dispatcher dispatcher;
-    private readonly Dictionary<decimal, CueViewModel> cuesDict;
+    private readonly MultiDict<decimal, CueViewModel> cuesDict;
     private readonly OSCManager oscManager;
     private readonly MSCManager mscManager;
     private readonly PersistantDataManager persistantDataManager;
@@ -259,7 +264,6 @@ public partial class MainViewModel : ObservableObject
         //foreach (FontFamily fontFamily in Fonts.GetFontFamilies(new Uri("pack://application:,,,/"), "./Resources/"))
         //    Log($"Found embedded font: {fontFamily.Source}", LogLevel.Debug);
 
-        syncContext = SynchronizationContext.Current ?? new();
         dispatcher = Dispatcher.CurrentDispatcher;
         audioPlaybackManager = new(this);
         oscManager = new(this);
@@ -290,13 +294,15 @@ public partial class MainViewModel : ObservableObject
 
         moveCueUpCommand = new(MoveCueUpExecute, this);
         moveCueDownCommand = new(MoveCueDownExecute, this);
+        selUpCommand = new(() => MultiSelect(SelectedCueInd - 1, SelectionMode.Add), this);
+        selDownCommand = new(() => MultiSelect(SelectedCueInd + 1, SelectionMode.Add), this);
         deleteCueCommand = new(DeleteCueExecute, this);
-        duplicateCueCommand = new(() => DuplicateCue(), this);
+        duplicateCueCommand = new(DuplicateCueExecute, this);
 
         goCommand = new(GoExecute);
         pauseCommand = new(Pause);
         unpauseCommand = new(Unpause);
-        stopCommand = new(Stop);
+        stopCommand = new(StopExecute);
         upCommand = new(() => SelectedCueInd--);
         downCommand = new(() => SelectedCueInd++);
         preloadCommand = new(PreloadExecute);
@@ -326,47 +332,8 @@ public partial class MainViewModel : ObservableObject
         cues = [];
         draggingCues = [];
         cuesDict = [];
-        Cues.CollectionChanged += (o, e) =>
-        {
-            switch (e.Action)
-            {
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Add:
-                    {
-                        CueViewModel item = (CueViewModel)e.NewItems![0]!;
-                        cuesDict.TryAdd(item.QID, item);
-                        break;
-                    }
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Remove:
-                    {
-                        CueViewModel item = (CueViewModel)e.OldItems![0]!;
-                        cuesDict.Remove(item.QID);
-                        break;
-                    }
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Replace:
-                    {
-                        CueViewModel oldItm = (CueViewModel)e.OldItems![0]!;
-                        CueViewModel newItm = (CueViewModel)e.NewItems![0]!;
-                        cuesDict.Remove(oldItm.QID);
-                        cuesDict.TryAdd(newItm.QID, newItm);
-                        break;
-                    }
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Move:
-                    break;
-                case System.Collections.Specialized.NotifyCollectionChangedAction.Reset:
-                    {
-                        cuesDict.Clear();
-                        if (e.NewItems != null)
-                        {
-                            foreach (var item in e.NewItems)
-                            {
-                                CueViewModel x = (CueViewModel)item!;
-                                cuesDict.TryAdd(x.QID, x);
-                            }
-                        }
-                        break;
-                    }
-            }
-        };
+        multiSelection = [];
+        Cues.CollectionChanged += SyncCueDict;
         ProjectSettings = new(this);
         ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
 
@@ -680,7 +647,36 @@ public partial class MainViewModel : ObservableObject
         Process.Start(new ProcessStartInfo("https://space928.github.io/QPlayer/reference/") { UseShellExecute = true });
     }
 
-    public void GoExecute() => Go(SelectedCue);
+    /// <summary>
+    /// Plays the currently selected cue (and advances the selection). Or, if multiple 
+    /// cues are selected, plays the selectd cues.
+    /// </summary>
+    public void GoExecute()
+    {
+        if (multiSelection.Count <= 1)
+            Go(SelectedCue);
+        else
+            foreach (var cue in multiSelection)
+                cue.DelayedGo();
+    }
+
+    /// <summary>
+    /// Stops all cues. If no cues are playing and multiple cues are selected, clears the multi-selection.
+    /// </summary>
+    public void StopExecute()
+    {
+        if (activeCues.Count == 0)
+        {
+            if (SelectedCue != null)
+                multiSelection.Replace(SelectedCue);
+            else
+                multiSelection.Clear();
+
+            foreach (var cue in cues)
+                NotifyCueSelectionChanged(cue);
+        }
+        Stop();
+    }
 
     public void ScrollCueList(Vector2 delta)
     {
@@ -692,31 +688,57 @@ public partial class MainViewModel : ObservableObject
         SelectedCue?.Preload(PreloadTime);
     }
 
+    /// <summary>
+    /// Moves the selected cues up by one position in the cue stack.
+    /// </summary>
     public void MoveCueUpExecute()
     {
-        if (SelectedCue == null || SelectedCueInd <= 0)
-            return;
-
-        MoveCue(SelectedCue, false);
+        switch (multiSelection.Count)
+        {
+            case 0: return;
+            case 1: MoveCue(SelectedCue!, false); return;
+            default: MoveSelectedCues(false); return;
+        }
     }
 
+    /// <summary>
+    /// Moves the selected cues down by one position in the cue stack.
+    /// </summary>
     public void MoveCueDownExecute()
     {
-        if (SelectedCue == null || SelectedCueInd >= Cues.Count - 1)
-            return;
-
-        MoveCue(SelectedCue, true);
+        switch (multiSelection.Count)
+        {
+            case 0: return;
+            case 1: MoveCue(SelectedCue!, true); return;
+            default: MoveSelectedCues(true); return;
+        }
     }
 
+    /// <summary>
+    /// Deletes the selected cues in the cue stack.
+    /// </summary>
     public void DeleteCueExecute()
     {
-        if (SelectedCue == null)
-            return;
+        switch (multiSelection.Count)
+        {
+            case 0: return;
+            case 1: DeleteCue(SelectedCueInd); break;
+            default: DeleteCues([.. multiSelection.Select(x => FindCueIndex(x))]); break;
+        }
+        NotifyCueSelectionChanged(SelectedCue);
+    }
 
-        int ind = SelectedCueInd;
-        DeleteCue(ind);
-        SelectedCueInd = ind;
-        OnPropertyChanged(nameof(SelectedCue));
+    /// <summary>
+    /// Duplicates the selected cues in the cue stack.
+    /// </summary>
+    public void DuplicateCueExecute()
+    {
+        switch (multiSelection.Count)
+        {
+            case 0: return;
+            case 1: DuplicateCue(null, true); return;
+            default: DuplicateCues(multiSelection, true); return;
+        }
     }
 
     internal void ShowCreateCueMenuExecute()
@@ -778,17 +800,8 @@ public partial class MainViewModel : ObservableObject
     /// <param name="src"></param>
     internal void NotifyQIDChanged(decimal oldVal, decimal newVal, CueViewModel src)
     {
-        if (cuesDict.TryGetValue(oldVal, out var cue))
-        {
-            if (cue == src)
-                cuesDict.Remove(oldVal);
-
-            cuesDict.TryAdd(newVal, src);
-        }
-        else
-        {
-            cuesDict.TryAdd(newVal, src);
-        }
+        if (!cuesDict.UpdateKey(oldVal, newVal, src))
+            cuesDict.Add(newVal, src);
     }
 
     public void OpenAudioDevice()

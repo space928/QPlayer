@@ -213,22 +213,13 @@ public partial class MainWindow : Window
         {
             CueViewModel[] dataCues = (CueViewModel[])e.Data.GetData("Cues"); // The items being drag/dropped
 
-            foreach (var dataCue in dataCues.Reverse())
+            if (e.Effects.HasFlag(DragDropEffects.Copy))
             {
-                if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
-                {
-                    e.Effects = DragDropEffects.Copy;
-
-                    var copy = vm.DuplicateCue(dataCue);
-                    if (copy != null)
-                        vm.MoveCue(copy, dstIndex);
-                }
-                else
-                {
-                    e.Effects = DragDropEffects.Move;
-
-                    vm.MoveCue(dataCue, dstIndex);
-                }
+                vm.DuplicateCues(dataCues, dstIndex);
+            }
+            else if (e.Effects.HasFlag(DragDropEffects.Move))
+            {
+                vm.MoveCues(dataCues, dstIndex);
             }
 
             vm.DraggingCues.Clear();
@@ -293,6 +284,11 @@ public partial class MainWindow : Window
             if (DraggingItemsPanel.Visibility != Visibility.Visible)
                 DraggingItemsPanel.Visibility = Visibility.Visible;
 
+            if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
+                e.Effects = DragDropEffects.Copy | DragDropEffects.Scroll;
+            else
+                e.Effects = DragDropEffects.Move | DragDropEffects.Scroll;
+
             //var mousePos = Mouse.GetPosition((Panel)DraggingItemsPanel.Parent);
             var mousePos = e.GetPosition((Panel)DraggingItemsPanel.Parent);
             //Debug.WriteLine(mousePos);
@@ -315,7 +311,7 @@ public partial class MainWindow : Window
     {
         var vm = (MainViewModel)DataContext;
         if (vm.DraggingCues.Count == 0 && DraggingItemsPanel.Visibility == Visibility.Visible)
-            DraggingItemsPanel.Visibility = Visibility.Hidden;
+            DraggingItemsPanel.Visibility = Visibility.Collapsed;
     }
 
     private void StatusBarText_MouseDoubleClick(object sender, MouseButtonEventArgs e)

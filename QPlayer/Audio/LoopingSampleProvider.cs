@@ -20,6 +20,7 @@ public class LoopingSampleProvider : ISamplePositionProvider
     private long startTime;
     private long endTime;
     private bool justSeeked = false;
+    private long devampLoop = 0;
 
     public LoopingSampleProvider(QAudioFileReader input, bool infinite = true, int loops = 1)
     {
@@ -53,6 +54,7 @@ public class LoopingSampleProvider : ISamplePositionProvider
         {
             input.SamplePosition = value;
             justSeeked = true;
+            devampLoop = 0;
         }
     }
 
@@ -183,6 +185,8 @@ public class LoopingSampleProvider : ISamplePositionProvider
     /// </summary>
     public event Action? LoopCompleted;
 
+    private event Action? DevampAction;
+
     /// <summary>
     /// Resets the internal loop and sample counters. Call this every time before playing the sound file.
     /// </summary>
@@ -192,6 +196,8 @@ public class LoopingSampleProvider : ISamplePositionProvider
         //samplePosition = 0;
         totalPosition = 0;
         SrcPosition = startTime;
+        DevampAction = null;
+        devampLoop = 0;
     }
 
     public int Read(float[] buffer, int offset, int count)
@@ -232,8 +238,21 @@ public class LoopingSampleProvider : ISamplePositionProvider
             if (HasReachedLoopEnd(read))
             {
                 // We reached the end of the sample, loop
-                SrcPosition = startTime;
                 playedLoops++;
+                if (DevampAction != null)
+                {
+                    // Don't loop, devamp
+                    DevampAction();
+                    devampLoop = playedLoops + 1;
+                    DevampAction = null;
+                    endTime = 0;
+                }
+                else
+                {
+                    // Go back to the start
+                    SrcPosition = startTime;
+                }
+
                 LoopCompleted?.Invoke();
 
                 // Safety hatch, in case we keep reading 0 samples.
@@ -249,6 +268,16 @@ public class LoopingSampleProvider : ISamplePositionProvider
     }
 
     /// <summary>
+    /// Invokes the given action once, at the end of the next loop. The action is cancelled if this sample provider 
+    /// is reset. Note that this callback will be invoked on the audio thread.
+    /// </summary>
+    /// <param name="action">An action which returns <see langword="true"/> if playback should be stopped after this action returns.</param>
+    public void DeVamp(Action onDevampStart)
+    {
+        DevampAction += onDevampStart;
+    }
+
+    /// <summary>
     /// Reads samples from the source until we reach the end of a loop (or file) or 
     /// the buffer is full (whichever happens sooner). Returns 0 if no more loops
     /// should be played.
@@ -260,7 +289,7 @@ public class LoopingSampleProvider : ISamplePositionProvider
     private int ReadInternal(float[] buffer, int offset, int count)
     {
         // If we have no more loops to play, return no samples
-        if (count == 0 || (!infinite && playedLoops >= loops))
+        if (count == 0 || (!infinite && playedLoops >= loops) || (devampLoop > 0 && playedLoops >= devampLoop))
             return 0;
 
         // Limit count if it would exceed the end time

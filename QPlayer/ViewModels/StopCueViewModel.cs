@@ -36,9 +36,9 @@ public partial class StopCueViewModel : CueViewModel
         };
     }
 
-    internal override void UpdateUIStatus()
+    protected internal override void UpdateUIStatus()
     {
-        PlaybackTime = DateTime.Now.Subtract(startTime);
+        PlaybackTime = startTime.Ticks == 0 ? TimeSpan.Zero : DateTime.UtcNow.Subtract(startTime);
         if (PlaybackTime >= Duration)
             Stop();
     }
@@ -48,18 +48,33 @@ public partial class StopCueViewModel : CueViewModel
         base.Go();
         // Stop cues don't support preloading
         PlaybackTime = TimeSpan.Zero;
-        startTime = DateTime.Now;
-        var cue = mainViewModel?.Cues.FirstOrDefault(x => x.QID == StopTarget);
-        if(cue != null)
+        startTime = DateTime.UtcNow;
+        if (mainViewModel != null && mainViewModel.FindCue(StopTarget, out var cue))
         {
-            if (cue is SoundCueViewModel soundCue)
-                soundCue.FadeOutAndStop(FadeOutTime, FadeType);
+            if (stopMode == StopMode.LoopEnd)
+            {
+                State = CueState.Delay;
+                startTime = new(0);
+                cue.DeVamp(() =>
+                {
+                    State = CueState.Playing;
+                    startTime = DateTime.UtcNow;
+                }, fadeOutTime, fadeType);
+            }
             else
             {
-                cue.Stop();
-                Stop();
+                if (FadeOutTime == 0)
+                {
+                    cue.Stop();
+                    Stop();
+                }
+                else
+                {
+                    cue.FadeOutAndStop(FadeOutTime, FadeType);
+                }
             }
-        } else
+        }
+        else
         {
             Stop();
         }

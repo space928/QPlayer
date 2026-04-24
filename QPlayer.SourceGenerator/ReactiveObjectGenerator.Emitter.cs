@@ -221,6 +221,7 @@ public partial class ReactiveObjectGenerator
             if (model.BaseModelType != null)
             {
                 GenerateBind(model, sb);
+                GenerateBindVM(model, sb);
                 GenerateSyncToModel(model, sb);
                 GenerateSyncFromModel(model, sb);
             }
@@ -280,7 +281,7 @@ public partial class ReactiveObjectGenerator
             {
                 foreach (var prop in model.ReactiveFields)
                 {
-                    if (prop.BindableParams.SkipBinding || prop.IsReadOnly || prop.IsBindable)
+                    if (prop.BindableParams.SkipBinding || prop.IsReadOnly || prop.IsBindableVM)
                         continue;
 
                     sb.AppendIndent();
@@ -292,6 +293,53 @@ public partial class ReactiveObjectGenerator
                     sb.Append("break;");
                     sb.AppendLine();
                 }
+            }
+        }
+        sb.AppendLine();
+    }
+
+    private static void GenerateBindVM(ReactiveObjectClass model, IndentedStringBuilder sb)
+    {
+        sb.AppendLine($"public override bool CopyRemoteProperty(global::QPlayer.ViewModels.BindableViewModel<{model.BaseModelType}> __src, string __prop)");
+        using (sb.EnterCurlyBracket())
+        {
+            sb.AppendLine($"if (__src is not {model.ClassName} ___src)");
+            sb.AppendLine("    return base.CopyRemoteProperty(__src, __prop);");
+            sb.AppendLine();
+            sb.AppendLine("switch (__prop)");
+            using (sb.EnterCurlyBracket())
+            {
+                foreach (var prop in model.ReactiveFields)
+                {
+                    if (prop.BindableParams.SkipBinding || prop.IsReadOnly || prop.IsBindableVM)
+                        continue;
+
+                    sb.AppendIndent();
+                    sb.Append($"case nameof({prop.PropName}): ");
+                        sb.Append($"{prop.PropName} = ___src.{prop.PropName}; ");
+                    sb.Append("break;");
+                    sb.AppendLine();
+                }
+                sb.AppendLine($"default: return base.CopyRemoteProperty(__src, __prop);");
+            }
+            sb.AppendLine("return true;");
+        }
+        sb.AppendLine();
+
+        sb.AppendLine("public override bool IsPropertyUndoable(string __prop)");
+        using (sb.EnterCurlyBracket())
+        {
+            sb.AppendLine("return __prop switch");
+            using (sb.EnterCurlyBracket(true))
+            {
+                foreach (var prop in model.ReactiveFields)
+                {
+                    if (prop.BindableParams.SkipBinding || prop.IsReadOnly || prop.IsBindableVM || prop.ReactiveParams.NoUndo)
+                        continue;
+
+                    sb.AppendLine($"nameof({prop.PropName}) => true,");
+                }
+                sb.AppendLine($"_ => base.IsPropertyUndoable(__prop),");
             }
         }
         sb.AppendLine();
@@ -318,7 +366,7 @@ public partial class ReactiveObjectGenerator
                 }
                 else if (prop.BindableParams.BindingPath is string bindPath)
                 {
-                    if (prop.IsBindable)
+                    if (prop.IsBindableVM)
                     {
                         sb.AppendLine($"__model.{bindPath} ??= new();");
                         sb.AppendLine($"{prop.PropName}.Bind(__model.{bindPath});");
@@ -355,7 +403,7 @@ public partial class ReactiveObjectGenerator
                 }
                 else if (prop.BindableParams.BindingPath is string bindPath)
                 {
-                    if (prop.IsBindable)
+                    if (prop.IsBindableVM)
                     {
                         sb.AppendLine($"if(__model.{bindPath} == null)");
                         using (sb.EnterCurlyBracket())

@@ -1,5 +1,6 @@
 ﻿using QPlayer.Utilities;
 using System;
+using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
 using System.Reflection;
@@ -18,9 +19,11 @@ public static class UndoManager
     public const int MAX_HISTORY = 50;
     private static readonly Deque<UndoAction> undoStack = [];
     private static readonly Deque<UndoAction> redoStack = [];
+    private static readonly Deque<UndoAction> groupedUndoStack = [];
     private static readonly StringDict<SetPropDelegate> cachedSetters = [];
     private static MainViewModel? mainViewModel;
     private static int suppressRecordingCounter = 0;
+    private static int groupRecordingCounter = 0;
 
     private delegate void SetPropDelegate(object target, object? value);
 
@@ -52,6 +55,7 @@ public static class UndoManager
     public static int UndoHistoryCount => undoStack.Count;
 
     public static bool IsRecordingSuppressed => suppressRecordingCounter > 0;
+    public static bool IsInGroupedRecording => groupRecordingCounter > 0;
 
     internal static void RegisterMainVM(MainViewModel vm)
     {
@@ -94,12 +98,20 @@ public static class UndoManager
             }
         }
 
-        redoStack.Clear();
-        undoStack.PushEnd(new(path, target, oldValue, newValue));
-        if (undoStack.Count > MAX_HISTORY)
-            undoStack.PopStart();
+        if (IsInGroupedRecording)
+        {
+            groupedUndoStack.PushEnd(new(path, target, oldValue, newValue));
+        }
+        else
+        {
+            redoStack.Clear();
+            undoStack.PushEnd(new(path, target, oldValue, newValue));
+            if (undoStack.Count > MAX_HISTORY)
+                undoStack.PopStart();
 
-        UndoStackChanged?.Invoke();
+            UndoStackChanged?.Invoke();
+        }
+
         // MainViewModel.Log($"[UNDO] Registered {undoStack.MutablePeekEnd()}");
     }
 
@@ -114,13 +126,100 @@ public static class UndoManager
         if (IsRecordingSuppressed)
             return;
 
+        if (IsInGroupedRecording)
+        {
+            groupedUndoStack.PushEnd((new(actionDesc, undoFunc, redoFunc)));
+        }
+        else
+        {
+            redoStack.Clear();
+            undoStack.PushEnd((new(actionDesc, undoFunc, redoFunc)));
+            if (undoStack.Count > MAX_HISTORY)
+                undoStack.PopStart();
+
+            UndoStackChanged?.Invoke();
+        }
+        // MainViewModel.Log($"[UNDO] Registered {undoStack.MutablePeekEnd()}");
+    }
+
+    /// <summary>
+    /// Registers a grouped action to the undo stack.
+    /// </summary>
+    /// <param name="actionDesc">A brief description of the action (in the past tense).</param>
+    /// <param name="actions">The group of actions to register.</param>
+    private static void RegisterAction(string actionDesc, UndoAction[] actions)
+    {
+        if (IsRecordingSuppressed || actions.Length == 0)
+            return;
+
+        Debug.Assert(!IsInGroupedRecording);
+
+        // Try to merge this action with the last action
+        ref var top = ref undoStack.MutablePeekEnd();
+        if (!Unsafe.IsNullRef(ref top))
+        {
+            if (top.groupedActions != null && top.groupedActions.Length == actions.Length)
+            {
+                // Go through each item in the last grouped action, and try to apply the usual property merging rules.
+                // We assume that the action order is the same between grouped recordings.
+                bool couldMerge = true;
+                for (int i = 0; i < actions.Length; i++)
+                {
+                    ref var lastAction = ref top.groupedActions[i];
+                    ref var newAction = ref actions[i];
+                    if (lastAction.target == newAction.target && lastAction.path == newAction.path)
+                    {
+                        lastAction.newValue = newAction.newValue;
+                    }
+                    else
+                    {
+                        couldMerge = false;
+                        break;
+                    }
+                }
+                if (couldMerge)
+                    return;
+            }
+        }
+
         redoStack.Clear();
-        undoStack.PushEnd(new(actionDesc, undoFunc, redoFunc));
+        undoStack.PushEnd((new(actionDesc, actions)));
         if (undoStack.Count > MAX_HISTORY)
             undoStack.PopStart();
 
         UndoStackChanged?.Invoke();
         // MainViewModel.Log($"[UNDO] Registered {undoStack.MutablePeekEnd()}");
+    }
+
+    /// <summary>
+    /// Attempts to drop the last action recorded to the undo stack.
+    /// </summary>
+    /// <returns></returns>
+    public static bool DropLastAction()
+    {
+        if (!undoStack.TryPopEnd(out var action))
+            return false;
+
+        UndoStackChanged?.Invoke();
+        return true;
+    }
+
+    /// <summary>
+    /// Attempts to pop the last item from the undo stack and push it to the current undo group. This is 
+    /// sometimes necessary when trying to create an undo group for an action which has already happened.
+    /// This method only succeeds if <see cref="IsInGroupedRecording"/> is <see langword="true"/>.
+    /// </summary>
+    /// <returns>Whether the operation succeeded</returns>
+    public static bool PopLastUndoIntoGroup()
+    {
+        if (groupRecordingCounter <= 0)
+            return false;
+        if (!undoStack.TryPopEnd(out var action))
+            return false;
+
+        groupedUndoStack.PushEnd(action);
+        UndoStackChanged?.Invoke();
+        return true;
     }
 
     /// <summary>
@@ -136,6 +235,17 @@ public static class UndoManager
             redoStack.PopStart();
         UndoStackChanged?.Invoke();
 
+        Undo(action);
+    }
+
+    private static void Undo(UndoAction[] actions)
+    {
+        for (int i = actions.Length - 1; i >= 0; i--)
+            Undo(actions[i]);
+    }
+
+    private static void Undo(UndoAction action)
+    {
         // If the undo action was captured in a closure, use that
         if (action.undoAction != null)
         {
@@ -150,6 +260,13 @@ public static class UndoManager
             }
             UnSuppressRecording();
             return;
+        }
+
+        // Try to undo a group of actions
+        if (action.groupedActions != null)
+        {
+            using var _ = ScopedSuppress();
+            Undo(action.groupedActions);
         }
 
         // Otherwise, it's a property change and we need to find the relevant setter
@@ -192,6 +309,17 @@ public static class UndoManager
             undoStack.PopStart();
         UndoStackChanged?.Invoke();
 
+        Redo(action);
+    }
+
+    private static void Redo(UndoAction[] actions)
+    {
+        for (int i = actions.Length - 1; i >= 0; i--)
+            Redo(actions[i]);
+    }
+
+    private static void Redo(UndoAction action)
+    {
         // If the undo action was captured in a closure, use that
         if (action.redoAction != null)
         {
@@ -206,6 +334,13 @@ public static class UndoManager
             }
             UnSuppressRecording();
             return;
+        }
+
+        // Try to redo a group of actions
+        if (action.groupedActions != null)
+        {
+            using var _ = ScopedSuppress();
+            Redo(action.groupedActions);
         }
 
         // Otherwise, it's a property change and we need to find the relevant setter
@@ -243,6 +378,8 @@ public static class UndoManager
     {
         undoStack.Clear();
         redoStack.Clear();
+        groupedUndoStack.Clear();
+        groupRecordingCounter = 0;
         UndoStackChanged?.Invoke();
     }
 
@@ -253,7 +390,7 @@ public static class UndoManager
     public static ScopedSuppressRecording ScopedSuppress() => new();
 
     /// <summary>
-    /// Temporarily suppresses the recording of new undo actions until <see cref="UnSupressRecording"/> is called.
+    /// Temporarily suppresses the recording of new undo actions until <see cref="UnSuppressRecording"/> is called.
     /// </summary>
     public static void SuppressRecording()
     {
@@ -266,6 +403,7 @@ public static class UndoManager
     public static void UnSuppressRecording()
     {
         suppressRecordingCounter--;
+        Debug.Assert(suppressRecordingCounter >= 0);
     }
 
     /// <summary>
@@ -273,7 +411,47 @@ public static class UndoManager
     /// </summary>
     public static void ResetSuppressRecording()
     {
-        suppressRecordingCounter = 0; 
+        suppressRecordingCounter = 0;
+    }
+
+    /// <summary>
+    /// When used with a <see langword="using"/> block, groups undo actions for the scope of this function.
+    /// </summary>
+    /// <returns></returns>
+    public static ScopedGroupRecording ScopedGroup(string? groupName = null) => new(groupName);
+
+    /// <summary>
+    /// Groups undo actions into a single action until <see cref="EndGroupRecording"/> is called.
+    /// </summary>
+    public static void BeginGroupRecording()
+    {
+        groupRecordingCounter++;
+    }
+
+    /// <summary>
+    /// Ends an undo action group and commits it to the undo stack if there is no other undo group in progress.
+    /// </summary>
+    /// <param name="groupName">Optionally, the name to record the undo action as.</param>
+    public static void EndGroupRecording(string? groupName = null)
+    {
+        groupRecordingCounter--;
+        Debug.Assert(groupRecordingCounter >= 0);
+        if (groupRecordingCounter == 0)
+        {
+            string name = groupName ?? $"{groupedUndoStack.Count} actions";
+            var undoActions = groupedUndoStack.ToArray();
+            RegisterAction(name, undoActions);
+            groupedUndoStack.Clear();
+        }
+    }
+
+    /// <summary>
+    /// Forcefully cancels an undo group recording, discarding it's contents. Counterpart of <see cref="BeginGroupRecording"/>.
+    /// </summary>
+    public static void CancelGroupRecording()
+    {
+        groupRecordingCounter = 0;
+        groupedUndoStack.Clear();
     }
 
     private static SetPropDelegate? GenerateSetter(object targetTemplate, string name)
@@ -286,7 +464,7 @@ public static class UndoManager
         var target = Expression.Parameter(typeof(object), "target");
         var value = Expression.Parameter(typeof(object), "value");
         var setter = Expression.Assign(
-            Expression.Property(Expression.Convert(target, type), prop), 
+            Expression.Property(Expression.Convert(target, type), prop),
             Expression.Convert(value, prop.PropertyType));
 
         return Expression.Lambda<SetPropDelegate>(Expression.Block(setter), target, value).Compile();
@@ -305,6 +483,22 @@ public static class UndoManager
         }
     }
 
+    public readonly struct ScopedGroupRecording : IDisposable
+    {
+        private readonly string? groupName;
+
+        public ScopedGroupRecording(string? groupName)
+        {
+            this.groupName = groupName;
+            BeginGroupRecording();
+        }
+
+        public void Dispose()
+        {
+            EndGroupRecording(groupName);
+        }
+    }
+
     private struct UndoAction
     {
         public object? target; // Should this be a WeakRef?
@@ -315,6 +509,8 @@ public static class UndoManager
 
         public Action? undoAction;
         public Action? redoAction;
+
+        public UndoAction[]? groupedActions;
 
         public UndoAction(string path, object target, object? oldValue, object? newValue)
         {
@@ -329,6 +525,12 @@ public static class UndoManager
             this.path = path;
             this.undoAction = undoAction;
             this.redoAction = redoAction;
+        }
+
+        public UndoAction(string path, UndoAction[]? groupedActions)
+        {
+            this.path = path;
+            this.groupedActions = groupedActions;
         }
 
         public override readonly string ToString()

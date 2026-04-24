@@ -197,11 +197,11 @@
     <SolidColorBrush x:Key="SliderThumb.Static.Border"             Color="{DynamicResource AREghZyColour.Primary.2.Border.Static}"/>
     <SolidColorBrush x:Key="SliderThumb.Track.Background"          Color="{DynamicResource AREghZyColour.Primary.2.Background.Static}"/>
     <SolidColorBrush x:Key="SliderThumb.Track.Border"              Color="{DynamicResource AREghZyColour.Primary.2.Border.Static}"/>
-    <SolidColorBrush x:Key="SliderThumb.Static.Foreground"         Color="{DynamicResource AREghZyColour.ColourfulGlyph.Static}"/>
-    <SolidColorBrush x:Key="SliderThumb.Track.Progress.Background" Color="{DynamicResource AREghZyColour.ColourfulGlyph.Static}"/>
+    <SolidColorBrush x:Key="SliderThumb.Static.Foreground"         Color="{DynamicResource AREghZyColour.ColourfulGlyph.Selected}"/>
+    <SolidColorBrush x:Key="SliderThumb.Track.Progress.Background" Color="{DynamicResource AREghZyColour.ColourfulGlyph.Selected}"/>
     <SolidColorBrush x:Key="SliderThumb.Track.Progress.Border"     Color="{DynamicResource AREghZyColour.Primary.2.Border.Static}"/>
 
-    <SolidColorBrush x:Key="ProgressBar.Progress"   Color="{DynamicResource AREghZyColour.ColourfulGlyph.Static}"/>
+    <SolidColorBrush x:Key="ProgressBar.Progress"   Color="{DynamicResource AREghZyColour.ColourfulGlyph.Selected}"/>
     <SolidColorBrush x:Key="ProgressBar.Background" Color="{DynamicResource AREghZyColour.Primary.2.Background.Static}"/>
     <SolidColorBrush x:Key="ProgressBar.Border"     Color="{DynamicResource AREghZyColour.Primary.2.Border.Static}"/>
 

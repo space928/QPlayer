@@ -4,6 +4,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -56,25 +57,31 @@ public struct TemporaryList<T> : IList<T>, IDisposable
         items.CopyTo(this.items);
     }
 
-    public TemporaryList(IEnumerable<T> items) : this(0, null)
+    public TemporaryList(IEnumerable<T> items)
     {
         switch (items)
         {
             case T[] array:
                 {
-                    EnsureCapacity(array.Length);
+                    Initialise(array.Length);
                     Array.Copy(array, this.items!, array.Length);
                     break;
                 }
             case ICollection<T> collection:
                 {
-                    EnsureCapacity(collection.Count);
+                    Initialise(collection.Count);
                     foreach (var item in collection)
                         Add(item);
                     break;
                 }
             default:
                 {
+#if NET10_0_OR_GREATER
+                    if (items.TryGetNonEnumeratedCount(out var len))
+                        Initialise(len);
+                    else
+#endif
+                        Initialise(8);
                     foreach (var item in items)
                         Add(item);
                     break;
@@ -178,6 +185,16 @@ public struct TemporaryList<T> : IList<T>, IDisposable
                 Array.Clear(items, 0, count);
             }
         }
+        version++;
+    }
+
+    /// <summary>
+    /// Sorts the items in this list using the specified comparer, or the default one if none is specified.
+    /// </summary>
+    /// <param name="comparer"></param>
+    public void Sort(IComparer<T>? comparer = null)
+    {
+        Array.Sort(items!, 0, count, comparer);
         version++;
     }
 

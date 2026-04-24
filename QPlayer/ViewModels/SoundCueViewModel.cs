@@ -217,6 +217,7 @@ public partial class SoundCueViewModel : CueViewModel
             mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);
         StopAudio();
         PlaybackTime = TimeSpan.Zero;
+        loopingAudioStream?.EndTime = StartTime + PlaybackDuration;
     }
 
     /// <summary>
@@ -224,7 +225,7 @@ public partial class SoundCueViewModel : CueViewModel
     /// </summary>
     /// <param name="duration">The duration in seconds to fade over</param>
     /// <param name="fadeType">The type of fade to use</param>
-    public void FadeOutAndStop(float duration, FadeType? fadeType = null)
+    public override void FadeOutAndStop(float duration, FadeType? fadeType = null)
     {
         if (volumeFadeProvider == null || mainViewModel == null)
             return;
@@ -279,7 +280,59 @@ public partial class SoundCueViewModel : CueViewModel
         volumeFadeProvider.BeginFade(volume, duration * 1000, fadeType ?? FadeType);
     }
 
-    internal override void UpdateUIStatus()
+    /// <summary>
+    /// Continues playing past the end of the loop marker until the end of this cue. 
+    /// Optionally, starts a fade out at the end of loop.
+    /// </summary>
+    /// <param name="fadeDuration">The length of the fadeout to start at the end of the 
+    /// last loop. Specify <c>-1</c> to play without any fadeout, or <c>0</c> to instantly 
+    /// stop the cue at the end of the loop.</param>
+    /// <param name="fadeType">The type of fade to apply.</param>
+    public override void DeVamp(Action? onDevampStart, float fadeDuration = -1, FadeType? fadeType = null)
+    {
+        if (loopingAudioStream == null || volumeFadeProvider == null)
+            return;
+
+        // Ask the looping provider to devamp, it gives us a callback from the audio thread at
+        // the start of the de-vamp. As far as I can tell, it's safe to call these methods from 
+        // the audio thread, but be wary if these methods get changed.
+        if (fadeDuration == -1)
+        {
+            if (onDevampStart == null)
+                loopingAudioStream.DeVamp(static () => { });
+            else
+                loopingAudioStream.DeVamp(() => synchronizationContext?.Post(static action => ((Action)action!)(), onDevampStart));
+        }
+        else
+        {
+            loopingAudioStream.DeVamp(() => DeVampFade(onDevampStart, fadeDuration, fadeType));
+        }
+    }
+
+    private void DeVampFade(Action? onDevampStart, float fadeDuration, FadeType? fadeType)
+    {
+        if (onDevampStart != null)
+            synchronizationContext?.Post(static action => ((Action)action!)(), onDevampStart);
+        if (fadeDuration == 0)
+        {
+            if (synchronizationContext != null)
+            {
+                // Stop the audio instantly, this method should be safe to call in the audio thread
+                StopAudio();
+                // Dispatch a proper stop message for later
+                synchronizationContext.Post(static t => ((SoundCueViewModel)t!).Stop(), this);
+                return;
+            }
+
+            Stop();
+            return;
+        }
+
+        // There's fading to do, start a fade, again, this should all be safe in the audio thread.
+        volumeFadeProvider!.BeginFade(0, fadeDuration * 1000, fadeType ?? FadeType, FadeOut_Completed);
+    }
+
+    protected internal override void UpdateUIStatus()
     {
         OnPropertyChanged(nameof(PlaybackTime));
 

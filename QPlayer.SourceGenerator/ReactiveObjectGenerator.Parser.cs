@@ -342,7 +342,7 @@ public partial class ReactiveObjectGenerator
         bool EnableNullable, bool IsObservable, string? ModelType, string? BaseModelType,
         EquatableArray<ReactiveObjectField> ReactiveFields);
     public record ReactiveObjectField(string FieldType, string FieldName, string PropName, string? DocComment, 
-        bool GenerateField, bool IsReadOnly, bool IsBindable, ReactivePropertyParams ReactiveParams, 
+        bool GenerateField, bool IsReadOnly, bool IsBindableVM, ReactivePropertyParams ReactiveParams, 
         BindablePropertyParams BindableParams);
     public record ReactivePropertyParams(string? OnGetFunc, bool GetInline, string? OnSetAction, bool SetInline,
         string? PropTemplate, string? CustomAccessibility, EquatableArray<string> ReactiveDependants, 

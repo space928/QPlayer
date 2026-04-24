@@ -13,7 +13,6 @@ using System.Text;
 using System.Threading;
 using System.Windows.Media;
 using Cue = QPlayer.Models.Cue;
-using Timer = System.Timers.Timer;
 
 namespace QPlayer.ViewModels;
 
@@ -68,7 +67,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             return null;
         }
     }
-    [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush)), SkipEqualityCheck] 
+    [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush)), SkipEqualityCheck]
     private ColorState colour;
     [Reactive] private string name = string.Empty;
     [Reactive] private string description = string.Empty;
@@ -82,11 +81,12 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     [Reactive, Readonly, ModelSkip] protected MainViewModel? mainViewModel;
     public bool IsSelected => mainViewModel?.SelectedCue == this;
+    public bool IsMultiSelected => mainViewModel?.MultiSelection?.Contains(this) ?? false;
     [Reactive, ModelSkip, NoUndo] private CueState state;
-    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip, NoUndo] 
+    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip, NoUndo]
     private TimeSpan playbackTime;
     public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
-    
+
     public SolidColorBrush ColourBrush
     {
         get
@@ -120,7 +120,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     protected SynchronizationContext? synchronizationContext;
     protected CueViewModel? parent;
-    protected Timer goTimer;
+    protected DispatcherDelay goDelay;
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
     private readonly string typeName;
@@ -143,22 +143,17 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             typeDisplayName = typeName;
         }
 
-        mainViewModel.PropertyChanged += MainViewModel_PropertyChanged;
-        goTimer = new()
-        {
-            AutoReset = false,
-        };
-        goTimer.Elapsed += (o, e) => synchronizationContext?.Post((x) => Go(), null);
+        goDelay = new(Go);
 
         goCommand = new(Go);
         pauseCommand = new(Pause);
         stopCommand = new(Stop);
         selectCommand = new(SelectExecute);
 
-        LoopModeVals ??= new ObservableCollection<string>(Enum.GetValues<LoopMode>().Select(x=>EnumToString(x)));
+        LoopModeVals ??= new ObservableCollection<string>(Enum.GetValues<LoopMode>().Select(x => EnumToString(x)));
         StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
         FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
-        TriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<TriggerMode>().Select(x=>EnumToString(x)));
+        TriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<TriggerMode>().Select(x => EnumToString(x)));
     }
 
     /// <summary>
@@ -169,17 +164,10 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     }
 
-    private void MainViewModel_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    internal void OnSelectionChanged()
     {
-        switch (e.PropertyName)
-        {
-            case nameof(MainViewModel.SelectedCue):
-                OnPropertyChanged(nameof(IsSelected));
-                break;
-            case nameof(RemoteDuration):
-                OnPropertyChanged(nameof(Duration));
-                break;
-        }
+        OnPropertyChanged(nameof(IsSelected));
+        OnPropertyChanged(nameof(IsMultiSelected));
     }
 
     #region Command Handlers
@@ -195,8 +183,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         {
             State = CueState.Delay;
             // Unregister the previous waiter, if it's still set
-            if (waitCue != null)
-                waitCue.OnCompleted -= WaitCueOnCompleteHandler;
+            waitCue?.OnCompleted -= WaitCueOnCompleteHandler;
             // Start waiting for this cue to complete
             waitCue = waitForCue;
             waitForCue.OnCompleted += WaitCueOnCompleteHandler;
@@ -210,8 +197,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         }
 
         State = CueState.Delay;
-        goTimer.Interval = Delay.TotalMilliseconds;
-        goTimer.Start();
+        goDelay.Start(Delay);
 
         if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
             mainViewModel?.ActiveCues.Add(this);
@@ -221,7 +207,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     {
         if (sender is not CueViewModel waitCue)
             return; // Should never happen...
-        
+
         waitCue.OnCompleted -= WaitCueOnCompleteHandler;
         this.waitCue = null;
 
@@ -253,7 +239,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// </summary>
     public virtual void Pause()
     {
-        goTimer.Stop();
+        goDelay.Cancel();
         State = CueState.Paused;
 
         if (IsRemoteControlling)
@@ -272,18 +258,40 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     }
 
     /// <summary>
+    /// Fades out the current cue.
+    /// </summary>
+    /// <param name="duration">The duration in seconds to fade over.</param>
+    /// <param name="fadeType">The type of fade to use.</param>
+    public virtual void FadeOutAndStop(float duration, FadeType? fadeType = null)
+    {
+        Stop();
+    }
+
+    /// <summary>
+    /// Continues playing past the end of the loop marker until the end of this cue. 
+    /// Optionally, starts a fade out at the end of loop.
+    /// </summary>
+    /// <param name="onDevampStart">An action to be invoked when the last loop ends.</param>
+    /// <param name="fadeDuration">The length of the fadeout to start at the end of the 
+    /// last loop. Specify <c>-1</c> to play without any fadeout, or <c>0</c> to instantly 
+    /// stop the cue at the end of the loop.</param>
+    /// <param name="fadeType">The type of fade to apply.</param>
+    public virtual void DeVamp(Action? onDevampStart, float fadeDuration = -1, FadeType? fadeType = null)
+    {
+        onDevampStart?.Invoke();
+        Stop();
+    }
+
+    /// <summary>
     /// Stops this cue without informing remote clients or executing cue specific stopping code.
     /// This is called when a remote node needs to tell us that a cue has finished playing.
     /// </summary>
     internal void StopInternal()
     {
-        if (waitCue != null)
-        {
-            // This cue has been stopped/cancelled, stop waiting for the wait cue.
-            waitCue.OnCompleted -= WaitCueOnCompleteHandler;
-            waitCue = null;
-        }    
-        goTimer.Stop();
+        // This cue has been stopped/cancelled, stop waiting for the wait cue.
+        waitCue?.OnCompleted -= WaitCueOnCompleteHandler;
+        waitCue = null;
+        goDelay.Cancel();
         State = CueState.Ready;
         mainViewModel?.ActiveCues.Remove(this);
         OnCompleted?.Invoke(this, EventArgs.Empty);
@@ -305,24 +313,22 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         }
     }
 
+    /// <summary>
+    /// Selects this cue, applying the current multi-selection modifiers.
+    /// </summary>
     public void SelectExecute()
     {
-        mainViewModel?.SelectedCue = this;
+        mainViewModel?.MultiSelect(this);
     }
 
     /// <summary>
     /// This callback is triggered every 50 or so ms when this cue is active by the main thread.
     /// </summary>
-    internal virtual void UpdateUIStatus()
+    protected internal virtual void UpdateUIStatus()
     {
 
     }
     #endregion
-
-    public void OnColourUpdate()
-    {
-        OnPropertyChanged(nameof(Colour));
-    }
 
     private static void VM2M_Colour(CueViewModel vm, Cue m) => m.colour = (SerializedColour)vm.Colour;
     private static void M2VM_Colour(CueViewModel vm, Cue m) => vm.Colour = (ColorState)m.colour;
@@ -342,7 +348,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
                     i++;
                 }
                 wasCapital = true;
-            } 
+            }
             else
             {
                 wasCapital = false;

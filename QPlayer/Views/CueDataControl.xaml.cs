@@ -68,14 +68,16 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
     {
         startPos = e.GetPosition(this);
 
-        var vm = (CueViewModel)DataContext;
+        if (DataContext is not CueViewModel vm)
+            return;
         if (vm.MainViewModel != null)
             Dispatcher.BeginInvoke(System.Windows.Threading.DispatcherPriority.Input, () => vm.SelectCommand.Execute(null));
     }
 
     private void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
-        var vm = (CueViewModel)DataContext;
+        if (DataContext is not CueViewModel vm)
+            return;
         vm.PropertyChanged += (o, e) =>
         {
             switch (e.PropertyName)
@@ -105,16 +107,31 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
         base.OnMouseMove(e);
 
         var delta = e.GetPosition(this) - startPos;
-        var vm = (CueViewModel)DataContext;
+        if (DataContext is not CueViewModel vm)
+            return;
+        var mainVm = vm.MainViewModel;
+        if (mainVm == null)
+            return;
         if (e.LeftButton == MouseButtonState.Pressed && delta.Length > DragDeadzone
-            && (vm.MainViewModel?.DraggingCues?.Count ?? -1) == 0
+            && mainVm.DraggingCues.Count == 0
             && !e.OriginalSource.GetType().IsAssignableTo(typeof(TextBox)))
         {
             DataObject data = new();
-            vm.MainViewModel?.DraggingCues?.Add(vm);
-            data.SetData("Cues", new CueViewModel[] { vm });
+            if (mainVm.MultiSelection.Count > 1)
+            {
+                // Add the entire multi-selection in the correct order
+                foreach (var cue in mainVm.Cues)
+                    if (mainVm.MultiSelection.Contains(cue))
+                        mainVm.DraggingCues.Add(cue);
+            } 
+            else
+            {
+                // Just add this cue
+                mainVm.DraggingCues.Add(vm);
+            }
+            data.SetData("Cues", mainVm.DraggingCues.ToArray());
 
-            DragDrop.DoDragDrop(this, data, DragDropEffects.Move);
+            DragDrop.DoDragDrop(this, data, DragDropEffects.Move | DragDropEffects.Scroll);
 
             vm.MainViewModel?.DraggingCues?.Clear();
         }
@@ -138,9 +155,10 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
     {
         base.OnDrop(e);
 
-        InsertMarker.Visibility = Visibility.Hidden;
+        InsertMarker.Visibility = Visibility.Collapsed;
 
-        var targetVm = (CueViewModel)DataContext;
+        if (DataContext is not CueViewModel targetVm)
+            return;
         var mainVm = targetVm.MainViewModel;
         if (mainVm != null)
             MainWindow.HandleCueListDrop(e, mainVm, targetVm);
@@ -155,6 +173,6 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
     private void Grid_DragLeave(object sender, DragEventArgs e)
     {
-        InsertMarker.Visibility = Visibility.Hidden;
+        InsertMarker.Visibility = Visibility.Collapsed;
     }
 }
