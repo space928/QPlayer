@@ -20,18 +20,18 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
-    - name: Restore
-      working-directory: ${{ github.workspace }}
-      run: |
-        dotnet restore -r win-x64 QPlayer/QPlayer.csproj
-        dotnet restore -r win-x64 QPlayer.OSCCuePlugin/QPlayer.OSCCuePlugin.csproj
-
     - name: Build
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
-        dotnet publish -o "publish/" -r win-x64 --no-self-contained --no-restore --configuration Release QPlayer/QPlayer.csproj
-        dotnet publish -o "publish/plugins/" -r win-x64 --no-self-contained --no-restore --configuration Release QPlayer.OSCCuePlugin/QPlayer.OSCCuePlugin.csproj
+        dotnet publish -o "publish/" -r win-x64 --configuration Release -p:PublishProfile=FolderProfile QPlayer/QPlayer.csproj
+
+        export SolutionDir=$PWD
+        for proj in $(dotnet sln list | grep QPlayer\\..*Plugin\\.csproj); do dotnet build $proj --configuration Release -r win-x64; done
+        cp -r QPlayer/bin/Release/net10.0-windows/plugins/ publish/
+
+    #    dotnet publish -o "publish-sc/" -r win-x64 --configuration Release --sc QPlayer/QPlayer.csproj
+    #    cp -r QPlayer/bin/Release/net10.0-windows/plugins/ publish-sc/
 
     # Compress build artifacts
     - name: Compress build artifacts
@@ -40,6 +40,13 @@ jobs:
         type: zip
         filename: ../QPlayer-release.zip
         directory: publish/
+
+    # - name: Compress build artifacts self-contained
+    #   uses: thedoctor0/zip-release@0.7.6
+    #   with:
+    #     type: zip
+    #     filename: ../QPlayer-release-sc.zip
+    #     directory: publish-sc/
   
     # Upload the build artifacts
     - name: Upload build artifacts
