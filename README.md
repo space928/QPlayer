@@ -1,6 +1,5 @@
-# QPlayer
 <p align="center">
-    <img src="https://github.com/space928/QPlayer/blob/main/QPlayer/Resources/IconM.png?raw=true" alt="QPlayer Logo" width="128" height="128">
+    <img src="https://github.com/space928/QPlayer/blob/main/QPlayer/Resources/Splash.png?raw=true" alt="QPlayer Logo" height="220">
 </p>
 
 [![Build Status](https://github.com/space928/QPlayer/actions/workflows/dotnet-desktop.yml/badge.svg?branch=main)](https://github.com/space928/QPlayer/actions/workflows/dotnet-desktop.yml)
