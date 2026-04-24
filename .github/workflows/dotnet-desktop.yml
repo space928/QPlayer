@@ -28,6 +28,11 @@ jobs:
 
         export SolutionDir=$PWD
         for proj in $(dotnet sln list | grep QPlayer\\..*Plugin\\.csproj); do dotnet build $proj --configuration Release -r win-x64; done
+        ls -la $SolutionDir/QPlayer
+        ls -la $SolutionDir/QPlayer/bin
+        ls -la $SolutionDir/QPlayer/bin/Release
+        ls -la $SolutionDir/QPlayer/bin/Release/net10.0-windows
+        ls -la $SolutionDir/QPlayer/bin/Release/net10.0-windows/plugins
         cp -r $SolutionDir/QPlayer/bin/Release/net10.0-windows/plugins/ publish/
 
         dotnet publish -o "publish-sc/" -r win-x64 --configuration Release --sc -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true QPlayer/QPlayer.csproj
