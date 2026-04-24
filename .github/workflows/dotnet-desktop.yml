@@ -20,18 +20,21 @@ jobs:
       with:
         dotnet-version: 10.0.x
 
+    # Build the project, I'm not very good at bash so this is a little messy, but it builds both the main application and all of the plugins
     - name: Build
       shell: bash
       working-directory: ${{ github.workspace }}
       run: |
+        echo "Building QPlayer application..."
         dotnet publish -o "publish/" -r win-x64 --configuration Release -p:PublishProfile=FolderProfile QPlayer/QPlayer.csproj
 
         export SolutionDir=$PWD
-        for proj in $(dotnet sln list | grep QPlayer\\..*Plugin\\.csproj); do dotnet build $proj --configuration Release -r win-x64; done
-        cp -r $SolutionDir/QPlayer/bin/Release/net10.0-windows/plugins/ publish/
+        echo "Building plugins..."
+        for proj in $(dotnet sln list | grep QPlayer\\..*Plugin\\.csproj); do name=$(expr "$proj" : '\(.*\)/'); dotnet publish $proj -o "publish/plugins/$name/" -p:DebugSymbols=false --configuration Release; done
 
+        echo "Building self-contained release..."
         dotnet publish -o "publish-sc/" -r win-x64 --configuration Release --sc -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true QPlayer/QPlayer.csproj
-        cp -r $SolutionDir/QPlayer/bin/Release/net10.0-windows/plugins/ publish-sc/
+        cp -r publish/plugins/ publish-sc/
 
     # Compress build artifacts
     - name: Compress build artifacts
