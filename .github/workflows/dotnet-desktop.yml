@@ -28,10 +28,10 @@ jobs:
 
         export SolutionDir=$PWD
         for proj in $(dotnet sln list | grep QPlayer\\..*Plugin\\.csproj); do dotnet build $proj --configuration Release -r win-x64; done
-        cp -r QPlayer/bin/Release/net10.0-windows/plugins/ publish/
+        cp -r $SolutionDir/QPlayer/bin/Release/net10.0-windows/plugins/ publish/
 
-    #    dotnet publish -o "publish-sc/" -r win-x64 --configuration Release --sc QPlayer/QPlayer.csproj
-    #    cp -r QPlayer/bin/Release/net10.0-windows/plugins/ publish-sc/
+        dotnet publish -o "publish-sc/" -r win-x64 --configuration Release --sc -p:PublishSingleFile=true -p:IncludeNativeLibrariesForSelfExtract=true QPlayer/QPlayer.csproj
+        cp -r $SolutionDir/QPlayer/bin/Release/net10.0-windows/plugins/ publish-sc/
 
     # Compress build artifacts
     - name: Compress build artifacts
@@ -41,12 +41,12 @@ jobs:
         filename: ../QPlayer-release.zip
         directory: publish/
 
-    # - name: Compress build artifacts self-contained
-    #   uses: thedoctor0/zip-release@0.7.6
-    #   with:
-    #     type: zip
-    #     filename: ../QPlayer-release-sc.zip
-    #     directory: publish-sc/
+    - name: Compress build artifacts self-contained
+      uses: thedoctor0/zip-release@0.7.6
+      with:
+        type: zip
+        filename: ../QPlayer-release-sc.zip
+        directory: publish-sc/
   
     # Upload the build artifacts
     - name: Upload build artifacts
@@ -54,6 +54,12 @@ jobs:
       with:
         name: ReleaseBinaries
         path: QPlayer-release.zip
+
+    - name: Upload build artifacts self-contained
+      uses: actions/upload-artifact@v4
+      with:
+        name: ReleaseBinariesSC
+        path: QPlayer-release-sc.zip
 
   create-release:
     needs: build
@@ -67,10 +73,16 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           name: ReleaseBinaries
+      - name: Download release binaries self-contained
+        uses: actions/download-artifact@v4
+        with:
+          name: ReleaseBinariesSC
       - uses: "marvinpinto/action-automatic-releases@latest"
         with:
           repo_token: "${{ secrets.GITHUB_TOKEN }}"
           automatic_release_tag: "latest"
           prerelease: true
           title: "Development Build"
-          files: QPlayer-release.zip
+          files: |
+            QPlayer-release.zip
+            QPlayer-release-sc.zip
