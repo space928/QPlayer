@@ -1,0 +1,3184 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>QPlayer</name>
+    </assembly>
+    <members>
+        <member name="T:QPlayer.App">
+            <summary>
+            Interaction logic for App.xaml
+            </summary>
+            <summary>
+            App
+            </summary>
+        </member>
+        <member name="M:QPlayer.App.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="M:QPlayer.App.Main">
+            <summary>
+            Application Entry Point.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.AudioBufferingDispatcher.ActiveWorkDebug">
+            <summary>
+            An array of strings representing the current state of each worker thread.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.AudioLimiterSampleProvider.SamplesPerNotification">
+            <summary>
+            The number of samples to read between each metering event.
+            </summary>
+        </member>
+        <member name="E:QPlayer.Audio.AudioLimiterSampleProvider.OnMeter">
+            <summary>
+            An event raised every <see cref="P:QPlayer.Audio.AudioLimiterSampleProvider.SamplesPerNotification"/> samples with metering information.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.AudioPlaybackManager.MixerSampleProvider">
+            <summary>
+            When building a mastering chain, use this sample provider as the source, it should never be read from directly.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.AudioPlaybackManager.RegisterMasterChain(NAudio.Wave.ISampleProvider)">
+            <summary>
+            Registers the given sample provider as a mastering chain, this is the last sample provider before the output.
+            </summary>
+            <param name="sampleProvider"></param>
+        </member>
+        <member name="M:QPlayer.Audio.AudioPlaybackManager.ConvertToMixerFormat(QPlayer.Audio.ISamplePositionProvider)">
+            <summary>
+            Creates an ISampleProvider which converts the given sample stream to one compatible with the mixer.
+            
+            This converts both Mono to Stereo and resamples the input stream.
+            </summary>
+            <param name="input"></param>
+            <returns></returns>
+            <exception cref="T:System.NotImplementedException"></exception>
+        </member>
+        <member name="M:QPlayer.Audio.AudioPlaybackManager.PlaySound(QPlayer.Audio.ISamplePositionProvider,System.Action{NAudio.Wave.ISampleProvider})">
+            <summary>
+            Starts the playback of a sound through the mixer.
+            </summary>
+            <param name="provider">the sample stream to play</param>
+            <param name="onCompleted">a callback raised when the stream is removed from the mixer</param>
+        </member>
+        <member name="M:QPlayer.Audio.AudioPlaybackManager.StopSound(QPlayer.Audio.ISamplePositionProvider)">
+            <summary>
+            Stops the playback of a sound stream.
+            </summary>
+            <param name="provider">the sample stream to stop</param>
+        </member>
+        <member name="M:QPlayer.Audio.AudioPlaybackManager.IsPlaying(QPlayer.Audio.ISamplePositionProvider)">
+            <summary>
+            Gets whether a sound stream is currently playing.
+            </summary>
+            <param name="provider"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.AudioPlaybackManager.StopAllSounds">
+            <summary>
+            Stops all sound sources.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.DelayBuffer.GetDelayed(System.Span{System.Single},System.Int32)">
+            <summary>
+            Copies the desired number of samples from the delay line to the given buffer. May not entirely fill the given 
+            buffer if the delay line doesn't contain that many samples.
+            </summary>
+            <param name="dst"></param>
+            <param name="delaySamples"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.DelayBuffer.Push(System.ReadOnlySpan{System.Single})">
+            <summary>
+            Pushes the span of samples into this delay buffer.
+            </summary>
+            <param name="values"></param>
+        </member>
+        <member name="M:QPlayer.Audio.DelaySampleProvider.Read(System.Single[],System.Int32,System.Int32)">
+            <summary>
+            Reads the specified number of samples from the input stream and pushes them to the delay buffer.
+            </summary>
+            <param name="buffer"></param>
+            <param name="offset"></param>
+            <param name="count"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.DelaySampleProvider.ReadDelayed(System.Single[],System.Int32,System.Int32,System.Int32)">
+            <summary>
+            Reads the specified number of samples from the delay buffer with the specified amount of delay. 
+            This should imediately preceed a call to <see cref="M:QPlayer.Audio.DelaySampleProvider.Read(System.Single[],System.Int32,System.Int32)"/> and should read 
+            the same number of samples the read call returned.
+            </summary>
+            <param name="buffer"></param>
+            <param name="offset"></param>
+            <param name="count"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.EQSampleProvider.ApplyFilter(System.Double[],System.Int32,System.Int32,QPlayer.Audio.EQSampleProvider.FilterCoeffs,System.Span{System.Single})">
+            <summary>
+            Applies a biquad filter to the input signal. Automatically picks a vectorised implementation if available.
+            </summary>
+            <param name="hist">The history buffer, must be at least 4*<paramref name="channels"/> long.</param>
+            <param name="ind">The index into the history buffer to use (this is internally multiplied by 
+            the number of history samples the filter uses (ie: 4*<paramref name="channels"/>)).</param>
+            <param name="channels">The number of interleaved channels in the input buffer.</param>
+            <param name="filter">The filter coefficients to apply to the signal.</param>
+            <param name="buffer">The signal to filter.</param>
+        </member>
+        <member name="M:QPlayer.Audio.EQSampleProvider.ApplyFilterScalar(System.Double[],System.Span{System.Single},System.Int32,System.Int32,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Applies a biquad filter to the input signal.
+            </summary>
+            <param name="prevBuf">The history buffer, must be at least 4*<paramref name="channels"/> long.</param>
+            <param name="buffer">The sample buffer to process.</param>
+            <param name="channels">The number of interleaved channels in the input buffer.</param>
+            <param name="ind">The index into the history buffer to use (this is internally multiplied by 
+            the number of history samples the filter uses (ie: 4*<paramref name="channels"/>)).</param>
+            <param name="a1"></param>
+            <param name="a2"></param>
+            <param name="b0"></param>
+            <param name="b1"></param>
+            <param name="b2"></param>
+        </member>
+        <member name="M:QPlayer.Audio.EQSampleProvider.ApplyFilterVecStereo(System.Double[],System.Span{System.Single},System.Int32,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Applies a biquad filter to the input signal.
+            </summary>
+            <param name="prevBuf">The history buffer, must be at least 4*<paramref name="channels"/> long.</param>
+            <param name="buffer">The sample buffer to process.</param>
+            <param name="channels">The number of interleaved channels in the input buffer.</param>
+            <param name="ind">The index into the history buffer to use (this is internally multiplied by 
+            the number of history samples the filter uses (ie: 4*<paramref name="channels"/>)).</param>
+            <param name="a1"></param>
+            <param name="a2"></param>
+            <param name="b0"></param>
+            <param name="b1"></param>
+            <param name="b2"></param>
+        </member>
+        <member name="M:QPlayer.Audio.EQSampleProvider.ApplyFilterVec(System.Double[],System.Span{System.Single},System.Int32,System.Int32,System.Double,System.Double,System.Double,System.Double,System.Double)">
+            <summary>
+            Applies a biquad filter to the strided input buffer. Requires FMA instructions.
+            </summary>
+            <param name="prevBuf">The history buffer used by the filter, must be at least 4 * channels long.</param>
+            <param name="buffer">The buffer to filter.</param>
+            <param name="channels">The number of interleaved channels in the signal to filter (ie: buffer = [LRLRLRLR..], channels = 2)</param>
+            <param name="ind">The index into the history buffer to use, when chaining multiple filters 
+            (this is the filter index, not the buffer index, so for the second iteration of filtering an index of 1 would be used).</param>
+            <param name="a1"></param>
+            <param name="a2"></param>
+            <param name="b0"></param>
+            <param name="b1"></param>
+            <param name="b2"></param>
+        </member>
+        <member name="P:QPlayer.Audio.FadingSampleProvider.Volume">
+            <summary>
+            The initial volume of the samples processed.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.FadingSampleProvider.BeginFade(System.Single,System.Double,QPlayer.Audio.FadeType,System.Action{System.Boolean},System.Boolean)">
+            <summary>
+            Starts a new fade operation, cancelling any active fade operation.
+            </summary>
+            <param name="volume">The volume to fade to</param>
+            <param name="durationMS">The time to fade over in milliseconds</param>
+            <param name="fadeType">The type of fade to use</param>
+            <param name="onComplete">Optionally, an event to raise when the fade is completed. <c>true</c> is passed to the 
+            event handler if the fade completed normally, <c>false</c> if it was cancelled. The event is invoked on the 
+            thread that called this method.</param>
+            <param name="useSyncContext">Whether the onComplete action should be invoked using the current thread's 
+            synchronization context.</param>
+        </member>
+        <member name="M:QPlayer.Audio.FadingSampleProvider.EndFade">
+            <summary>
+            Cancels the active fade operation.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Audio.ISamplePositionProvider">
+            <summary>
+            A <see cref="T:NAudio.Wave.ISampleProvider"/> that also provides the position within the sample stream.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.ISamplePositionProvider.Position">
+            <summary>
+            The position, in samples, within the sample provider stream.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Audio.LoopingSampleProvider">
+            <summary>
+            A sample provider for <see cref="T:NAudio.Wave.WaveStream"/> which handles looping and start/end time.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.SrcLength">
+            <summary>
+            The length in samples (estimate, for compressed inputs) of the input stream.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.SrcPosition">
+            <summary>
+            The position in samples (estimate) within the input stream.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.SrcCurrentTime">
+            <summary>
+            The current playback time within the input stream.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.TrimmedSrcLength">
+            <summary>
+            The length in samples of the input stream, trimmed by the the <see cref="P:QPlayer.Audio.LoopingSampleProvider.StartSample"/> and <see cref="P:QPlayer.Audio.LoopingSampleProvider.EndSample"/>.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.Length">
+            <summary>
+            The length in samples of this looping sample provider (estimate, for compressed inputs).
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.TotalTime">
+            <summary>
+            The total diration of the looped input stream, taking into account the start and end times.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.CurrentTime">
+            <summary>
+            The current playback time within the looped sample, this starts at 0 at the start time and increases continuously as the input is looped.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.Position">
+            <summary>
+            The current playback sample position within the looped sample, this starts at 0 at the start time and increases continuously as the input is looped.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.Infinite">
+            <summary>
+            Whether this sample provider should loop the sample indefinitely. Ignores the <see cref="P:QPlayer.Audio.LoopingSampleProvider.Loops"/> value.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.Loops">
+            <summary>
+            The maximum number of this sample provider can play. Use <see cref="M:QPlayer.Audio.LoopingSampleProvider.Reset"/> to reset the loop counter.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.PlayedLoops">
+            <summary>
+            The current number of complete loops of the input sample that have been played since the last call to <see cref="M:QPlayer.Audio.LoopingSampleProvider.Reset"/>.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.StartSample">
+            <summary>
+            The time in samples to start playback from.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.EndSample">
+            <summary>
+            The time in samples to stop playback at (or the 'out' loop point of the loop).
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.StartTime">
+            <summary>
+            The time to start playback from.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.LoopingSampleProvider.EndTime">
+            <summary>
+            The time at which to stop playback (for a single loop).
+            </summary>
+        </member>
+        <member name="E:QPlayer.Audio.LoopingSampleProvider.LoopCompleted">
+            <summary>
+            An event raised at the end of each loop played.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.LoopingSampleProvider.Reset">
+            <summary>
+            Resets the internal loop and sample counters. Call this every time before playing the sound file.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.LoopingSampleProvider.ReadInternal(System.Single[],System.Int32,System.Int32)">
+            <summary>
+            Reads samples from the source until we reach the end of a loop (or file) or 
+            the buffer is full (whichever happens sooner). Returns 0 if no more loops
+            should be played.
+            </summary>
+            <param name="buffer"></param>
+            <param name="offset"></param>
+            <param name="count"></param>
+            <returns></returns>
+        </member>
+        <member name="P:QPlayer.Audio.MeteringSampleProviderVec.SamplesPerNotification">
+            <summary>
+            The number of samples to read between each metering event.
+            </summary>
+        </member>
+        <member name="E:QPlayer.Audio.MeteringSampleProviderVec.OnMeter">
+            <summary>
+            An event raised every <see cref="P:QPlayer.Audio.MeteringSampleProviderVec.SamplesPerNotification"/> samples with metering information.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.MeteringSampleProviderVec.#ctor(NAudio.Wave.ISampleProvider)">
+            <summary>
+            
+            </summary>
+            <param name="source"></param>
+        </member>
+        <member name="M:QPlayer.Audio.MixerSampleProvider.ResetThreadPriority">
+            <summary>
+            Ensures the audio thread using this mixer has a sufficiently high priority. 
+            Due to the design of NAudio, this works by setting the thread priority the 
+            first time the <see cref="M:QPlayer.Audio.MixerSampleProvider.Read(System.Single[],System.Int32,System.Int32)"/> method is called.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.PanFadeInOutProvider.Volume">
+            <summary>
+            The initial volume of the samples processed.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.PanFadeInOutProvider.Pan">
+            <summary>
+            The stereo panning applied to the processed samples.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.PanFadeInOutProvider.FadeInDuration">
+            <summary>
+            The fade in duration in samples. 
+            <para/>
+            Note that this is in mono samples so for a stereo source, this should be half the number of actual processed samples.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.PanFadeInOutProvider.FadeOutDuration">
+            <summary>
+            The fade out duration in samples. 
+            <para/>
+            Note that this is in mono samples so for a stereo source, this should be half the number of actual processed samples.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.PanFadeInOutProvider.FadeOutStartTime">
+            <summary>
+            The time in samples when the fade out should start. 
+            <para/>
+            Note that this is in mono samples so for a stereo source, this should be half the number of actual processed samples.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Audio.QAudioFileReader">
+            <summary>
+            A smart audio reader, which picks an appropriate decoder for the given file path, opens the file, 
+            creates any needed stream converters to get a 32bit float sample stream, and buffers audio intelligently.
+            <para/>
+            The <see cref="M:QPlayer.Audio.QAudioFileReader.Read(System.Single[],System.Int32,System.Int32,System.Boolean)"/> methods are entirely lock-free and intended to be called 
+            from a dedicated audio thread, while all the other methods are intended to be called from the main thread. 
+            This is with the exception of the <see cref="M:QPlayer.Audio.QAudioFileReader.FillBuffer"/> methods which can be called from a separate 
+            audio buffering thread (this is done automatically, if an <see cref="T:QPlayer.Audio.AudioBufferingDispatcher"/> is 
+            passed in the constructor). Please be aware that the threading model for this class is quite complicated 
+            (there are potentially 3+ threads with contention over this object), most methods are not reentrant unless 
+            explicitly mentioned (or trivial).
+            <para/>
+            The lifecycle of this object is described as follows:
+            <code>
+            MainThread:
+                QAudioFileReader::ctor()
+                \--> registers the new object with the AudioBufferingDispatcher
+                ...
+                SamplePosition.set() --> repositions the stream when needed, this blocks until the current FillBuffer operation is complete
+                
+            AudioBufferingDispatcher worker:
+                while true:
+                    if audioFile.NeedsFilling:
+                        FillBuffer() --> fills one of the internal audio buffers if needed
+            
+            AudioThread:
+                Read() --> gets as many samples as are available (or requested) from an audio buffer, never blocks, but may not return as many samples as requested
+            </code>
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.QAudioFileReader.NumSamples">
+            <summary>
+            The number of samples in this stream.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.QAudioFileReader.SamplePosition">
+            <summary>
+            The position in samples within the input stream.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.QAudioFileReader.StartSamplePosition">
+            <summary>
+            The starting position in samples within the input stream. Setting this clears the buffer 
+            containing the start of the file used for seamless looping.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.QAudioFileReader.SamplesRemaining">
+            <summary>
+            Gets how many samples are still available in the current buffer.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.QAudioFileReader.NeedsFilling">
+            <summary>
+            Gets whether this reader has an empty buffer waiting to be filled with <see cref="M:QPlayer.Audio.QAudioFileReader.FillBuffer"/>.
+            </summary>
+        </member>
+        <member name="P:QPlayer.Audio.QAudioFileReader.NeedsStartFilling">
+            <summary>
+            Gets whether this reader has an empty start buffer waiting to be filled <see cref="M:QPlayer.Audio.QAudioFileReader.FillStartBuffer"/>.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.ReleaseBuffers">
+            <summary>
+            Releases the internal buffers used by this reader so they can be reused elsewhere. Call this 
+            method when the audio file is not being played.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.Read(System.Single[],System.Int32,System.Int32)">
+            <inheritdoc cref="M:QPlayer.Audio.QAudioFileReader.Read(System.Single[],System.Int32,System.Int32,System.Boolean)"/>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.Read(System.Single[],System.Int32,System.Int32,System.Boolean)">
+            <summary>
+            Fill the specified buffer with 32 bit floating point samples. This method is not reentrant.
+            </summary>
+            <remarks>
+            This method might not entirely fill the requested <paramref name="count"/> of samples if they're not available yet. 
+            Furthermore, it may return <c>-1</c> if no samples are currently available but the end of the stream hasn't been 
+            reached yet. A return value of <c>0</c> always indicates that the stream has ended.
+            </remarks>
+            <param name="buffer">The buffer to fill.</param>
+            <param name="offset">The offset into <paramref name="buffer"/> to start writing.</param>
+            <param name="count">The number of samples requested.</param>
+            <param name="offline">When <see langword="true"/>, syncronously waits for the buffer to fill before returning.</param>
+            <returns>The nunber of samples read from the source.</returns>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.FillBuffer">
+            <summary>
+            Fills the internal buffer of this reader with samples. Must be called sufficiently frequently to avoid starving the audio file reader.
+            This method can be called from external threads, but is not reentrant.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.FillStartBuffer">
+            <summary>
+            Fills the special 'start' buffer of this reader with samples. Must be called sufficiently frequently to avoid starving the audio file reader.
+            This method can be called from external threads, but is not reentrant.
+            <seealso cref="P:QPlayer.Audio.QAudioFileReader.StartSamplePosition"/>
+            </summary>
+            
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.ReadExactly(System.Single[],System.Int32,System.Int32,System.Boolean@)">
+            <summary>
+            Repeatedly reads from the <see cref="F:QPlayer.Audio.QAudioFileReader.sampleProvider"/> until either the requested number of samples are 
+            read, or the sample provider returns 0 samples.
+            </summary>
+            <param name="buffer">The buffer to read into.</param>
+            <param name="offset">The offset into the buffer to start writing.</param>
+            <param name="count">How many samples to read.</param>
+            <param name="reachedEnd">Whether the <see cref="F:QPlayer.Audio.QAudioFileReader.sampleProvider"/> returned 0 samples on the last read.</param>
+            <returns>The number of samples read.</returns>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.SeekReaderInternal(System.Int64)">
+            <summary>
+            Repositions the internal <see cref="F:QPlayer.Audio.QAudioFileReader.readerStream"/> safely, and warms it up by reading into the junk buffer.
+            </summary>
+            <param name="newPos"></param>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.SeekReader(System.Int64)">
+            <summary>
+            Intelligently seeks this <see cref="T:QPlayer.Audio.QAudioFileReader"/> to the given sample position, reusing existing buffers if 
+            possible. Automatically invalidates the sample buffer if needed. The underlying <see cref="F:QPlayer.Audio.QAudioFileReader.readerStream"/> is not
+            repositioned until the next read.
+            </summary>
+            <param name="newPos">The position in samples to seek to.</param>
+        </member>
+        <member name="M:QPlayer.Audio.QAudioFileReader.Align(System.Int64)">
+            <summary>
+            Aligns a position in samples to the start of the current frame. Effecitvely this rounds the input 
+            position down to a multiple of the channel count. Note that this is only valid for positive values.
+            </summary>
+            <param name="pos">The position in samples to align.</param>
+            <returns>The aligned position in samples.</returns>
+        </member>
+        <member name="T:QPlayer.Audio.VectorExtensions">
+            <summary>
+            This class provides a number of vectorised maths routines, which are optimised for X86 SIMD instructions.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.PrintSignal(System.ReadOnlySpan{System.Single},System.Int32,System.Boolean,System.Boolean,System.Int32)">
+            <summary>
+            Pretty prints an audio signal as a waveform. Based on https://github.com/sudara/melatonin_audio_sparklines/blob/main/melatonin_audio_sparklines.h
+            <para/>
+            The signal is represented as a series of dashes, with a few special characters indicated specific values:
+            <code>
+            0     -- a single 0 value
+            0(23) -- 23 consecutive zeros
+            x     -- a zero-crossing
+            N     -- NaN
+            I     -- +-Inf
+            S     -- subnormal values
+            E     -- outside of the -1 to 1 range
+            </code>
+            For interleaved multi-channel signals, each chanel is displayed on it's own line.
+            If a signal is prepended with a + then every sample is >= 0.
+            </summary>
+            <param name="sig">The signal to display.</param>
+            <param name="channels">The number of interleaved channels.</param>
+            <param name="collapse">Whether the signal should be collapsed to skip repeated values.</param>
+            <param name="normalize">Whether the signal should be normalized.</param>
+            <param name="maxLen">The maximum number of characters to return.</param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Multiply``1(System.Span{``0},``0)">
+            <summary>
+            Multiplies the contents of span a by the scalar b, mutating a with the result.
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="a"></param>
+            <param name="b"></param>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Multiply``1(System.Span{``0},System.Span{``0})">
+            <summary>
+            Multiplies the pairs of values in a by the values in b, mutating a with the result.
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="a"></param>
+            <param name="b"></param>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.ApplyPan(System.Span{System.Single},System.Single)">
+            <summary>
+            Pans a span of interleaved stereo samples left or right.
+            <code>
+            Lout = Lin * 1 - max(0,pan)
+            Rout = Rin * 1 + min(0,pan)
+            </code>
+            </summary>
+            <param name="buffer"></param>
+            <param name="pan"></param>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Max(System.Span{System.Single},System.Single)">
+            <summary>
+            Computes the element-wise maximum of a signal and a constant.
+            </summary>
+            <param name="x"></param>
+            <param name="y"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Max(System.Span{System.Single},System.Span{System.Single})">
+            <summary>
+            Computes the element-wise maximum of two signals.
+            </summary>
+            <param name="x"></param>
+            <param name="y"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Min(System.Span{System.Single},System.ReadOnlySpan{System.Single})">
+            <summary>
+            Computes the element-wise minimum of x and y, storing the result in x.
+            </summary>
+            <param name="x"></param>
+            <param name="y"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.SmoothMin(System.Span{System.Single},System.ReadOnlySpan{System.Single},System.Single)">
+            <summary>
+            Computes the smooth-minimum of two signals using quadratic interpolation.
+            See: https://iquilezles.org/articles/smin/
+            </summary>
+            <param name="x"></param>
+            <param name="y"></param>
+            <param name="k">The blending factor [0-1]. Must be > 0.</param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Min(System.ReadOnlySpan{System.Single})">
+            <summary>
+            Computes the minimum value in x.
+            </summary>
+            <param name="x"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.StereoMin(System.Span{System.Single})">
+            <summary>
+            Computes the pair-wise minimum of x, storing the result in x.
+            </summary>
+            <param name="x"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.Convolve(System.ReadOnlySpan{System.Single},System.ReadOnlySpan{System.Single})">
+            <summary>
+            Computes: ∑(x[i] * kernel[i])
+            </summary>
+            <param name="x"></param>
+            <param name="kernel"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.ClipGR(System.Span{System.Single},System.Single)">
+            <summary>
+            Computes the gain reduction (fraction) required to clip a signal x by threshold.
+            </summary>
+            <param name="x"></param>
+            <param name="threshold"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.SoftGR(System.Span{System.Single},System.Single,System.Single,System.Single,System.Single)">
+            <summary>
+            Computes the gain reduction (fraction) required to clip a signal x by threshold.
+            </summary>
+            <param name="x"></param>
+            <param name="threshold">The threshold level at which to start reducing gain.</param>
+            <param name="ratio">Value between 0-1, where 1 is brickwall limiting.</param>
+            <param name="knee">Value between 0-1, where 0 is a hard knee. Value must be > 0.</param>
+            <param name="gain">Gain multiplier applied to the input signal before clipping.</param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.MulClip(System.Span{System.Single},System.ReadOnlySpan{System.Single},System.Single)">
+            <summary>
+            Multiplies two signals x and y element-wise and then clamps the resulting signal between [-c, c].
+            </summary>
+            <param name="x"></param>
+            <param name="y"></param>
+            <param name="c"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Audio.VectorExtensions.LerpSamplesStereo(System.Span{System.Single},System.ReadOnlySpan{System.Single},System.Double@,System.Double)">
+            <summary>
+            Exactly the same as <see cref="M:QPlayer.Audio.VectorExtensions.LerpSamplesMono(System.Span{System.Single},System.ReadOnlySpan{System.Single},System.Double@,System.Double)"/>
+            but processes interleaved stereo samples instead.
+            Only processes samples tht can be vectorised, 
+            </summary>
+            <param name="dst">Resampling destination.</param>
+            <param name="src">Resampling source.</param>
+            <param name="srcPos">The fractional position in the source buffer.</param>
+            <param name="drsPos">The increment size when sampling the source buffer.</param>
+            <returns>The number of interpolated samples written.</returns>
+        </member>
+        <member name="T:QPlayer.Audio.WdlResampler">
+            <summary>
+            Fully managed resampler, based on Cockos WDL Resampler
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.WdlResampler.#ctor(System.Double,System.Double,System.Boolean,System.Int32,System.Boolean,System.Int32,System.Int32,System.Single,System.Single)">
+            <summary>
+            Creates a new Resampler
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.WdlResampler.Reset(System.Double)">
+            <summary>
+            Reset
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.WdlResampler.GetCurrentLatency">
+            <summary>
+            amount of input that has been received but not yet converted to output, in seconds
+            </summary>
+        </member>
+        <member name="M:QPlayer.Audio.WdlResampler.ResamplePrepare(System.Int32,System.Int32,System.Single[]@,System.Int32@)">
+            <summary>
+            Prepare
+            note that it is safe to call ResamplePrepare without calling ResampleOut (the next call of ResamplePrepare will function as normal)
+            nb inbuffer was float **, returning a place to put the in buffer, so we return a buffer and offset
+            </summary>
+            <param name="out_frames">req_samples is output samples desired if !wantInputDriven, or if wantInputDriven is input samples that we have</param>
+            <param name="nch"></param>
+            <param name="inbuffer"></param>
+            <param name="inbufferOffset"></param>
+            <returns>returns number of samples desired (put these into *inbuffer)</returns>
+        </member>
+        <member name="M:QPlayer.Audio.WdlResampler.ResampleOut(System.Single[],System.Int32,System.Int32,System.Int32,System.Int32)">
+            <summary>
+            if numsamples_in &lt; the value return by ResamplePrepare(), then it will be flushed to produce all remaining valid samples
+            do NOT call with nframes_in greater than the value returned from resamplerprpare()! the extra samples will be ignored.
+            returns number of samples successfully outputted to out
+            </summary>
+        </member>
+        <member name="T:QPlayer.Models.MAMSCDriver">
+            <summary>
+            This class manages the receiving and sending of MA Midi Show Control packets sent over UDP.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Models.MAMSCDriver.SendMessage(QPlayer.Models.MAMSCPacket@,System.Net.IPEndPoint)">
+            <summary>
+            Asynchronously sends an MA-MSC packet.
+            </summary>
+            <param name="packet">The message to send.</param>
+            <param name="remoteEndPoint">The endpoint to send the message to.</param>
+        </member>
+        <member name="M:QPlayer.Models.MAMSCDriver.SendMessageAsync(QPlayer.Models.MAMSCPacket,System.Net.IPEndPoint)">
+            <inheritdoc cref="!:SendMessage(MAMSCPacket, IPEndPoint?)"/>
+        </member>
+        <member name="M:QPlayer.Models.MAMSCDriver.Subscribe(QPlayer.Models.MSCCommands,System.Action{QPlayer.Models.MAMSCPacket},System.Threading.SynchronizationContext)">
+            <summary>
+            Subscribes an event handler to MSC messages with a given command.
+            </summary>
+            <param name="commands">The commands to subscribe to.</param>
+            <param name="handler">The event handler to fire when a matching message is received.</param>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.Go">
+            <summary>
+            This is the same as a Goto command in grandMA2. It needs to be followed by a cue number.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.Stop">
+            <summary>
+            This is the same as a Pause command in grandMA2. This can be followed by a cue number.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.Resume">
+            <summary>
+            This will "un-plause" a cue. If a specific cue has been paused, then the cue number needs to be specified with this command.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.TimedGo">
+            <summary>
+            This can be used to perform a Goto with a specific fade time. It needs both the time and the cue number - in that order.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.Set">
+            <summary>
+            Set can be used to set the position of faders. It needs the fader number and page followed by the position.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.Fire">
+            <summary>
+            This can be used to trigger macros. The macro number needs to follow the command. Only macro 1 to 255 can be triggered.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommands.GoOff">
+            <summary>
+            This command can be used "Off" executors. This needs to followed by a cue number.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Models.MAMSCPacket">
+            <summary>
+            Represents an MA MSC packet. This is implemented as a union type, make sure to check the 
+            <see cref="F:QPlayer.Models.MAMSCPacket.command"/> field before reading the corresponding data field.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.Go">
+            <summary>
+            This is the same as a Goto command in grandMA2. It needs to be followed by a cue number.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.Stop">
+            <summary>
+            This is the same as a Pause command in grandMA2. This can be followed by a cue number.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.Resume">
+            <summary>
+            This will "un-plause" a cue. If a specific cue has been paused, then the cue number needs to be specified with this command.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.TimedGo">
+            <summary>
+            This can be used to perform a Goto with a specific fade time. It needs both the time and the cue number - in that order.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.Set">
+            <summary>
+            Set can be used to set the position of faders. It needs the fader number and page followed by the position.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.Fire">
+            <summary>
+            This can be used to trigger macros. The macro number needs to follow the command. Only macro 1 to 255 can be triggered.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.MSCCommand.GoOff">
+            <summary>
+            This command can be used "Off" executors. This needs to followed by a cue number.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Models.OSCDriver.SendMessage(OscCore.OscMessage@,System.Net.IPEndPoint)">
+            <summary>
+            Asynchronously sends an OSC packet.
+            </summary>
+            <param name="packet">The message to send.</param>
+            <param name="remoteEndPoint">The endpoint to send the message to.</param>
+        </member>
+        <member name="M:QPlayer.Models.OSCDriver.SendMessageAsync(OscCore.OscMessage,System.Net.IPEndPoint)">
+            <inheritdoc cref="!:SendMessage(OscMessage, IPEndPoint?)"/>
+        </member>
+        <member name="M:QPlayer.Models.OSCDriver.Subscribe(System.String,System.Action{OscCore.OscMessage},System.Threading.SynchronizationContext)">
+            <summary>
+            Subscribes an event handler to OSC messages following a specified pattern.
+            </summary>
+            <remarks>
+            Address patterns are of the form: "/foo/?/bar"
+            <br/>
+            Where '?' indicates a wildcard which matches any single address part.
+            </remarks>
+            <param name="pattern">The adddress pattern to match.</param>
+            <param name="handler">The event handler to fire when a matching message is received.</param>
+        </member>
+        <member name="M:QPlayer.Models.OSCMessageParser.ParseOSCMessage(System.String)">
+            <summary>
+            Parses a string representing an OSC message into an address and a list of arguments.<br/>
+            Arguments must be separated by spaces and are parsed automatically
+            Supports:
+             - strings -> Surrounded by double quotes
+             - ints
+             - floats
+             - bools
+             - blobs -> Surrounded by backticks
+            </summary>
+            <param name="message"></param>
+            <returns></returns>
+        </member>
+        <member name="T:QPlayer.Models.PeakFile">
+            <summary>
+            Stores a compact representation of the audio peaks in an audio file for faster waveform rendering.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.PeakFile.MIN_REDUCTION">
+            <summary>
+            The reduction factor of the highest resolution pyramid.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.PeakFile.REDUCTION_STEP">
+            <summary>
+            The number of bits to shift the reduction factor by between each pyramid.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.PeakFile.MIN_SAMPLES">
+            <summary>
+            The minimum number of samples in a pyramid.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Models.PeakFile.SAMPLE_POS_INCREMENT">
+            <summary>
+            Every N samples, we store the position in bytes into the file stream for efficient seeking. This is always a power of 2.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Models.PeakFileReader.ReadMetadata(System.IO.Stream)">
+            <summary>
+            Reads and validates the metadata portion of a <see cref="T:QPlayer.Models.PeakFile"/>.
+            
+            This method does not close the stream once complete!
+            </summary>
+            <param name="stream">The binary stream to parse</param>
+            <returns>A new <see cref="T:QPlayer.Models.PeakFile"/> instance parsed from the stream.</returns>
+            <exception cref="T:System.FormatException"></exception>
+        </member>
+        <member name="M:QPlayer.Models.PeakFileReader.ReadPeakFile(System.IO.Stream)">
+            <summary>
+            Reads and validates <see cref="T:QPlayer.Models.PeakFile"/> from a stream.
+            </summary>
+            <param name="stream">The binary stream to parse</param>
+            <returns>A new <see cref="T:QPlayer.Models.PeakFile"/> instance parsed from the stream.</returns>
+        </member>
+        <member name="M:QPlayer.Models.PeakFileReader.ReadPeakFile(System.String)">
+            <summary>
+            Reads and validates <see cref="T:QPlayer.Models.PeakFile"/> from a stream.
+            </summary>
+            <param name="stream">The binary stream to parse</param>
+            <returns>A new <see cref="T:QPlayer.Models.PeakFile"/> instance parsed from the stream.</returns>
+            <exception cref="T:System.Exception"></exception>
+        </member>
+        <member name="M:QPlayer.Models.PeakFileWriter.LoadOrGeneratePeakFile(System.String)">
+            <summary>
+            Loads a <see cref="T:QPlayer.Models.PeakFile"/> for the given audio file if it's valid, otherwise generates a 
+            new <see cref="T:QPlayer.Models.PeakFile"/> for an audio file if needed. 
+            </summary>
+            <param name="path">The path of the audio to process</param>
+            <returns>The loaded or generated <see cref="T:QPlayer.Models.PeakFile"/></returns>
+        </member>
+        <member name="T:QPlayer.Models.InvalidVersionException">
+            <summary>
+            The exception thrown when a file of an incompatible version is loaded.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Models.MalformedException">
+            <summary>
+            The exception thrown when a file could not be loaded due to it being corrupt.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Models.PluginNameAttribute">
+            <summary>
+            Using this attribute on a plugin class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/> allows a custom plugin name to be specified.
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="M:QPlayer.Models.PluginNameAttribute.#ctor(System.String)">
+            <summary>
+            Using this attribute on a plugin class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/> allows a custom plugin name to be specified.
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="T:QPlayer.Models.PluginAuthorAttribute">
+            <summary>
+            Using this attribute on a plugin class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/> allows a custom plugin author to be specified.
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="M:QPlayer.Models.PluginAuthorAttribute.#ctor(System.String)">
+            <summary>
+            Using this attribute on a plugin class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/> allows a custom plugin author to be specified.
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="T:QPlayer.Models.PluginDescriptionAttribute">
+            <summary>
+            Using this attribute on a plugin class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/> allows a custom plugin description to be specified.
+            </summary>
+            <param name="description"></param>
+        </member>
+        <member name="M:QPlayer.Models.PluginDescriptionAttribute.#ctor(System.String)">
+            <summary>
+            Using this attribute on a plugin class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/> allows a custom plugin description to be specified.
+            </summary>
+            <param name="description"></param>
+        </member>
+        <member name="T:QPlayer.Models.MenuItemAttribute">
+            <summary>
+            Creates a main menu item which invokes this method when clicked.
+            <para/>
+            Only applicable to parameterless methods and <see langword="bool"/> properties on the class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/>.
+            </summary>
+            <param name="path">The path to the menu item to be created, eg: 'File/Save'</param>
+        </member>
+        <member name="M:QPlayer.Models.MenuItemAttribute.#ctor(System.String)">
+            <summary>
+            Creates a main menu item which invokes this method when clicked.
+            <para/>
+            Only applicable to parameterless methods and <see langword="bool"/> properties on the class implementing <see cref="T:QPlayer.Models.QPlayerPlugin"/>.
+            </summary>
+            <param name="path">The path to the menu item to be created, eg: 'File/Save'</param>
+        </member>
+        <member name="T:QPlayer.Models.ProjectSettingsAttribute">
+            <summary>
+            Registers this class to the project settings panel.
+            <para/>
+            This class must derive from <see cref="T:QPlayer.ViewModels.BindableViewModel`1"/> and be annotated with the 
+            <see cref="T:QPlayer.SourceGenerator.ModelAttribute"/> and <see cref="T:QPlayer.SourceGenerator.ViewAttribute"/> attributes.
+            </summary>
+            <param name="heading">The heading name for this section in the project settings panel.</param>
+        </member>
+        <member name="M:QPlayer.Models.ProjectSettingsAttribute.#ctor(System.String)">
+            <summary>
+            Registers this class to the project settings panel.
+            <para/>
+            This class must derive from <see cref="T:QPlayer.ViewModels.BindableViewModel`1"/> and be annotated with the 
+            <see cref="T:QPlayer.SourceGenerator.ModelAttribute"/> and <see cref="T:QPlayer.SourceGenerator.ViewAttribute"/> attributes.
+            </summary>
+            <param name="heading">The heading name for this section in the project settings panel.</param>
+        </member>
+        <member name="T:QPlayer.Models.PluginLoadContext">
+            <summary>
+            Loads a plugin and it's dependencies in a load context to avoid depedency conflicts.
+            </summary>
+            <remarks>
+            Taken from: https://learn.microsoft.com/en-us/dotnet/core/tutorials/creating-app-with-plugin-support
+            </remarks>
+            <param name="pluginPath"></param>
+        </member>
+        <member name="M:QPlayer.Models.PluginLoadContext.#ctor(System.String)">
+            <summary>
+            Loads a plugin and it's dependencies in a load context to avoid depedency conflicts.
+            </summary>
+            <remarks>
+            Taken from: https://learn.microsoft.com/en-us/dotnet/core/tutorials/creating-app-with-plugin-support
+            </remarks>
+            <param name="pluginPath"></param>
+        </member>
+        <member name="M:QPlayer.Models.QPlayerPlugin.OnLoad(QPlayer.ViewModels.MainViewModel)">
+            <summary>
+            Called at startup when the plugin is loaded by QPlayer.
+            </summary>
+            <param name="mainViewModel"></param>
+        </member>
+        <member name="M:QPlayer.Models.QPlayerPlugin.OnUnload">
+            <summary>
+            Called just before QPlayer exits.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Models.QPlayerPlugin.OnSave(System.String)">
+            <summary>
+            Called just before QPlayer saves a show file.
+            </summary>
+            <param name="path"></param>
+        </member>
+        <member name="M:QPlayer.Models.QPlayerPlugin.OnGo(QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Called every time QPlayer starts a cue.
+            </summary>
+            <param name="cue"></param>
+        </member>
+        <member name="M:QPlayer.Models.QPlayerPlugin.OnSlowUpdate">
+            <summary>
+            Called every 250 ms on the UI thread.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Models.SerializedColour">
+            <summary>
+            A simple RGBA colour represented as 4 singles. Provides explicit 
+            conversion operators to a number of formats.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Models.ShowFileConverter">
+            <summary>
+            This class contains the relevant code to repair and upgrade old show files.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Models.ShowFileConverter.LoadShowFileSafeAsync(System.IO.Stream)">
+            <summary>
+            Attempts to load a show file one field at a time, skipping any fields which can't be read.
+            
+            This method uses fairly inefficient reflection to try and deserialize as much of the show file as possible.
+            </summary>
+            <param name="utf8Stream">The contents of show file to load.</param>
+            <returns>A ShowFile, with as many parameters loaded as possible.</returns>
+            <exception cref="T:System.IO.FileFormatException"></exception>
+        </member>
+        <member name="M:QPlayer.Models.ShowFileConverter.LoadShowFileSafe(System.String)">
+            <summary>
+            Attempts to load a show file one field at a time, skipping any fields which can't be read.
+            
+            This method uses fairly inefficient reflection to try and deserialize as much of the show file as possible.
+            </summary>
+            <param name="jsonString">The contents of show file to load.</param>
+            <returns>A ShowFile, with as many parameters loaded as possible.</returns>
+            <exception cref="T:System.IO.FileFormatException"></exception>
+        </member>
+        <member name="M:QPlayer.Models.ShowFileConverter.LoadShowFileSafe(System.Text.Json.JsonDocument)">
+            <summary>
+            Attempts to load a show file one field at a time, skipping any fields which can't be read.
+            
+            This method uses fairly inefficient reflection to try and deserialize as much of the show file as possible.
+            </summary>
+            <param name="json">The contents of show file to load.</param>
+            <returns>A ShowFile, with as many parameters loaded as possible.</returns>
+            <exception cref="T:System.IO.FileFormatException"></exception>
+        </member>
+        <member name="M:QPlayer.Models.ShowFileConverter.UpgradeShowFileAsync(QPlayer.Models.ShowFile,System.IO.Stream)">
+            <summary>
+            Upgrades a show file from an older version by parsing attempting to parse old data.
+            </summary>
+            <param name="showFile">The show file to merge into.</param>
+            <param name="jsonString">The json to parse.</param>
+        </member>
+        <member name="M:QPlayer.Models.ShowFileConverter.UpgradeShowFile(QPlayer.Models.ShowFile,System.String)">
+            <summary>
+            Upgrades a show file from an older version by parsing attempting to parse old data.
+            </summary>
+            <param name="showFile">The show file to merge into.</param>
+            <param name="jsonString">The json to parse.</param>
+        </member>
+        <member name="M:QPlayer.Models.ShowFileConverter.UpgradeShowFile(QPlayer.Models.ShowFile,System.Text.Json.JsonDocument)">
+            <inheritdoc cref="M:QPlayer.Models.ShowFileConverter.UpgradeShowFile(QPlayer.Models.ShowFile,System.String)"/>
+        </member>
+        <member name="T:QPlayer.ThemesV2.Icons">
+            <summary>
+            Icons
+            </summary>
+        </member>
+        <member name="M:QPlayer.ThemesV2.Icons.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Utilities.Deque`1">
+            <summary>
+            A simple double-ended queue implementation. This implementation is not thread-safe.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="F:QPlayer.Utilities.Deque`1.head">
+            <summary>
+            Points to the element at the start of the queue.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Utilities.Deque`1.tail">
+            <summary>
+            Points to the free slot at the end of the queue.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Utilities.Deque`1.Inc(System.Int32@)">
+            <summary>
+            Increments the given value, wrapping on the array bounds.
+            </summary>
+            <param name="ptr"></param>
+            <returns>The original value of <paramref name="ptr"/></returns>
+        </member>
+        <member name="M:QPlayer.Utilities.Deque`1.Dec(System.Int32@)">
+            <summary>
+            Decrements the given value, wrapping on the array bounds.
+            </summary>
+            <param name="ptr"></param>
+            <returns>The new value of <paramref name="ptr"/></returns>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.Normalize(System.Decimal)">
+            <summary>
+            Removes trailing zeros from a decimal.
+            </summary>
+            <param name="value"></param>
+            <remarks>https://stackoverflow.com/a/7983330/10874820</remarks>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.AddOrUpdate``1(System.Collections.Generic.List{``0},System.Int32,``0)">
+            <summary>
+            Updates an item at the given index in the list, expanding the list with 
+            <c>default</c> items if index larger than the size of the list.
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="list"></param>
+            <param name="index"></param>
+            <param name="value"></param>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.SetTranslation(System.Numerics.Matrix4x4,System.Numerics.Vector3)">
+            <summary>
+            Sets the translation component of this matrix.
+            </summary>
+            <param name="mat"></param>
+            <param name="trans"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.SyncList``2(System.Collections.ObjectModel.ObservableCollection{``0},System.Func{System.Collections.Generic.IList{``1}},System.Func{``0,``1})">
+            <summary>
+            Synchronises a list with this collection. Note that this synchronisation only works in one direction, if the list is 
+            modified, then the behaviour is undefined.
+            </summary>
+            <typeparam name="TCollection"></typeparam>
+            <typeparam name="TList"></typeparam>
+            <param name="collection"></param>
+            <param name="listGetter"></param>
+            <param name="converter"></param>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.AddRange(System.Windows.Media.PointCollection,System.Collections.Generic.IEnumerable{System.Windows.Point})">
+            <summary>
+            Efficiently adds a collection of points to the collection.
+            </summary>
+            <param name="collection"></param>
+            <param name="points"></param>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.AsSegment``1(``0[],System.Int32,System.Int32)">
+            <summary>
+            Creates an array segment over a portion of this array.
+            </summary>
+            <typeparam name="T"></typeparam>
+            <param name="arr"></param>
+            <param name="start">The index of the first element in the segment.</param>
+            <param name="count">The number of elements to take.</param>
+            <returns>A new array segment over the array.</returns>
+        </member>
+        <member name="M:QPlayer.Utilities.ExtensionMethods.AsSegment``1(``0[],System.Int32)">
+            <inheritdoc cref="M:QPlayer.Utilities.ExtensionMethods.AsSegment``1(``0[],System.Int32,System.Int32)"/>
+        </member>
+        <member name="T:QPlayer.Utilities.FixedArrayPool`1">
+            <summary>
+            An array pool which only stores arrays of a fixed size.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="M:QPlayer.Utilities.ReactiveCollection`1.OnCountPropertyChanged">
+            <summary>
+            Helper to raise a PropertyChanged event for the Count property
+            </summary>
+        </member>
+        <member name="M:QPlayer.Utilities.ReactiveCollection`1.OnIndexerPropertyChanged">
+            <summary>
+            Helper to raise a PropertyChanged event for the Indexer property
+            </summary>
+        </member>
+        <member name="T:QPlayer.Utilities.StringDict`1">
+            <summary>
+            A fast string-keyed dictionary. This is very similar in implementation to the .NET generic dictionary, 
+            but it has a few specific optimisations which can be useful in some cases. Notably, it can by accessed
+            by string key or by <see cref="T:System.ReadOnlySpan`1"/> of <see langword="char"/> which can save unnecessary 
+            string allocations. It also exposes methods to get values by reference which can save performance. 
+            And it uses a slightly faster string hashing algorithm.
+            </summary>
+            <typeparam name="T">The type of values stored in this dictionary.</typeparam>
+        </member>
+        <member name="F:QPlayer.Utilities.StringDict`1.buckets">
+            <summary>
+            Stores references to dictionary items, index by key hashcode. Stores a 1-based index into the other arrays.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Utilities.StringDict`1.hashcodes">
+            <summary>
+            Stores the complete hashcode of an item pointed to by buckets.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Utilities.StringDict`1.links">
+            <summary>
+            Stores the index of the next item in the same bucket as the current item pointed to by buckets. 1-based index!
+            </summary>
+        </member>
+        <member name="F:QPlayer.Utilities.StringDict`1.keys">
+            <summary>
+            Stores the key of an item pointed to by buckets.
+            </summary>
+        </member>
+        <member name="F:QPlayer.Utilities.StringDict`1.values">
+            <summary>
+            Stores the value of an item pointed to by buckets.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.Optimize(System.Single,System.Boolean)">
+            <summary>
+            Optimises the dictionary for red performance and memory efficiency.
+            </summary>
+            <param name="targetLoadFactor">The load factor to target. Smaller values result in faster reads at the 
+            cost of more memory used. A good value is between 1 and 3.</param>
+            <param name="compact">Whether to compact all the entries in the slots. Saves a bit of space if many 
+            items have been removed from the dictionary.</param>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.Remove(System.ReadOnlySpan{System.Char})">
+            <inheritdoc cref="M:QPlayer.Utilities.StringDict`1.Remove(System.String)"/>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.Remove(System.ReadOnlySpan{System.Char},`0@)">
+            <inheritdoc cref="M:QPlayer.Utilities.StringDict`1.Remove(System.String,`0@)"/>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.Remove(System.String,`0@)">
+            <summary>
+            Removes an item with the specified key from the dictionary, and returns the removed value.
+            </summary>
+            <param name="key">The key of the element to remove.</param>
+            <param name="item">The value associated with the key which was removed.</param>
+            <returns><see langword="true"/> if the item was successfully removed from the dictionary.</returns>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.TryGetValue(System.ReadOnlySpan{System.Char},`0@)">
+            <inheritdoc cref="M:QPlayer.Utilities.StringDict`1.TryGetValue(System.String,`0@)"/>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.TryGetValue(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Gets the value associated with the given key. The reference is only valid so long as the dictionary is not mutated.
+            </summary>
+            <param name="key">The key to get the value of.</param>
+            <returns>A reference to the value in the dictionary if it exists, or a null reference.</returns>
+        </member>
+        <member name="M:QPlayer.Utilities.StringDict`1.GetValues(System.Collections.Generic.IEnumerable{System.String})">
+            <summary>
+            Returns an enumerable of all the values with the given keys.
+            </summary>
+            <param name="keys">The keys to search for.</param>
+            <returns>An <see cref="T:System.Collections.Generic.IEnumerable`1"/> of all the values which match the given keys.</returns>
+        </member>
+        <member name="T:QPlayer.Utilities.TemporaryList`1">
+            <summary>
+            A list backed by arrays from the array pool.
+            </summary>
+            <typeparam name="T"></typeparam>
+        </member>
+        <member name="M:QPlayer.Utilities.TemporaryList`1.AsSpan">
+            <summary>
+            Gets a span of the elements in this temporary list, valid as long as the list count isn't changed.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.Utilities.TemporaryList`1.AddRange(System.Collections.Generic.IEnumerable{`0})">
+            <summary>
+            Adds each element from the enumerable to the list efficiently.
+            </summary>
+            <param name="items"></param>
+        </member>
+        <member name="T:QPlayer.Utilities.TemporaryListBuilder">
+            <summary>
+            Factory class used by the collection builder to correctly initialise a <see cref="T:QPlayer.Utilities.TemporaryList`1"/>.
+            </summary>
+        </member>
+        <member name="M:QPlayer.Utilities.TemporaryListBuilder.Create``1(System.ReadOnlySpan{``0})">
+            <summary>
+            Factory method used by the collection builder to correctly initialise a <see cref="T:QPlayer.Utilities.TemporaryList`1"/>.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.AudioLimiterViewModel.AutoGain(System.Single)">
+            <summary>
+            Sets the <see cref="P:QPlayer.ViewModels.AudioLimiterViewModel.InputGain"/> to a level that ensures none of the sound cues in the 
+            cue stack will exceed 0dBfs when playing individually.
+            </summary>
+            <param name="headroomDb">The amount of headroom to leave in dB from full-scale, positive 
+            values attenuate, negative values will push cues into the limiter.</param>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.Enabled">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.enabled'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.InputGain">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.inputGain'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.Threshold">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.threshold'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.Release">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.release'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.CompRatio">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.compRatio'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.CompGain">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.compGain'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.Write">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.write'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.GR">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.gr'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.DBG_Meter">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.dbg_meter'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioLimiterViewModel.AutoGainCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioLimiterViewModel.autoGainCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioMeterViewModel.PeakL">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioMeterViewModel.peakL'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioMeterViewModel.PeakR">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioMeterViewModel.peakR'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioMeterViewModel.RMSL">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioMeterViewModel.rMSL'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioMeterViewModel.RMSR">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioMeterViewModel.rMSR'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.AudioMeterViewModel.Clip">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.AudioMeterViewModel.clip'/></summary>
+        </member>
+        <member name="T:QPlayer.ViewModels.BindableViewModel`1">
+            <summary>
+            The base class for any view model which can be bound onto a separate model instance.
+            <para/>
+            This class implements all the necessary logic to automatically synchronise changes 
+            from a view model to a model. The behaviour of the automatic bindings can be controlled
+            using the various model attribtues (<see cref="T:QPlayer.SourceGenerator.ModelSkipAttribute"/>, 
+            <see cref="T:QPlayer.SourceGenerator.ModelCustomBindingAttribute"/>, <see cref="T:QPlayer.SourceGenerator.ModelBindsToAttribute"/>).
+            Implementing classes should be annotated with <see cref="T:QPlayer.SourceGenerator.ModelAttribute"/> and 
+            <see cref="T:QPlayer.SourceGenerator.ViewAttribute"/> where applicable.
+            </summary>
+            <remarks>
+            The default automatic binding behaviour is to bind all properties with a public getter 
+            and setter on the ViewModel to all public fields with matching (case insensitive) names 
+            on the Model.
+            </remarks>
+            <typeparam name="Model">The type of the model to bind to.</typeparam>
+        </member>
+        <member name="M:QPlayer.ViewModels.BindableViewModel`1.Bind(`0)">
+            <summary>
+            Binds this <see cref="T:CommunityToolkit.Mvvm.ComponentModel.ObservableObject"/> to the specified model instance. Automatically propagates proeprties 
+            changes from this object to the model, but not the other way around.
+            <br/>
+            When using the source generator, this method is automatically implemented so long as the deriving 
+            class defines at least one reactive property (see <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>).
+            </summary>
+            <param name="model">The model to bind to, or <see langword="null"/> to unbind.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.BindableViewModel`1.SyncFromModel">
+            <summary>
+            Copies all bound property values on this instance from the bound model.
+            <br/>
+            When using the source generator, this method is automatically implemented so long as the deriving 
+            class defines at least one reactive property (see <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>).
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.BindableViewModel`1.SyncToModel">
+            <summary>
+            Copies all bound property values on this instance to the bound model.
+            <br/>
+            When using the source generator, this method is automatically implemented so long as the deriving 
+            class defines at least one reactive property (see <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>).
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.BindableViewModel`1.OnSyncFromModel">
+            <summary>
+            When using a source generator, this method is automatically implemented and should be called in <see cref="M:QPlayer.ViewModels.BindableViewModel`1.SyncFromModel"/>.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.BindableViewModel`1.OnSyncToModel">
+            <summary>
+            When using a source generator, this method is automatically implemented and should be called in <see cref="M:QPlayer.ViewModels.BindableViewModel`1.SyncToModel"/>.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueFactory.CreateCue(System.String)">
+            <summary>
+            Creates a new instance of a cue of the given type. Available cue types are those registered in <see cref="P:QPlayer.ViewModels.CueFactory.RegisteredCueTypes"/>.
+            </summary>
+            <param name="typeName"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueFactory.CreateViewModel(System.String,QPlayer.ViewModels.MainViewModel)">
+            <summary>
+            Creates a new instance of a cue view model of the given type. Available cue types are those registered in <see cref="P:QPlayer.ViewModels.CueFactory.RegisteredCueTypes"/>.
+            End users should preferentially use <see cref="M:QPlayer.ViewModels.MainViewModel.CreateCue(System.String,System.Int32,System.Boolean,QPlayer.ViewModels.CueViewModel)"/>.
+            </summary>
+            <param name="typeName"></param>
+            <param name="mainViewModel"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueFactory.CreateViewModelForCue(QPlayer.Models.Cue,QPlayer.ViewModels.MainViewModel)">
+            <summary>
+            Creates a new instance of a cue view model for a given cue and copies all of it's properties.
+            </summary>
+            <param name="cue"></param>
+            <param name="mainViewModel"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueFactory.CreateCueForViewModel(QPlayer.ViewModels.CueViewModel,System.Boolean)">
+            <summary>
+            Creates a new instance of a cue for a given cue view modeland copies all of it's properties.
+            </summary>
+            <param name="vm">The view model to create a model for.</param>
+            <param name="copy"><see langword="false"/> to bind the <paramref name="vm"/> to the newly created 
+            model, <see langword="true"/> to only copy it's parameter.</param>
+            <returns></returns>
+        </member>
+        <!-- Badly formed XML comment ignored for member "T:QPlayer.ViewModels.CueState" -->
+        <member name="F:QPlayer.ViewModels.CueState.Ready">
+            <summary>
+            The Cue is currently stopped and ready to be played
+            </summary>
+        </member>
+        <member name="F:QPlayer.ViewModels.CueState.Delay">
+            <summary>
+            The Cue is currently waiting to start.
+            </summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.RemoteDuration">
+            <summary>
+            The duration of this cue, as received from a remote node.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.OnFocussed">
+            <summary>
+            This method is invoked by QPlayer when this cue is selected in the inspector.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.DelayedGo(QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Starts this cues after it's delay has elapsed.
+            </summary>
+            <param name="waitForCue">Optionally, a cue to wait for it's <see cref="E:QPlayer.ViewModels.CueViewModel.OnCompleted"/> event before starting this cue.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.Go">
+            <summary>
+            Starts this cue immediately.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.Pause">
+            <summary>
+            Pauses this cue. It can be resumed again by calling Go.
+            
+            Not all cues support pausing. For unsupported cues, this should Stop().
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.Stop">
+            <summary>
+            Stops this cue immediately.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.StopInternal">
+            <summary>
+            Stops this cue without informing remote clients or executing cue specific stopping code.
+            This is called when a remote node needs to tell us that a cue has finished playing.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.Preload(System.TimeSpan)">
+            <summary>
+            Sets the playback time of the cue to the given time, and puts it in the paused state.
+            </summary>
+            <param name="startTime">the time to start the cue at.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.CueViewModel.UpdateUIStatus">
+            <summary>
+            This callback is triggered every 50 or so ms when this cue is active by the main thread.
+            </summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.QID">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.qid'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.ParentId">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.parentId'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Colour">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.colour'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Name">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.name'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Description">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.description'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.RemoteNode">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.remoteNode'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Trigger">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.trigger'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Enabled">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.enabled'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Delay">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.delay'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.Duration">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.duration'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.LoopMode">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.loopMode'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.LoopCount">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.loopCount'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.MainViewModel">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.mainViewModel'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.State">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.state'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.PlaybackTime">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.playbackTime'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.GoCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.goCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.PauseCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.pauseCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.StopCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.stopCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.SelectCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.selectCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.LoopModeVals">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.loopModeVals'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.StopModeVals">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.stopModeVals'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.FadeTypeVals">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.fadeTypeVals'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.CueViewModel.TriggerModeVals">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.CueViewModel.triggerModeVals'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.Enabled">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.enabled'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.LowFreq">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.lowFreq'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.LowGain">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.lowGain'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.LowMidFreq">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.lowMidFreq'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.LowMidGain">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.lowMidGain'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.HighMidFreq">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.highMidFreq'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.HighMidGain">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.highMidGain'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.HighFreq">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.highFreq'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.EQViewModel.HighGain">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.EQViewModel.highGain'/></summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.IConvertibleModel`2.FromModel(`0,QPlayer.ViewModels.MainViewModel)">
+            <summary>
+            Creates a new ViewModel from the given Model, without binding it.
+            </summary>
+            <param name="model">the model to copy properties from</param>
+            <param name="mainViewModel">the main view model</param>
+            <returns>a new ViewModel for the given Model.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.IConvertibleModel`2.ToModel(`0)">
+            <summary>
+            Copies the properties in this ViewModel to the given Model object.
+            </summary>
+            <param name="model">the model to copy to</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.IConvertibleModel`2.ToModel(System.String)">
+            <summary>
+            Copies the value of a given property to the bound Model.
+            </summary>
+            <param name="propertyName">the property to copy</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.IConvertibleModel`2.Bind(`0)">
+            <summary>
+            Binds this view model to a given model, such that updates from the view model are propagated to the model (but NOT vice versa).
+            </summary>
+            <param name="model">the model to bind to</param>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.AudioPlaybackManager">
+            <summary>
+            The global instance of the audio playback manager.
+            </summary>
+        </member>
+        <member name="E:QPlayer.ViewModels.MainViewModel.OnSlowUpdate">
+            <summary>
+            An event which is fired every 250ms on the main thread.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.IsEditMode">
+            <summary>
+            Returns true if a non show mode command can execute.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.OpenWindow``1(System.Boolean)">
+            <summary>
+            Opens or activates a window of the given type.
+            </summary>
+            <typeparam name="T">The type of the window to open.</typeparam>
+            <param name="singleton">When <see langword="true"/>, activates an existing window of the type if it already exists.</param>
+            <returns>The opened/activated window.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.CloseWindow``1">
+            <summary>
+            Closes a window of the given type.
+            </summary>
+            <typeparam name="T"></typeparam>
+            <returns><see langword="true"/> if a window of the given type was closed.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.CloseAllWindows">
+            <summary>
+            Closes all active windows, excluding the main window.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.NotifyQIDChanged(System.Decimal,System.Decimal,QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Informs the cue stack that the cue ID of a given cue view model has been changed. This should be called whenever a QID is changed.
+            <para/>
+            Note that since <see cref="P:QPlayer.ViewModels.CueViewModel.QID"/>'s setter calls this method, users which change QID's through this 
+            setter need not call this method.
+            </summary>
+            <param name="oldVal"></param>
+            <param name="newVal"></param>
+            <param name="src"></param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.DeleteCue(System.Int32,System.Boolean)">
+            <summary>
+            Deletes the cue at the given index from the cue stack.
+            </summary>
+            <param name="index">The 0-based index of the cue in the cue stack.</param>
+            <param name="recordUndo">Whether an undo item should be recorded.</param>
+            <returns>The cue which was just removed, or null if it wasn't found.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.DeleteCue(QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Deletes the given cue from the cue stack.
+            </summary>
+            <param name="cue">The cue instance to remove from the cue stack.</param>
+            <returns><see langword="true"/> if the cue was successfully removed.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.DeleteCue(System.Decimal)">
+            <summary>
+            Deletes the given cue from the cue stack.
+            </summary>
+            <param name="cue">The cue instance to remove from the cue stack.</param>
+            <returns><see langword="true"/> if the cue was successfully removed.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.InsertCue(System.Int32,QPlayer.ViewModels.CueViewModel,System.Boolean,System.Boolean)">
+            <summary>
+            Inserts an existing cue into the cue stack. This method should be used with care as 
+            it does not check if the cue already exists in the stack. To duplicate a cue, use 
+            <see cref="!:DuplicateCue(CueViewModel?)"/>.
+            </summary>
+            <param name="index">The index at which to insert the cue.</param>
+            <param name="cue">The cue to insert.</param>
+            <param name="select">Whether the newly inserted cue should be selected.</param>
+            <param name="registerUndo">Whether an undo item should be recorded.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.InsertCue(QPlayer.ViewModels.CueViewModel,System.Boolean,System.Boolean)">
+            <summary>
+            Inserts an existing cue into the cue stack according to it's qid. This method 
+            should be used with care as it does not check if the cue already exists in the 
+            stack. To duplicate a cue, use <see cref="!:DuplicateCue(CueViewModel?)"/>.
+            </summary>
+            <param name="cue">The cue to insert in the stack.</param>
+            <param name="select">Whether the newly inserted cue should be selected.</param>
+            <param name="registerUndo">Whether an undo item should be recorded.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.DuplicateCue(QPlayer.ViewModels.CueViewModel,System.Boolean)">
+            <summary>
+            Duplicates the given cue in the cue stack.
+            </summary>
+            <param name="src">The cue to duplicate, or <see langword="null"/> to use the currently selected cue.</param>
+            <param name="select">Whether the newly created cue should be selected.</param>
+            <returns>The instance of the newly created cue, or <see langword="null"/> if no cue was duplicated.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.FindCue(System.Object,QPlayer.ViewModels.CueViewModel@)">
+            <summary>
+            Tries to find a cue view model given a cue ID.
+            </summary>
+            <remarks>
+            The <paramref name="id"/> can be one of the following types:
+            <see langword="int"/>,
+            <see langword="float"/>,
+            <see langword="decimal"/>,
+            <see langword="string"/>,
+            </remarks>
+            <param name="id">The cue ID to search for.</param>
+            <param name="cue">The returned cue view model if it was found.</param>
+            <returns><see langword="true"/> if the cue was found.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.FindCue(System.Decimal,QPlayer.ViewModels.CueViewModel@)">
+            <summary>
+            Tries to find a cue view model given a cue ID.
+            </summary>
+            <param name="id">The cue ID to search for.</param>
+            <param name="cue">The returned cue view model if it was found.</param>
+            <returns><see langword="true"/> if the cue was found.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.FindCueIndex(QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Gets the index of a cue in the cue list. Executes in O(n) time.
+            </summary>
+            <param name="cue">The cue instance to search for.</param>
+            <returns>The index of the cue in the <see cref="P:QPlayer.ViewModels.MainViewModel.Cues"/> list or <c>-1</c> if it wasn't found.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.MoveCue(QPlayer.ViewModels.CueViewModel,System.Boolean,System.Boolean,System.Boolean)">
+            <summary>
+            Moves the given cue up or down by one, swapping position with the cue above or below it. 
+            Renumbers the given cue to remain in order.
+            </summary>
+            <param name="cue">The cue instance to move.</param>
+            <param name="down">Whether the cue should be moved up or down.</param>
+            <param name="select">Whether the cue should be reselected after it's moved.</param>
+            <param name="registerUndo">Whether an undo item should be recorded.</param>
+            <returns><see langword="true"/> if successful.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.MoveCue(QPlayer.ViewModels.CueViewModel,System.Decimal,System.Boolean)">
+            <summary>
+            Moves the given cue in the cue stack to the given cue ID, or directly after it if the 
+            specified cue ID is already in use.
+            </summary>
+            <param name="cue">The cue to move in the cue stack.</param>
+            <param name="newId">The cue ID to insert the cue at.</param>
+            <param name="select">Whether the moved cue should be reselected.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.MoveCue(QPlayer.ViewModels.CueViewModel,System.Int32,System.Boolean,System.Nullable{System.Decimal},System.Boolean)">
+            <summary>
+            Moves the given cue in the cue stack to the specified index.
+            </summary>
+            <param name="cue">The cue to move in the cue stack.</param>
+            <param name="index">The index within the cue stack to move the cue to.</param>
+            <param name="select">Whether the moved cue should be reselected.</param>
+            <param name="newQID">Optionally, the new QID to assign to the cue once it's moved. 
+            Otherwise, this method will choose a new QID itself (recommended).</param>
+            <param name="registerUndo">Whether an undo item should be recorded.</param>
+            <returns><see langword="true"/> if the cue was moved successfully.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.MoveCue(System.Int32,System.Int32,System.Boolean,System.Nullable{System.Decimal},System.Boolean)">
+            <summary>
+            Moves the given cue in the cue stack to the specified index.
+            </summary>
+            <remarks>
+            The insertion index behaves a little bit odd compared to regular insertion behaviour. 
+            To illustrate:
+            <code>
+            srcInd:  [0] [1] [2] [3] [4]
+            dstInd: 0   1   2   3   4   5
+            </code>
+            The cue is always inserted at an index 'between' two cues, so if we want to move q1 to 
+            before q0, we would pick index 0, but to move it after q2, we would pick index 3. 
+            Effectively, dstInd 1 and 2 don't move the cue.
+            </remarks>
+            <param name="cue">The cue to move in the cue stack.</param>
+            <param name="dstIndex">The index within the cue stack to move the cue to.</param>
+            <param name="select">Whether the moved cue should be reselected.</param>
+            <param name="newQID">Optionally, the new QID to assign to the cue once it's moved. 
+            Otherwise, this method will choose a new QID itself (recommended).</param>
+            <param name="registerUndo">Whether an undo item should be recorded.</param>
+            <returns><see langword="true"/> if the cue was moved successfully.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.CreateCue(System.String,System.Boolean,System.Boolean,System.Boolean,QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Creates a new cue of the given type and inserts it into the cue stack at the selected position.
+            </summary>
+            <param name="type">The type of cue to create.</param>
+            <param name="beforeCurrent">Whether the new cue should be inserted before the selected cue.</param>
+            <param name="afterLast">Whether the new cue should be inserted at the end of the cue stack.</param>
+            <param name="select">Whether the new cue should be selected.</param>
+            <param name="src">Optionally, a cue to copy properties from.</param>
+            <returns>The view model instance of the newly created cue.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.CreateCue(System.String,System.Int32,System.Boolean,QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Creates a new cue of the given type and inserts it into the cue stack at the given position.
+            </summary>
+            <param name="type">The type of cue to create.</param>
+            <param name="index">The index in the cue stac to insert the cue</param>
+            <param name="select">Whether the newly created cue should be selected.</param>
+            <param name="src">Optionally, a cue to copy properties from.</param>
+            <returns>The view model instance of the newly created cue.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.CreateCueNoInsert(System.String,System.Nullable{System.Decimal},QPlayer.ViewModels.CueViewModel)">
+            <summary>
+            Creates a new cue of the given type without inserting it into the cue stack. Use this method with caution as 
+            QPlayer assumes cues are always in the cue stack.
+            </summary>
+            <param name="type">The type of cue to create.</param>
+            <param name="src">Optionally, copies properties from this cue.</param>
+            <returns>The view model instance of the newly created cue.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.ChooseQID(System.Int32,System.Boolean)">
+            <summary>
+            Generates a QID at the given insertion point in the cue stack, renumbering cues if needed.
+            </summary>
+            <param name="insertAfterInd">The index of the cue after which to insert the new QID.</param>
+            <param name="ignoreCurrent">When enabled the first parameter is the index of the cue to 
+            renumber such that it fits in between it's neighbours.</param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.ResolvePath(System.String,System.Boolean)">
+            <summary>
+            Converts a path to/from a project relative path. Only paths which are in subdirectories of the project path are made relative.
+            </summary>
+            <param name="path">the path to convert</param>
+            <param name="expand">whether the path should be expanded to an absolute path or made relative to the project</param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.UnsavedChangedCheck(System.Boolean,System.Boolean)">
+            <summary>
+            Checks if the project file has unsaved changes and prompts the user to save if needed.
+            </summary>
+            <remarks>
+            Must be called on the dispatcher thread.
+            </remarks>
+            <returns>false if the user decided to cancel the current operation.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.RunningCuesCheck(System.Boolean)">
+            <summary>
+            Checks if any cues are currently running, and if so prompts the user if they want to cancel the next operation.
+            </summary>
+            <param name="canCancel"></param>
+            <returns>false if the user decided to cancel the current operation.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.LoadShowfileModel(QPlayer.Models.ShowFile,System.Boolean)">
+            <remarks>
+            Must be called on the dispatcher thread.
+            </remarks>
+            <param name="sync">When true, executes without waiting for the dispatcher.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.EnsureShowfileModelSync">
+            <summary>
+            This effectively makes sure that the data in the view model is copied to the model, just in case a change was missed.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.OpenProject(System.String)">
+            <summary>
+            Opens the project at the specified path.
+            </summary>
+            <remarks>
+            Must be called on the dispatcher thread.
+            </remarks>
+            <param name="path"></param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.SaveProjectAsync(System.String,System.Boolean,System.Boolean)">
+            <summary>
+            Saves the show file asynchronously. This method can be called from a worker thread.
+            </summary>
+            <param name="path">The path to save the project to.</param>
+            <param name="allowSynchronisation">Whether syncing the show file with remote clients is allowed.</param>
+            <param name="syncModel">Whether the internal model should be resynchronised if needed.</param>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.SaveProject(System.String)">
+            <summary>
+            Saves the show file synchronously. This method must be called from the main thread. Prefer <see cref="M:QPlayer.ViewModels.MainViewModel.SaveProjectAsync(System.String,System.Boolean,System.Boolean)"/>.
+            </summary>
+            <param name="path"></param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.PackProject(System.String)">
+            <summary>
+            Saves the project and copies all of it's referenced files to the given directory.
+            </summary>
+            <param name="path">The directory to pack the project into.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.MainViewModel.LoadResourceFile(System.String)">
+            <summary>
+            Attempts to load an embedded resource file from the executing assembly.
+            </summary>
+            <param name="path">The path/filename to the file to load.</param>
+            <returns>A stream of the file contents.</returns>
+            <exception cref="T:System.IO.FileNotFoundException"></exception>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.SelectedCueInd">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.selectedCueInd'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.SelectedCue">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.MainViewModel.SelectedCue_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.Cues">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.cues'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.ActiveCues">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.activeCues'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.ColumnWidths">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.columnWidths'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.DraggingCues">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.draggingCues'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.EnableAutosave">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.enableAutosave'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.ShowMode">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.MainViewModel.ShowMode_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.ProjectSettings">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.projectSettings'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.PreloadTime">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.preloadTime'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.NewProjectCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.newProjectCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenProjectCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openProjectCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenSpecificProjectCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openSpecificProjectCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.SaveProjectCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.saveProjectCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.SaveProjectAsCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.saveProjectAsCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.PackProjectCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.packProjectCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenLogCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openLogCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenRemoteNodesCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openRemoteNodesCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenSetttingsCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openSetttingsCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenOnlineManualCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openOnlineManualCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenAboutCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openAboutCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.OpenPluginManagerCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.openPluginManagerCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.CreateCueMenuCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.createCueMenuCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.CreateCueCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.createCueCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.UndoCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.undoCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.RedoCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.redoCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.MoveCueUpCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.moveCueUpCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.MoveCueDownCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.moveCueDownCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.DeleteCueCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.deleteCueCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.DuplicateCueCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.duplicateCueCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.GoCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.goCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.PauseCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.pauseCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.UnpauseCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.unpauseCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.StopCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.stopCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.UpCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.upCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.DownCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.downCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.PreloadCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.preloadCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.ProjectFilePath">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.projectFilePath'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.StatusText">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.statusText'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.StatusTextColour">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.statusTextColour'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.ProgressBoxViewModel">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.progressBoxViewModel'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.MainViewModel.MainAudioMeter">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.MainViewModel.mainAudioMeter'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProgressBoxViewModel.Visible">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProgressBoxViewModel.visible'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProgressBoxViewModel.Message">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProgressBoxViewModel.message'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProgressBoxViewModel.Progress">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProgressBoxViewModel.progress'/></summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.ProjectSettingsViewModel.RemoveRemoteNode(System.String)">
+            <summary>
+            Removes a remote node from the collection of remote nodes.
+            </summary>
+            <param name="name">The name of the name to remove</param>
+            <returns><see langword="true"/> if the node was removed successfully.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.ProjectSettingsViewModel.GetOrAddRemoteNode(System.ReadOnlySpan{System.Char},QPlayer.ViewModels.RemoteNodeViewModel@)">
+            <summary>
+            Gets a remote node by name, returning a new node and adding it, if it doesn't already 
+            exist in the collection.
+            </summary>
+            <param name="name"></param>
+            <returns>true if the returned node was newly added.</returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.ProjectSettingsViewModel.GetOrAddRemoteNode(System.String,QPlayer.ViewModels.RemoteNodeViewModel@)">
+            <inheritdoc cref="M:QPlayer.ViewModels.ProjectSettingsViewModel.GetOrAddRemoteNode(System.ReadOnlySpan{System.Char},QPlayer.ViewModels.RemoteNodeViewModel@)"/>
+        </member>
+        <member name="M:QPlayer.ViewModels.ProjectSettingsViewModel.IsRemoteNodeActive(System.String)">
+            <summary>
+            Gets whether a given remote node is currently active.
+            </summary>
+            <param name="name"></param>
+            <returns></returns>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.Title">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.title'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.Description">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.description'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.Author">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.author'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.Date">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.date'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.AudioLatency">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.audioLatency'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.ExclusiveMode">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.exclusiveMode'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.ChannelOffset">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.channelOffset'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.ShowAsioControlPanelCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.showAsioControlPanelCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.AudioOutputDriver">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.audioOutputDriver'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.SelectedAudioOutputDeviceIndex">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.selectedAudioOutputDeviceIndex'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.AudioOutputDriverValues">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.audioOutputDriverValues'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.Limiter">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.limiter'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.NICs">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.nics'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.SelectedNIC">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.selectedNIC'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.OSCRXPort">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.oscRXPort'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.OSCTXPort">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.oscTXPort'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MonitorOSCMessages">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.monitorOSCMessages'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.EnableRemoteControl">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.enableRemoteControl'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.IsRemoteHost">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.isRemoteHost'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.SyncShowFileOnSave">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.syncShowFileOnSave'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.NodeName">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.nodeName'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.RemoteNodes">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.remoteNodes'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.EnableMSC">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.enableMSC'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MAMSCRXPort">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mAMSCRXPort'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MAMSCTXPort">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mAMSCTXPort'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MAMSCRXDevice">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mAMSCRXDevice'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MAMSCTXDevice">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mAMSCTXDevice'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MAMSCPage">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mAMSCPage'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MAMSCExecutor">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mAMSCExecutor'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MonitorMSCMessages">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.monitorMSCMessages'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.RemoveRemoteNodeCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.removeRemoteNodeCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.ProjectSettingsViewModel.MainViewModel">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.ProjectSettingsViewModel.mainViewModel'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodesWindowViewModel.CueRemoteNodes">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodesWindowViewModel.cueRemoteNodes'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodesWindowViewModel.RemoteNodes">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodesWindowViewModel.remoteNodes'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodesWindowViewModel.ProjectSettings">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodesWindowViewModel.projectSettings'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodesWindowViewModel.RefreshCueListCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodesWindowViewModel.refreshCueListCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodeGroupViewModel.RemoteNode">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodeGroupViewModel.remoteNode'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodeGroupViewModel.Cues">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodeGroupViewModel.cues'/></summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.RemoteNodeViewModel.CheckIsActive">
+            <summary>
+            Checks if this node is still active, and notifies the UI if it's state has changed.
+            </summary>
+            <returns><see langword="true"/> if this node has just become inactive.</returns>
+        </member>
+        <member name="P:QPlayer.ViewModels.RemoteNodeViewModel.Name">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.RemoteNodeViewModel.name'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.IsAudioFileValid">
+            <summary>
+            Checks whether the current audio file is valid. This also checks that the underlying stream object still exists.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.SoundCueViewModel.FadeOutAndStop(System.Single,System.Nullable{QPlayer.Audio.FadeType})">
+            <summary>
+            Fades out the current playing sound.
+            </summary>
+            <param name="duration">The duration in seconds to fade over</param>
+            <param name="fadeType">The type of fade to use</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.SoundCueViewModel.Fade(System.Single,System.Single,System.Nullable{QPlayer.Audio.FadeType})">
+            <summary>
+            Fades this sound to the given volume in a given amount of time.
+            </summary>
+            <param name="volume">The volume to fade to</param>
+            <param name="duration">The duration in seconds to fade over</param>
+            <param name="fadeType">The type of fade to use</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.SoundCueViewModel.StopAudio">
+            <summary>
+            Stops all playing audio, stops the timers, and rewinds the audioFile to it's start time.
+            </summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.Path">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.path'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.StartTime">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.startTime'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.PlaybackDuration">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.playbackDuration'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.Volume">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.volume'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.Pan">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.pan'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.FadeIn">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.fadeIn'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.FadeOut">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.fadeOut'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.FadeType">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.fadeType'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.OpenMediaFileCommand">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.openMediaFileCommand'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.SoundCueViewModel.EQ">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.SoundCueViewModel.eq'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.StopCueViewModel.StopTarget">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.StopCueViewModel.stopTarget'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.StopCueViewModel.StopMode">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.StopCueViewModel.stopMode'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.StopCueViewModel.FadeOutTime">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.StopCueViewModel.fadeOutTime'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.StopCueViewModel.FadeType">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.StopCueViewModel.fadeType'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.TimeCodeCueViewModel.StartTime">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.TimeCodeCueViewModel.startTime'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.TimeCodeCueViewModel.TCDuration">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.TimeCodeCueViewModel.duration'/></summary>
+        </member>
+        <member name="T:QPlayer.ViewModels.UndoManager">
+            <summary>
+            The global undo manager, this provides methods to record actions in a way that can be undone or redone. This class is not 
+            thread-safe and must be called from the main thread.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.RegisterAction``1(System.String,System.Object,``0,``0)">
+            <summary>
+            Registers a property change action to the undo stack.
+            </summary>
+            <param name="path">The path to the property being changed.</param>
+            <param name="target">The object being changed.</param>
+            <param name="oldValue">The previous value.</param>
+            <param name="newValue">The new value after this action has occured.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.RegisterAction(System.String,System.Action,System.Action)">
+            <summary>
+            Registers an action to the undo stack.
+            </summary>
+            <param name="actionDesc">A brief description of the action (in the past tense).</param>
+            <param name="undoFunc">A function to call to undo the action.</param>
+            <param name="redoFunc">A function to call to redo the action.</param>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.Undo">
+            <summary>
+            Undoes the last action registered to the undo stack.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.Redo">
+            <summary>
+            Redoes the last action undone by the undo manager.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.ClearUndoStack">
+            <summary>
+            Clears the undo and redo history. Necessary after drastic changes which would invalidate the undo history, 
+            this also allows the GC to reclaim objects being kept alive by the undo history.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.ScopedSuppress">
+            <summary>
+            When used with a <see langword="using"/> block, suppresses undo action recording for the scope of this function.
+            </summary>
+            <returns></returns>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.SuppressRecording">
+            <summary>
+            Temporarily suppresses the recording of new undo actions until <see cref="!:UnSupressRecording"/> is called.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.UnSuppressRecording">
+            <summary>
+            Stops suppressing undo recording. Counterpart of <see cref="M:QPlayer.ViewModels.UndoManager.SuppressRecording"/>.
+            </summary>
+        </member>
+        <member name="M:QPlayer.ViewModels.UndoManager.ResetSuppressRecording">
+            <summary>
+            Forcefully stops suppressing undo recording. Counterpart of <see cref="M:QPlayer.ViewModels.UndoManager.SuppressRecording"/>.
+            </summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.VolumeCueViewModel.Target">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.VolumeCueViewModel.target'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.VolumeCueViewModel.Volume">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.VolumeCueViewModel.volume'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.VolumeCueViewModel.FadeTime">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.VolumeCueViewModel.fadeTime'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.VolumeCueViewModel.FadeType">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.VolumeCueViewModel.fadeType'/></summary>
+        </member>
+        <member name="F:QPlayer.ViewModels.WaveFormRenderer.OnVMUpdate">
+            <summary>
+            This is the name of a special property change notification which the view listens to so that it knows to
+            propagate the correct width/height/cursors back to the renderer.
+            </summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.PeakFile">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.WaveFormRenderer.PeakFile_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.SoundCueViewModel">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.WaveFormRenderer.soundCueViewModel'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.WaveFormDrawing">
+            <summary>Reactive property for <see cref='F:QPlayer.ViewModels.WaveFormRenderer.drawingGroup'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.Width">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.WaveFormRenderer.Width_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.Height">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.WaveFormRenderer.Height_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.ViewStart">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.WaveFormRenderer.ViewStart_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.ViewEnd">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.WaveFormRenderer.ViewEnd_Template'/></summary>
+        </member>
+        <member name="P:QPlayer.ViewModels.WaveFormRenderer.ViewBounds">
+            <summary>Reactive property for <see cref='P:QPlayer.ViewModels.WaveFormRenderer.ViewBounds_Template'/></summary>
+        </member>
+        <member name="T:QPlayer.Views.AboutWindow">
+            <summary>
+            Interaction logic for AboutWindow.xaml
+            </summary>
+            <summary>
+            AboutWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.AboutWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.ActiveCueControl">
+            <summary>
+            Interaction logic for ActiveCueControl.xaml
+            </summary>
+            <summary>
+            ActiveCueControl
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.ActiveCueControl.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.AudioLimiterControl">
+            <summary>
+            Interaction logic for AudioLimiterControl.xaml
+            </summary>
+            <summary>
+            AudioLimiterControl
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.AudioLimiterControl.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.AudioMeter">
+            <summary>
+            Interaction logic for AudioMeter.xaml
+            </summary>
+            <summary>
+            AudioMeter
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.AudioMeter.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.CueDataControl">
+            <summary>
+            Interaction logic for CueDataControl.xaml
+            </summary>
+            <summary>
+            CueDataControl
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.CueDataControl.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="P:QPlayer.Views.CueDataControl.CueIcon">
+            <summary>Reactive property for <see cref='P:QPlayer.Views.CueDataControl.CueIcon_Template'/></summary>
+        </member>
+        <member name="T:QPlayer.Views.CueDataHeaderControl">
+            <summary>
+            Interaction logic for CueDataHeaderControl.xaml
+            </summary>
+            <summary>
+            CueDataHeaderControl
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.CueDataHeaderControl.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.CueDataTemplates">
+            <summary>
+            CueDataTemplates
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.CueDataTemplates.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.CueEditor">
+            <summary>
+            Interaction logic for CueEditor.xaml
+            </summary>
+            <summary>
+            CueEditor
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.CueEditor.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.HiddenComboBox">
+            <summary>
+            Interaction logic for HiddenComboBox.xaml
+            </summary>
+            <summary>
+            HiddenComboBox
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.HiddenComboBox.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.HiddenTextbox">
+            <summary>
+            Interaction logic for HiddenTextbox.xaml
+            </summary>
+            <summary>
+            HiddenTextbox
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.HiddenTextbox.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.Knob">
+            <summary>
+            Interaction logic for Knob.xaml
+            </summary>
+            <summary>
+            Knob
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.Knob.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="P:QPlayer.Views.Knob.ValueText">
+            <summary>Reactive property for <see cref='P:QPlayer.Views.Knob.ValueText_Template'/></summary>
+        </member>
+        <member name="M:QPlayer.Views.LibraryImports.ShowCursor(System.Boolean)">
+            <summary>
+            Displays or hides the cursor.
+            </summary>
+            <param name="bShow">
+            If bShow is TRUE, the display count is incremented by one. If bShow is FALSE, the display count is decremented by one.
+            </param>
+            <returns>The return value specifies the new display counter.</returns>
+        </member>
+        <member name="T:QPlayer.Views.LogWindow">
+            <summary>
+            Interaction logic for LogWindow.xaml
+            </summary>
+            <summary>
+            LogWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.LogWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.MeterBar">
+            <summary>
+            A progress bar which is a little more GC friendly. This is mostly just a hack to prevent WPF from allocating so much garbage when updating this frequently.
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.PlaybackProgressBar">
+            <summary>
+            Interaction logic for PlaybackProgressBar.xaml
+            </summary>
+            <summary>
+            PlaybackProgressBar
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.PlaybackProgressBar.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="P:QPlayer.Views.PlaybackProgressBar.Progress">
+            <summary>Reactive property for <see cref='P:QPlayer.Views.PlaybackProgressBar.Progress_Template'/></summary>
+        </member>
+        <member name="T:QPlayer.Views.PluginManagerWindow">
+            <summary>
+            Interaction logic for PluginManagerWindow.xaml
+            </summary>
+            <summary>
+            PluginManagerWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.PluginManagerWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="P:QPlayer.Views.PluginManagerWindow.Plugins">
+            <summary>Reactive property for <see cref='F:QPlayer.Views.PluginManagerWindow.plugins'/></summary>
+        </member>
+        <member name="T:QPlayer.Views.ProjectSettingsEditor">
+            <summary>
+            Interaction logic for ProjectSettingsEditor.xaml
+            </summary>
+            <summary>
+            ProjectSettingsEditor
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.ProjectSettingsEditor.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.RemoteNodesWindow">
+            <summary>
+            Interaction logic for RemoteNodesWindow.xaml
+            </summary>
+            <summary>
+            RemoteNodesWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.RemoteNodesWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.RemoteSetupControl">
+            <summary>
+            Interaction logic for RemoteSetupControl.xaml
+            </summary>
+            <summary>
+            RemoteSetupControl
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.RemoteSetupControl.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.SettingsWindow">
+            <summary>
+            Interaction logic for SettingsWindow.xaml
+            </summary>
+            <summary>
+            SettingsWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.SettingsWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.TextField">
+            <summary>
+            Interaction logic for TextField.xaml
+            </summary>
+            <summary>
+            TextField
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.TextField.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.Views.WaveForm">
+            <summary>
+            Interaction logic for WaveForm.xaml
+            </summary>
+            <summary>
+            WaveForm
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.WaveForm.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="P:QPlayer.Views.WaveForm.Enabled">
+            <summary>Reactive property for <see cref='P:QPlayer.Views.WaveForm.Enabled_Template'/></summary>
+        </member>
+        <member name="T:QPlayer.Views.WaveFormWindow">
+            <summary>
+            Interaction logic for WaveFormWindow.xaml
+            </summary>
+            <summary>
+            WaveFormWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.Views.WaveFormWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.MainWindow">
+            <summary>
+            Interaction logic for MainWindow.xaml
+            </summary>
+            <summary>
+            MainWindow
+            </summary>
+        </member>
+        <member name="M:QPlayer.MainWindow.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ReactiveAttribute">
+            <summary>
+            Automatically generates a property for the annotated field which automatically raised 
+            PropertyChanged notifications when set.
+            <br/>
+            This attribute can also be used on existing properties to generate a reactive property for that property. 
+            To this, the annotated property must either be partial (in which case a backing field will also be 
+            generated), or the <paramref name="propName"/> parameter must be specified.
+            </summary>
+            <remarks>
+            If a custom property name is not specified, the generated property will take the name of field
+            with the first letter capitalised, or prefixed with an underscore. IE: <c>int exampleProp</c> -> 
+            <c>int ExampleProp</c>, and <c>int OtherExample</c> -> <c>int _OtherExample</c>
+            </remarks>
+            <param name="propName">The name of the reactive property to generate.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ReactiveAttribute.#ctor(System.String)">
+            <summary>
+            Automatically generates a property for the annotated field which automatically raised 
+            PropertyChanged notifications when set.
+            <br/>
+            This attribute can also be used on existing properties to generate a reactive property for that property. 
+            To this, the annotated property must either be partial (in which case a backing field will also be 
+            generated), or the <paramref name="propName"/> parameter must be specified.
+            </summary>
+            <remarks>
+            If a custom property name is not specified, the generated property will take the name of field
+            with the first letter capitalised, or prefixed with an underscore. IE: <c>int exampleProp</c> -> 
+            <c>int ExampleProp</c>, and <c>int OtherExample</c> -> <c>int _OtherExample</c>
+            </remarks>
+            <param name="propName">The name of the reactive property to generate.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.CachedNotification">
+            <summary>
+            When this property is updated use a cached instance of <see cref="T:System.ComponentModel.PropertyChangedEventArgs"/>.
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.SkipEqualityCheckAttribute">
+            <summary>
+            By default, when this property is updated, the old value is compared to the new value using the 
+            <c>==</c> operator, and only if the value are different is the setter and property change 
+            notification invoked. This attribute skips this check, this can be useful if no <c>==</c> is 
+            available or if this equality comparison would be very expensive.
+            <br/>
+            Requires a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/> on this same property.
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ChangesPropAttribute">
+            <summary>
+            When this property is updated, a property change notification for the specified property is also raised.
+            <br/>
+            Requires a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/> on this same property.
+            </summary>
+            <param name="propName">The name of the property to generate a change notifcation for.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ChangesPropAttribute.#ctor(System.String)">
+            <summary>
+            When this property is updated, a property change notification for the specified property is also raised.
+            <br/>
+            Requires a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/> on this same property.
+            </summary>
+            <param name="propName">The name of the property to generate a change notifcation for.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.TemplatePropAttribute">
+            <summary>
+            Uses the getter and setter from the specified property as a template for this reactive property.
+            <br/>
+            Requires a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/> on this same property.
+            </summary>
+            <param name="propName">The name of the property to use to implement this reactive property.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.TemplatePropAttribute.#ctor(System.String)">
+            <summary>
+            Uses the getter and setter from the specified property as a template for this reactive property.
+            <br/>
+            Requires a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/> on this same property.
+            </summary>
+            <param name="propName">The name of the property to use to implement this reactive property.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ReadonlyAttribute">
+            <summary>
+            Marks the setter on the generated property as private.
+            <br/>
+            Requires a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/> on this same property.
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ModelCustomBindingAttribute">
+            <summary>
+            Specifies that, for the annotated property, the provided delegates should be called to synchronise 
+            data to and from the model for this property.
+            </summary>
+            <param name="vmToModel">The name of a static method in this class to copy this property's value from this instance to the model.</param>
+            <param name="modelToVM">The name of a static method in this class to copy this property's value from the model to this instance.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ModelCustomBindingAttribute.#ctor(System.String,System.String)">
+            <summary>
+            Specifies that, for the annotated property, the provided delegates should be called to synchronise 
+            data to and from the model for this property.
+            </summary>
+            <param name="vmToModel">The name of a static method in this class to copy this property's value from this instance to the model.</param>
+            <param name="modelToVM">The name of a static method in this class to copy this property's value from the model to this instance.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ModelBindsToAttribute">
+            <summary>
+            Specifies the name of the field of the model this property should be bound to.
+            </summary>
+            <param name="modelPath"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ModelBindsToAttribute.#ctor(System.String)">
+            <summary>
+            Specifies the name of the field of the model this property should be bound to.
+            </summary>
+            <param name="modelPath"></param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ModelSkipAttribute">
+            <summary>
+            Indicates that this property should not be automatically bound to a corresponding model property. Note that 
+            properties for read-only fields are implicitly skipped from model binding as they cannot be written too.
+            <para/>
+            This attribute also implies the <see cref="T:QPlayer.SourceGenerator.NoUndoAttribute"/>.
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.CustomGetAttribute">
+            <summary>
+            Allows a custom getter function to be used in a property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <param name="getter">A function which returns the value of the property.</param>
+            <param name="inline">When <see langword="false"/>, the setter parameter expects a method name; 
+            when <see langword="true"/>, the getter parameter takes an expression which is placed inline in the generator getter.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.CustomGetAttribute.#ctor(System.String,System.Boolean)">
+            <summary>
+            Allows a custom getter function to be used in a property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <param name="getter">A function which returns the value of the property.</param>
+            <param name="inline">When <see langword="false"/>, the setter parameter expects a method name; 
+            when <see langword="true"/>, the getter parameter takes an expression which is placed inline in the generator getter.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.CustomSetAttribute">
+            <summary>
+            Allows a custom setter function to be used in a property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <param name="setter">A method which takes as input the new value to assign to the property.</param>
+            <param name="inline">When <see langword="false"/>, the setter parameter expects a method name; 
+            when <see langword="true"/>, the setter parameter takes an expression which is placed inline in the generator setter.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.CustomSetAttribute.#ctor(System.String,System.Boolean)">
+            <summary>
+            Allows a custom setter function to be used in a property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <param name="setter">A method which takes as input the new value to assign to the property.</param>
+            <param name="inline">When <see langword="false"/>, the setter parameter expects a method name; 
+            when <see langword="true"/>, the setter parameter takes an expression which is placed inline in the generator setter.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.CustomAccessibilityAttribute">
+            <summary>
+            Allows custom accessibility keywords to be used on a property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <example>
+            [Reactive, CustomAccessibility("protected virtual")] string prop;
+            </example>
+            <param name="accessibilityModifiers">The accessibility modifiers to add to the generated property.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.CustomAccessibilityAttribute.#ctor(System.String)">
+            <summary>
+            Allows custom accessibility keywords to be used on a property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <example>
+            [Reactive, CustomAccessibility("protected virtual")] string prop;
+            </example>
+            <param name="accessibilityModifiers">The accessibility modifiers to add to the generated property.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.NoUndoAttribute">
+            <summary>
+            Prevents undo actions from being recorded on the property generated using a <see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>.
+            </summary>
+            <param name="accessibilityModifiers">The accessibility modifiers to add to the generated property.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ModelAttribute">
+            <summary>
+            Specifies the model type associated with this view model.
+            </summary>
+            <param name="modelType"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ModelAttribute.#ctor(System.Type)">
+            <summary>
+            Specifies the model type associated with this view model.
+            </summary>
+            <param name="modelType"></param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ViewAttribute">
+            <summary>
+            Specifies the view type associated with this view model.
+            </summary>
+            <param name="viewType"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ViewAttribute.#ctor(System.Type)">
+            <summary>
+            Specifies the view type associated with this view model.
+            </summary>
+            <param name="viewType"></param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.DisplayNameAttribute">
+            <summary>
+            Specifies the display name of a given cue type.
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.DisplayNameAttribute.#ctor(System.String)">
+            <summary>
+            Specifies the display name of a given cue type.
+            </summary>
+            <param name="name"></param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.IconAttribute">
+            <summary>
+            Specifies the icon for a given cue type. 
+            <para/>
+            The icon is defined as a <see cref="T:System.Windows.Media.DrawingImage"/> in a <see cref="T:System.Windows.ResourceDictionary"/> (in xaml).
+            The plugin loader automatically creates an instance of the given resource dictionary and binds it to the app if one doesn't already exist.
+            The <paramref name="name"/> parameter should refer to a given <c>x:Key="name"</c> attribute on the <see cref="T:System.Windows.Media.DrawingImage"/> in xaml.
+            </summary>
+            <param name="name">The key of the <see cref="T:System.Windows.Media.ImageSource"/> in the given resource dictionary to use as the icon.</param>
+            <param name="resourceDictionary">The type of the resource dictionary which contains the given icon.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.IconAttribute.#ctor(System.String,System.Type)">
+            <summary>
+            Specifies the icon for a given cue type. 
+            <para/>
+            The icon is defined as a <see cref="T:System.Windows.Media.DrawingImage"/> in a <see cref="T:System.Windows.ResourceDictionary"/> (in xaml).
+            The plugin loader automatically creates an instance of the given resource dictionary and binds it to the app if one doesn't already exist.
+            The <paramref name="name"/> parameter should refer to a given <c>x:Key="name"</c> attribute on the <see cref="T:System.Windows.Media.DrawingImage"/> in xaml.
+            </summary>
+            <param name="name">The key of the <see cref="T:System.Windows.Media.ImageSource"/> in the given resource dictionary to use as the icon.</param>
+            <param name="resourceDictionary">The type of the resource dictionary which contains the given icon.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.UIClonableAttribute">
+            <summary>
+            When used on a class which derives from <see cref="!:ArgonUI.UIElements.UIElement"/>, generates an implementation 
+            for <see cref="!:ArgonUI.UIElements.UIElement.Clone()"/> and <see cref="!:ArgonUI.UIElements.UIElement.Clone(UIElements.UIElement)"/>
+            based on all fields marked as [<see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>].
+            <para/>
+            Use the [<see cref="T:QPlayer.SourceGenerator.UICloneableFieldAttribute"/>] and [<see cref="T:QPlayer.SourceGenerator.UICloneableSkipAttribute"/>] to add/remove fields 
+            from inclusion in the <c>Clone()</c> implementation.
+            <para/>
+            To mix both a automatically generated clone implementation with custom behaviour, the <paramref name="invokeCustomCloner"/>
+            parameter can be set. This allows the generated implementation to call a custom clone method after it has cloned all the
+            automatically implemented properties. The custom clone method is always called after all other fields have been cloned
+            and must have the following signature:
+            <code>
+            // This method CAN be declared as private, T represents the type of this attribute is decorating.
+            void CustomClone(T target);
+            </code>
+            <para/>
+            If a field's type declares a <c>public T Clone();</c> method (or one is provided by an extension method) then this 
+            method will be called when copying that field. This behaviour must be enabled via the 
+            <see cref="P:QPlayer.SourceGenerator.UICloneableFieldAttribute.UseCloneMethod"/> property.
+            </summary>
+            <remarks>
+            Generates the following code:
+            <code>
+            public partial class Label
+            {
+                public override UIElement Clone() => Clone(new Label());
+            
+                public override UIElement Clone(UIElement target)
+                {
+                    base.Clone(target);
+                    if (target is Label t)
+                    {
+                        t.text = text;
+                        t.size = size;
+                        t.colour = colour;
+                        // For the sake of example, if Font defined a Clone() method it would be called as shown.
+                        t.font = font.Clone();
+                    }
+                    return target;
+                }
+            }
+            </code>
+            </remarks>
+            <param name="invokeCustomCloner">When <see langword="true"/>, calls a method on this </param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.UIClonableAttribute.#ctor(System.Boolean)">
+            <summary>
+            When used on a class which derives from <see cref="!:ArgonUI.UIElements.UIElement"/>, generates an implementation 
+            for <see cref="!:ArgonUI.UIElements.UIElement.Clone()"/> and <see cref="!:ArgonUI.UIElements.UIElement.Clone(UIElements.UIElement)"/>
+            based on all fields marked as [<see cref="T:QPlayer.SourceGenerator.ReactiveAttribute"/>].
+            <para/>
+            Use the [<see cref="T:QPlayer.SourceGenerator.UICloneableFieldAttribute"/>] and [<see cref="T:QPlayer.SourceGenerator.UICloneableSkipAttribute"/>] to add/remove fields 
+            from inclusion in the <c>Clone()</c> implementation.
+            <para/>
+            To mix both a automatically generated clone implementation with custom behaviour, the <paramref name="invokeCustomCloner"/>
+            parameter can be set. This allows the generated implementation to call a custom clone method after it has cloned all the
+            automatically implemented properties. The custom clone method is always called after all other fields have been cloned
+            and must have the following signature:
+            <code>
+            // This method CAN be declared as private, T represents the type of this attribute is decorating.
+            void CustomClone(T target);
+            </code>
+            <para/>
+            If a field's type declares a <c>public T Clone();</c> method (or one is provided by an extension method) then this 
+            method will be called when copying that field. This behaviour must be enabled via the 
+            <see cref="P:QPlayer.SourceGenerator.UICloneableFieldAttribute.UseCloneMethod"/> property.
+            </summary>
+            <remarks>
+            Generates the following code:
+            <code>
+            public partial class Label
+            {
+                public override UIElement Clone() => Clone(new Label());
+            
+                public override UIElement Clone(UIElement target)
+                {
+                    base.Clone(target);
+                    if (target is Label t)
+                    {
+                        t.text = text;
+                        t.size = size;
+                        t.colour = colour;
+                        // For the sake of example, if Font defined a Clone() method it would be called as shown.
+                        t.font = font.Clone();
+                    }
+                    return target;
+                }
+            }
+            </code>
+            </remarks>
+            <param name="invokeCustomCloner">When <see langword="true"/>, calls a method on this </param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.UICloneableFieldAttribute">
+            <summary>
+            Marks a field to be included for the automatic <see cref="!:ArgonUI.UIElements.UIElement.Clone()"/> 
+            implementation.
+            </summary>
+            <remarks>
+            See <seealso cref="T:QPlayer.SourceGenerator.UIClonableAttribute"/>.
+            </remarks>
+            <param name="useCloneMethod">If a field's type declares a <c>public T Clone();</c> method (or one is provided by 
+            an extension method) then this method will be called when copying the annotated field.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.UICloneableFieldAttribute.#ctor(System.Boolean)">
+            <summary>
+            Marks a field to be included for the automatic <see cref="!:ArgonUI.UIElements.UIElement.Clone()"/> 
+            implementation.
+            </summary>
+            <remarks>
+            See <seealso cref="T:QPlayer.SourceGenerator.UIClonableAttribute"/>.
+            </remarks>
+            <param name="useCloneMethod">If a field's type declares a <c>public T Clone();</c> method (or one is provided by 
+            an extension method) then this method will be called when copying the annotated field.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.UICloneableSkipAttribute">
+            <summary>
+            Marks a field to be excluded from the automatic <see cref="!:ArgonUI.UIElements.UIElement.Clone()"/> 
+            implementation.
+            </summary>
+            <remarks>
+            See <seealso cref="T:QPlayer.SourceGenerator.UIClonableAttribute"/>.
+            </remarks>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.GenerateViewAttribute">
+            <summary>
+            Indicates to the source generator that a <see cref="T:System.Windows.DataTemplate"/> should be generated for this view model.
+            <br/>
+            By default, a view control will be generated for every public property on this class.
+            </summary>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.GenerateViewAttribute.#ctor(System.String)">
+            <summary>
+            Indicates to the source generator that a <see cref="T:System.Windows.DataTemplate"/> should be generated for this view model.
+            <br/>
+            By default, a view control will be generated for every public property on this class.
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ViewLabelAttribute">
+            <summary>
+            Specifies the label for the generated view control for this property.
+            </summary>
+            <param name="label"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ViewLabelAttribute.#ctor(System.String)">
+            <summary>
+            Specifies the label for the generated view control for this property.
+            </summary>
+            <param name="label"></param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.SkipViewAttribute">
+            <summary>
+            Indicates that a view control should not be generated for this property.
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.RangeAttribute">
+            <summary>
+            For numeric properties, this allows the minimum, maximum, and change rate of the generated view control to be specified.
+            </summary>
+            <param name="minVal"></param>
+            <param name="maxVal"></param>
+            <param name="rate"></param>
+            <param name="clampValue"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.RangeAttribute.#ctor(System.Double,System.Double,System.Double,System.Boolean)">
+            <summary>
+            For numeric properties, this allows the minimum, maximum, and change rate of the generated view control to be specified.
+            </summary>
+            <param name="minVal"></param>
+            <param name="maxVal"></param>
+            <param name="rate"></param>
+            <param name="clampValue"></param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.KnobAttribute">
+            <summary>
+            Specifies that a knob control should be generated for this property (as opposed to a Spinbox).
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.SliderAttribute">
+            <summary>
+            Specifies that a slider control should be generated for this property (as opposed to a Spinbox).
+            </summary>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.FilePickerAttribute">
+            <summary>
+            Specifies that a file picker control should be generated for this property. 
+            Only valid on string properties.
+            </summary>
+            <param name="commandName">The name of the <c>ICommand</c> to invoke when the file picker button is pressed.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.FilePickerAttribute.#ctor(System.String)">
+            <summary>
+            Specifies that a file picker control should be generated for this property. 
+            Only valid on string properties.
+            </summary>
+            <param name="commandName">The name of the <c>ICommand</c> to invoke when the file picker button is pressed.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.ButtonAttribute">
+            <summary>
+            Generates a button control in place of this property which invokes the given command. 
+            The annotated property's value is ignored.
+            </summary>
+            <param name="commandName">The name of the <c>ICommand</c> to invoke when the button is pressed.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.ButtonAttribute.#ctor(System.String)">
+            <summary>
+            Generates a button control in place of this property which invokes the given command. 
+            The annotated property's value is ignored.
+            </summary>
+            <param name="commandName">The name of the <c>ICommand</c> to invoke when the button is pressed.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.HeadingAttribute">
+            <summary>
+            Generates a heading label before the annotated property in the view.
+            </summary>
+            <param name="title">The title of the heading.</param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.HeadingAttribute.#ctor(System.String)">
+            <summary>
+            Generates a heading label before the annotated property in the view.
+            </summary>
+            <param name="title">The title of the heading.</param>
+        </member>
+        <member name="T:QPlayer.SourceGenerator.TooltipAttribute">
+            <summary>
+            Specifies a tooltip to display for the generated view control for this property.
+            </summary>
+            <param name="text"></param>
+        </member>
+        <member name="M:QPlayer.SourceGenerator.TooltipAttribute.#ctor(System.String)">
+            <summary>
+            Specifies a tooltip to display for the generated view control for this property.
+            </summary>
+            <param name="text"></param>
+        </member>
+        <member name="T:REghZy.Themes.Controls">
+            <summary>
+            Controls
+            </summary>
+        </member>
+        <member name="M:REghZy.Themes.Controls.InitializeComponent">
+            <summary>
+            InitializeComponent
+            </summary>
+        </member>
+        <member name="T:XamlGeneratedNamespace.GeneratedInternalTypeHelper">
+            <summary>
+            GeneratedInternalTypeHelper
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.CreateInstance(System.Type,System.Globalization.CultureInfo)">
+            <summary>
+            CreateInstance
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.GetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Globalization.CultureInfo)">
+            <summary>
+            GetPropertyValue
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.SetPropertyValue(System.Reflection.PropertyInfo,System.Object,System.Object,System.Globalization.CultureInfo)">
+            <summary>
+            SetPropertyValue
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.CreateDelegate(System.Type,System.Object,System.String)">
+            <summary>
+            CreateDelegate
+            </summary>
+        </member>
+        <member name="M:XamlGeneratedNamespace.GeneratedInternalTypeHelper.AddEventHandler(System.Reflection.EventInfo,System.Object,System.Delegate)">
+            <summary>
+            AddEventHandler
+            </summary>
+        </member>
+    </members>
+</doc>

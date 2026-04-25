@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "StarlightDocNet": {
+      "commandName": "Project",
+      "commandLineArgs": "api_docs.xml temp\\"
+    }
+  }
+}
