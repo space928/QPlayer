@@ -1,0 +1,51 @@
+{
+  "$schema": "https://raw.githubusercontent.com/dotnet/docfx/main/schemas/docfx.schema.json",
+  "metadata": [
+    {
+      "src": [
+        {
+          "src": "../QPlayer",
+          "files": [
+            "**/*.csproj"
+          ]
+        }
+      ],
+      "output": "api",
+      "outputFormat": "markdown",
+      "categoryLayout": "nested",
+      "namespaceLayout": "nested",
+      "memberLayout": "samePage",
+      "enumSortOrder": "declaringOrder"
+    }
+  ],
+  "##build": {
+    "content": [
+      {
+        "files": [
+          "**/*.{md,yml}"
+        ],
+        "exclude": [
+          "_site/**"
+        ]
+      }
+    ],
+    "resource": [
+      {
+        "files": [
+          "images/**"
+        ]
+      }
+    ],
+    "output": "_site",
+    "template": [
+      "default",
+      "modern"
+    ],
+    "globalMetadata": {
+      "_appName": "QPlayer-API",
+      "_appTitle": "QPlayer-API",
+      "_enableSearch": true,
+      "pdf": false
+    }
+  }
+}
