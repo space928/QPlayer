@@ -2,7 +2,6 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Numerics;
 
 namespace QPlayer.Models;
@@ -91,6 +90,13 @@ public enum TriggerMode
     AfterLast
 }
 
+public enum GroupTriggerMode
+{
+    Next,
+    All,
+    Shuffle
+}
+
 public record Cue
 {
     //public CueType type;
@@ -110,7 +116,12 @@ public record Cue
 
 public record GroupCue : Cue
 {
+    // TODO: Since we now have a cue factory, these constructors should be made internal
     public GroupCue() : base() { }
+
+    public List<Cue> cues = [];
+    public GroupTriggerMode groupTrigger;
+    public bool isCollapsed;
 }
 
 public record DummyCue : Cue

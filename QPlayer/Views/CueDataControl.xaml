@@ -8,9 +8,10 @@
              xmlns:util="clr-namespace:QPlayer.Utilities" 
              d:DataContext="{d:DesignInstance Type=vm:DummyCueViewModel}"
              mc:Ignorable="d" 
-             d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded">
+             d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded" DataContextChanged="UserControl_DataContextChanged">
     <UserControl.Resources>
         <util:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
+        <util:ParentIndentConverter x:Key="ParentIndentConverter" IndentSize="10"/>
     </UserControl.Resources>
     <Grid x:Name="MainGrid" IsHitTestVisible="True" HorizontalAlignment="Left"
         MouseDown="Grid_MouseDown" PreviewMouseDown="Grid_PreviewMouseDown" AllowDrop="True"
@@ -48,14 +49,20 @@
                 </Style>
             </Border.Style>
         </Border>
-        <Border x:Name="InsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Height="3" VerticalAlignment="Top" Grid.ColumnSpan="99" Background="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
+        <Border x:Name="InsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Height="3" VerticalAlignment="Top" Grid.ColumnSpan="99" 
+                Background="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
+        <Border x:Name="GroupInsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Grid.ColumnSpan="99" BorderThickness="1"
+                BorderBrush="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
         <Border x:Name="ColourSwatch" Grid.Column="0" Background="{Binding ColourBrush}"/>
-        <Label Content="{Binding Parent}" Grid.Column="0" VerticalContentAlignment="Center"/>
+        <local:ExpanderKnob Grid.Column="0" IsCollapsed="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
+                            Visibility="{Binding ExpanderVisibility, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
+                            ToolTip="{Binding Parent.Name}"/>
         <local:HiddenTextbox Text="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
         <Label Content="{Binding}" VerticalContentAlignment="Center" Grid.Column="2">
             <Label.ContentTemplate>
                 <DataTemplate>
-                    <Image x:Name="IconImg" Source="{Binding CueIcon, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
+                    <Image x:Name="IconImg" Source="{Binding CueIcon, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
+                           MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
                         <Image.ToolTip>
                             <ToolTip Content="{Binding TypeName, Mode=OneWay}"/>
                         </Image.ToolTip>
@@ -65,7 +72,8 @@
         </Label>
         <!--<ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>-->
         <local:PlaybackProgressBar Grid.Column="3" Focusable="False"/>
-        <local:HiddenTextbox Text="{Binding Name}" ToolTip="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center" Focusable="True" KeyboardNavigation.TabIndex="100"/>
+        <local:HiddenTextbox Text="{Binding Name}" ToolTip="{Binding Name}" Margin="{Binding Parent, Converter={StaticResource ParentIndentConverter}}" 
+                             Grid.Column="4" VerticalContentAlignment="Center" Focusable="True" KeyboardNavigation.TabIndex="100"/>
         <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5"/>
         <!--<CheckBox IsChecked="{Binding Halt}" IsEnabled="{Binding IsSelected}" Grid.Column="6"/>-->
         <local:HiddenComboBox SelectedIndex="{Binding Trigger, Mode=TwoWay, Converter={StaticResource TriggerModeConverter}}" ItemsSource="{Binding TriggerModeVals}" 

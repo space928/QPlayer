@@ -168,7 +168,7 @@ public partial class SoundCueViewModel : CueViewModel
             PlaybackTime = TimeSpan.Zero;
         }
 
-        if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null || volumeFadeProvider == null)
+        if (!IsAudioFileValid || fadeInOutProvider == null || volumeFadeProvider == null)
             return;
 
         // Cancel any active fades
@@ -202,7 +202,7 @@ public partial class SoundCueViewModel : CueViewModel
     public override void Pause()
     {
         base.Pause();
-        if (IsRemoteControlling || fadeInOutProvider == null || volumeFadeProvider == null || mainViewModel == null)
+        if (IsRemoteControlling || fadeInOutProvider == null || volumeFadeProvider == null)
             return;
         volumeFadeProvider.BeginFade(0, 5, onComplete: _ => mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider), useSyncContext: false);
         OnPropertyChanged(nameof(PlaybackTime));
@@ -214,7 +214,7 @@ public partial class SoundCueViewModel : CueViewModel
         if (IsRemoteControlling)
             return;
         if (shouldSendRemoteStatus)
-            mainViewModel?.OSCManager?.SendRemoteStatus(RemoteNode, qid, State);
+            mainViewModel.OSCManager.SendRemoteStatus(RemoteNode, qid, State);
         StopAudio();
         PlaybackTime = TimeSpan.Zero;
         loopingAudioStream?.EndTime = StartTime + PlaybackDuration;
@@ -227,7 +227,7 @@ public partial class SoundCueViewModel : CueViewModel
     /// <param name="fadeType">The type of fade to use</param>
     public override void FadeOutAndStop(float duration, FadeType? fadeType = null)
     {
-        if (volumeFadeProvider == null || mainViewModel == null)
+        if (volumeFadeProvider == null)
             return;
         switch (State)
         {
@@ -259,7 +259,7 @@ public partial class SoundCueViewModel : CueViewModel
     /// <param name="fadeType">The type of fade to use</param>
     public void Fade(float volume, float duration, FadeType? fadeType = null)
     {
-        if (volumeFadeProvider == null || mainViewModel == null)
+        if (volumeFadeProvider == null)
             return;
         switch (State)
         {
@@ -337,7 +337,7 @@ public partial class SoundCueViewModel : CueViewModel
         OnPropertyChanged(nameof(PlaybackTime));
 
         if (shouldSendRemoteStatus)
-            mainViewModel?.OSCManager?.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
+            mainViewModel.OSCManager.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
                 State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
     }
 
@@ -352,7 +352,7 @@ public partial class SoundCueViewModel : CueViewModel
     /// </summary>
     private void StopAudio()
     {
-        if (!IsAudioFileValid || fadeInOutProvider == null || mainViewModel == null)
+        if (!IsAudioFileValid || fadeInOutProvider == null)
             return;
         mainViewModel.AudioPlaybackManager.StopSound(fadeInOutProvider);
         audioFile?.ReleaseBuffers();
@@ -365,12 +365,9 @@ public partial class SoundCueViewModel : CueViewModel
         audioFile = null;
         OnPropertyChanged(nameof(Duration));
     }
-
+    
     private void LoadAudioFile()
     {
-        if (mainViewModel == null)
-            return;
-
         UnloadAudioFile();
 
         var path = mainViewModel.ResolvePath(Path);
@@ -420,5 +417,5 @@ public partial class SoundCueViewModel : CueViewModel
         }
     }
 
-    private static void VM2M_Path(SoundCueViewModel vm, SoundCue m) => m.path = vm.MainViewModel?.ResolvePath(vm.MainViewModel.ResolvePath(vm.Path), false) ?? vm.Path;
+    private static void VM2M_Path(SoundCueViewModel vm, SoundCue m) => m.path = vm.MainViewModel.ResolvePath(vm.MainViewModel.ResolvePath(vm.Path), false) ?? vm.Path;
 }

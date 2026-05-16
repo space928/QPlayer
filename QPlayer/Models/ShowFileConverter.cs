@@ -312,16 +312,7 @@ public class ShowFileConverter
                 case "$type":
                     if (field.Value.ValueKind == JsonValueKind.String)
                     {
-                        cue = field.Value.GetString() switch
-                        {
-                            nameof(DummyCue) => new DummyCue(),
-                            nameof(GroupCue) => new GroupCue(),
-                            nameof(SoundCue) => new SoundCue(),
-                            nameof(StopCue) => new StopCue(),
-                            nameof(TimeCodeCue) => new TimeCodeCue(),
-                            nameof(VolumeCue) => new VolumeCue(),
-                            _ => cue,
-                        };
+                        cue = CueFactory.CreateCue(field.Value.GetString() ?? string.Empty) ?? cue;
                     }
                     goto CueCreated;
                     //case "type":

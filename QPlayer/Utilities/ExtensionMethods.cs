@@ -9,7 +9,9 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -226,6 +228,8 @@ public static partial class ExtensionMethods
     /// <param name="values"></param>
     /// <returns></returns>
     public static TemporaryList<T> ToTempList<T>(this IEnumerable<T> values) => new(values);
+    /// <inheritdoc cref="ToTempList{T}(IEnumerable{T})"/>
+    public static TemporaryList<T> ToTempList<T>(this IEnumerable<T> values, int capacity) => new(values, capacity);
 
     /// <summary>
     /// Reverses the given enumerable efficiently. This may require enumerating the entire collection.

@@ -6,16 +6,28 @@ using System.Text;
 
 namespace QPlayer.Utilities;
 
-public readonly struct FastReverseEnumerable<T>(IEnumerable<T> source) : IEnumerable<T>
+public readonly struct FastReverseEnumerable<T>(IEnumerable<T> source) : ICollection<T>, IReadOnlyCollection<T>
 {
+    /// <summary>
+    /// Accessing this member may require enumerating the source.
+    /// </summary>
+    public int Count => source.Count();
+    public bool IsReadOnly => true;
+
     public IEnumerator<T> GetEnumerator() => new FastReverseIterator<T>(source);
 
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    public bool Contains(T item) => throw new InvalidOperationException();
+    public void CopyTo(T[] array, int arrayIndex) => throw new InvalidOperationException();
+    public void Add(T item) => throw new InvalidOperationException();
+    public void Clear() => throw new InvalidOperationException();
+    public bool Remove(T item) => throw new InvalidOperationException();
 }
 
 public struct FastReverseIterator<T> : IEnumerator<T>
 {
-    private readonly IList<T>? source;
+    private readonly IReadOnlyList<T>? source;
     private TemporaryList<T> tempList;
     private readonly int len;
     private int pos;
@@ -24,12 +36,18 @@ public struct FastReverseIterator<T> : IEnumerator<T>
 
     readonly object? IEnumerator.Current => Current;
 
+    public readonly int Count => source?.Count ?? 0;
+
     public FastReverseIterator(IEnumerable<T> source)
     {
-        if (source is IList<T> list)
+        /*if (source is IList<T> list)
         {
             this.source = list;
-            len = pos = list.Count;
+        }*/
+        if (source is IReadOnlyList<T> listRO)
+        {
+            this.source = listRO;
+            len = pos = listRO.Count;
         }
         else
         {

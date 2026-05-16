@@ -49,7 +49,7 @@ public partial class StopCueViewModel : CueViewModel
         // Stop cues don't support preloading
         PlaybackTime = TimeSpan.Zero;
         startTime = DateTime.UtcNow;
-        if (mainViewModel != null && mainViewModel.FindCue(StopTarget, out var cue))
+        if (mainViewModel.FindCue(StopTarget, out var cue))
         {
             if (stopMode == StopMode.LoopEnd)
             {

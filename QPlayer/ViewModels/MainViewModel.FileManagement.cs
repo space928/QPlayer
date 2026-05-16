@@ -183,29 +183,47 @@ public partial class MainViewModel
             ColumnWidths[i].Value = showFile.columnWidths[i];
 
         Cues.Clear();
-        for (int i = 0; i < showFile.cues.Count; i++)
+        Cues.Bind(show.cues);
+        int totalCueCount = CountModelCues(show.cues);
+        int j = 0;
+        await Cues.SyncFromModelAsync(async cue =>
         {
-            ProgressBoxViewModel.Progress = (i + 1) / (float)showFile.cues.Count;
-            ProgressBoxViewModel.Message = $"Loading cues... ({i + 1}/{showFile.cues.Count})";
+            ProgressBoxViewModel.Progress = (j + 1) / (float)showFile.cues.Count;
+            ProgressBoxViewModel.Message = $"Loading cues... ({j + 1}/{showFile.cues.Count})";
             if (!sync)
-                await Dispatcher.Yield();
-            Cue c = showFile.cues[i];
+                await Dispatcher.Yield(DispatcherPriority.Input);
+
+            j++;
             try
             {
-                var vm = CueFactory.CreateViewModelForCue(c, this)
-                    ?? throw new Exception($"Couldn't create view model for cue of type {c.GetType().Name}, qid: {c.qid}!");
-                Cues.Add(vm);
+                var vm = CueFactory.CreateViewModelForCue(cue, this)
+                    ?? throw new Exception($"Couldn't create view model for cue of type {cue.GetType().Name}, qid: {cue.qid}!");
+                return vm;
             }
             catch (Exception ex)
             {
                 Log($"Error occurred while trying to create cue from save file! {ex.Message}\n{ex}", LogLevel.Error);
             }
-        }
+            return null;
+        });
 
         OnPropertyChanged(nameof(SelectedCue));
         oscManager.ConnectOSC();
         mscManager.ConnectMSC();
         OpenAudioDevice();
+    }
+
+    /// <summary>
+    /// Counts the total number of cues in a showfile model, recursively traversing group cues to determine the total count.
+    /// </summary>
+    /// <param name="cues"></param>
+    /// <returns></returns>
+    private int CountModelCues(List<Cue> cues)
+    {
+        int count = cues.Count;
+        foreach (var group in cues.OfType<GroupCue>())
+            count += CountModelCues(group.cues);
+        return count;
     }
 
     /// <summary>

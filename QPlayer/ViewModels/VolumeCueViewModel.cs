@@ -48,7 +48,7 @@ public partial class VolumeCueViewModel : CueViewModel
         // Volume cues don't support preloading
         PlaybackTime = TimeSpan.Zero;
         startTime = DateTime.Now;
-        if (mainViewModel != null && mainViewModel.FindCue(Target, out var cue))
+        if (mainViewModel.FindCue(Target, out var cue))
         {
             if (cue is SoundCueViewModel soundCue)
                 soundCue.Fade(MathF.Pow(10, Volume / 20f), FadeTime, FadeType);

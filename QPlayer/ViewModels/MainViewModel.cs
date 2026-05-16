@@ -61,7 +61,7 @@ public partial class MainViewModel : ObservableObject
     }
     [Reactive] private readonly ObservableSelectionSet<CueViewModel> multiSelection;
     [Reactive] private SelectionMode selectionMode = SelectionMode.Normal;
-    [Reactive] private readonly ObservableCollection<CueViewModel> cues;
+    [Reactive] private readonly CueList cues;
     [Reactive] private readonly ObservableCollection<CueViewModel> activeCues;
     [Reactive] private readonly ObservableCollection<ObservableStruct<float>> columnWidths;
     [Reactive] private readonly ObservableCollection<CueViewModel> draggingCues;

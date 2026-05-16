@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows;
 using QPlayer.Models;
+using QPlayer.ViewModels;
 
 namespace QPlayer.Utilities;
 
@@ -181,4 +182,27 @@ public class VisibilityConverter : IValueConverter
         }
         return invert ^ (Visibility)value == Visibility.Visible;
     }
+}
+
+[ValueConversion(typeof(CueViewModel), typeof(Thickness))]
+public class ParentIndentConverter : IValueConverter
+{
+    public double IndentSize { get; set; } = 10;
+
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        if (value == null)
+            return default(Thickness);
+
+        int i = 0;
+        var parent = value as CueViewModel;
+        while (parent != null)
+        {
+            i++;
+            parent = parent.Parent;
+        }
+        return new Thickness(i * IndentSize, 0, 0, 0);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
 }

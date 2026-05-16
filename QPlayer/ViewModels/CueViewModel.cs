@@ -51,22 +51,12 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         get => qid;
         set
         {
-            mainViewModel?.NotifyQIDChanged(qid, value, this);
+            mainViewModel.NotifyQIDChanged(qid, value, this);
             qid = value;
         }
     }
-    [Reactive, ModelBindsTo(nameof(Cue.parent))] private decimal? parentId;
-    public CueViewModel? Parent
-    {
-        get
-        {
-            if (parentId == null)
-                return null;
-            if (mainViewModel?.FindCue(parentId.Value, out var parent) ?? false)
-                return parent;
-            return null;
-        }
-    }
+    public decimal? ParentId => parent?.qid;
+    [Reactive, ChangesProp(nameof(ParentId)), ModelCustomBinding(nameof(VM2M_Parent), nameof(M2VM_Parent))] private CueViewModel? parent;
     [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush)), SkipEqualityCheck]
     private ColorState colour;
     [Reactive] private string name = string.Empty;
@@ -79,9 +69,9 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive, ChangesProp(nameof(UseLoopCount))] private LoopMode loopMode;
     [Reactive] public int loopCount;
 
-    [Reactive, Readonly, ModelSkip] protected MainViewModel? mainViewModel;
-    public bool IsSelected => mainViewModel?.SelectedCue == this;
-    public bool IsMultiSelected => mainViewModel?.MultiSelection?.Contains(this) ?? false;
+    [Reactive, Readonly, ModelSkip] protected readonly MainViewModel mainViewModel;
+    public bool IsSelected => mainViewModel.SelectedCue == this;
+    public bool IsMultiSelected => mainViewModel.MultiSelection.Contains(this);
     [Reactive, ModelSkip, NoUndo] private CueState state;
     [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip, NoUndo]
     private TimeSpan playbackTime;
@@ -107,7 +97,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
 
-    public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
+    public bool IsRemoteControlling => mainViewModel.ProjectSettings.EnableRemoteControl
         && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
 
     /// <summary>
@@ -119,7 +109,6 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     public event EventHandler? OnCompleted;
 
     protected SynchronizationContext? synchronizationContext;
-    protected CueViewModel? parent;
     protected DispatcherDelay goDelay;
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
@@ -199,8 +188,8 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         State = CueState.Delay;
         goDelay.Start(Delay);
 
-        if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
-            mainViewModel?.ActiveCues.Add(this);
+        if (!mainViewModel.ActiveCues.Contains(this))
+            mainViewModel.ActiveCues.Add(this);
     }
 
     private void WaitCueOnCompleteHandler(object? sender, EventArgs args)
@@ -220,7 +209,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     public virtual void Go()
     {
         if (IsRemoteControlling)
-            mainViewModel?.OSCManager.SendRemoteGo(RemoteNode, QID);
+            mainViewModel.OSCManager.SendRemoteGo(RemoteNode, QID);
 
         if (Duration == TimeSpan.Zero)
         {
@@ -228,8 +217,8 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             return;
         }
         State = CueState.Playing;
-        if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
-            mainViewModel?.ActiveCues.Add(this);
+        if (!mainViewModel.ActiveCues.Contains(this))
+            mainViewModel.ActiveCues.Add(this);
     }
 
     /// <summary>
@@ -243,7 +232,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         State = CueState.Paused;
 
         if (IsRemoteControlling)
-            mainViewModel?.OSCManager.SendRemotePause(RemoteNode, qid);
+            mainViewModel.OSCManager.SendRemotePause(RemoteNode, qid);
     }
 
     /// <summary>
@@ -254,7 +243,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         StopInternal();
 
         if (IsRemoteControlling)
-            mainViewModel?.OSCManager.SendRemoteStop(RemoteNode, qid);
+            mainViewModel.OSCManager.SendRemoteStop(RemoteNode, qid);
     }
 
     /// <summary>
@@ -293,7 +282,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         waitCue = null;
         goDelay.Cancel();
         State = CueState.Ready;
-        mainViewModel?.ActiveCues.Remove(this);
+        mainViewModel.ActiveCues.Remove(this);
         OnCompleted?.Invoke(this, EventArgs.Empty);
     }
 
@@ -309,7 +298,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             State = CueState.Paused;
 
             if (IsRemoteControlling)
-                mainViewModel?.OSCManager.SendRemotePreload(RemoteNode, qid, (float)startTime.TotalSeconds);
+                mainViewModel.OSCManager.SendRemotePreload(RemoteNode, qid, (float)startTime.TotalSeconds);
         }
     }
 
@@ -318,7 +307,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// </summary>
     public void SelectExecute()
     {
-        mainViewModel?.MultiSelect(this);
+        mainViewModel.MultiSelect(this);
     }
 
     /// <summary>
@@ -330,8 +319,37 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     }
     #endregion
 
+    /// <summary>
+    /// Checks whether this cue has the given cue as one of it's parents. If <paramref name="target"/> 
+    /// is <see langword="this"/> instance, returns <see langword="false"/>.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <returns></returns>
+    public bool HasParent(CueViewModel? target)
+    {
+        var p = Parent;
+        if (target == null)
+            return p == null;
+
+        while (p != null)
+        {
+            if (p == target)
+                return true;
+            p = p.Parent;
+        }
+        return false;
+    }
+
     private static void VM2M_Colour(CueViewModel vm, Cue m) => m.colour = (SerializedColour)vm.Colour;
     private static void M2VM_Colour(CueViewModel vm, Cue m) => vm.Colour = (ColorState)m.colour;
+    private static void VM2M_Parent(CueViewModel vm, Cue m) => m.parent = vm.parent?.qid;
+    private static void M2VM_Parent(CueViewModel vm, Cue m)
+    {
+        if (m.parent.HasValue && vm.mainViewModel.FindCue(m.parent.Value, out var parentCue))
+            vm.Parent = parentCue;
+        else
+            vm.Parent = null;
+    }
 
     public static string EnumToString<T>(T type) where T : Enum
     {

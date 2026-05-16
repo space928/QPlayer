@@ -18,7 +18,7 @@ namespace QPlayer.Utilities;
 #if NET8_0_OR_GREATER
 [CollectionBuilder(typeof(TemporaryListBuilder), nameof(TemporaryListBuilder.Create))]
 #endif
-public struct TemporaryList<T> : IList<T>, IDisposable
+public struct TemporaryList<T> : IList<T>, IReadOnlyList<T>, IDisposable
 {
     private ArrayPool<T>? arrayPool;
     private T[]? items;
@@ -57,19 +57,19 @@ public struct TemporaryList<T> : IList<T>, IDisposable
         items.CopyTo(this.items);
     }
 
-    public TemporaryList(IEnumerable<T> items)
+    public TemporaryList(IEnumerable<T> items, int capacity = 8)
     {
         switch (items)
         {
             case T[] array:
                 {
-                    Initialise(array.Length);
+                    Initialise(Math.Max(capacity, array.Length));
                     Array.Copy(array, this.items!, array.Length);
                     break;
                 }
             case ICollection<T> collection:
                 {
-                    Initialise(collection.Count);
+                    Initialise(Math.Max(capacity, collection.Count));
                     foreach (var item in collection)
                         Add(item);
                     break;
@@ -78,10 +78,10 @@ public struct TemporaryList<T> : IList<T>, IDisposable
                 {
 #if NET10_0_OR_GREATER
                     if (items.TryGetNonEnumeratedCount(out var len))
-                        Initialise(len);
+                        Initialise(Math.Max(capacity, len));
                     else
 #endif
-                        Initialise(8);
+                        Initialise(capacity);
                     foreach (var item in items)
                         Add(item);
                     break;
@@ -95,7 +95,7 @@ public struct TemporaryList<T> : IList<T>, IDisposable
     private void Initialise(int capacity = 0, ArrayPool<T>? arrayPool = null)
     {
         this.arrayPool = arrayPool ?? ArrayPool<T>.Shared;
-        items = this.arrayPool.Rent(capacity);
+        items = capacity > 0 ? this.arrayPool.Rent(capacity) : [];
     }
 
 #if !NETSTANDARD
@@ -161,11 +161,15 @@ public struct TemporaryList<T> : IList<T>, IDisposable
                 version++;
                 break;
             case ICollection<T> collection:
-                EnsureCapacity(collection.Count);
+                EnsureCapacity(count + collection.Count);
                 foreach (var item in collection)
                     Add(item);
                 break;
             default:
+#if NET5_0_OR_GREATER
+                if (items.TryGetNonEnumeratedCount(out int enumCount))
+                    EnsureCapacity(count + enumCount);
+#endif
                 foreach (var item in items)
                     Add(item);
                 break;

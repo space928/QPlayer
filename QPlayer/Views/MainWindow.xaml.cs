@@ -207,7 +207,7 @@ public partial class MainWindow : Window
         if (dropTargetVm == null)
             dstIndex = vm.Cues.Count;
         else
-            dstIndex = vm.Cues.IndexOf(dropTargetVm);
+            dstIndex = vm.FindCueIndex(dropTargetVm);
 
         if (e.Data.GetDataPresent("Cues"))
         {

@@ -39,6 +39,18 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
             return DefaultCueIcon;
         }
     }
+    [Reactive("ExpanderVisibility")]
+    private Visibility ExpanderVisibility_Template => (DataContext is GroupCueViewModel) ? Visibility.Visible : Visibility.Collapsed;
+    [Reactive("IsCollapsed")]
+    private bool IsCollapsed_Template
+    {
+        get
+        {
+            if (DataContext is not GroupCueViewModel gc)
+                return false;
+            return gc.IsCollapsed;
+        }
+    }
 
     const int DragDeadzone = 10;
 
@@ -133,7 +145,7 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
             DragDrop.DoDragDrop(this, data, DragDropEffects.Move | DragDropEffects.Scroll);
 
-            vm.MainViewModel?.DraggingCues?.Clear();
+            vm.MainViewModel.DraggingCues.Clear();
         }
     }
 
@@ -174,5 +186,12 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
     private void Grid_DragLeave(object sender, DragEventArgs e)
     {
         InsertMarker.Visibility = Visibility.Collapsed;
+    }
+
+    private void UserControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        OnPropertyChanged(nameof(CueIcon));
+        OnPropertyChanged(nameof(ExpanderVisibility));
+        OnPropertyChanged(nameof(IsCollapsed));
     }
 }

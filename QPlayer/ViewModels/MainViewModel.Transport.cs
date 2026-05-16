@@ -22,6 +22,7 @@ public partial class MainViewModel
         if (cue == null)
             return;
 
+        SelectedCue = cue;
         CueViewModel? waitCue = null;
         int i = SelectedCueInd;
 
