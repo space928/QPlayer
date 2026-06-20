@@ -78,7 +78,12 @@
                     <Label Content="No additional properties" FontStyle="Italic"/>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:GroupCueViewModel}">
-                    <Label Content="No additional properties" FontStyle="Italic"/>
+                    <StackPanel>
+                        <DockPanel ToolTip="Specifies how the cues inside this group should be triggered when this group is played.">
+                            <Label Content="Group Trigger Mode"/>
+                            <ComboBox SelectedItem="{Binding GroupTrigger}" ItemsSource="{Binding GroupTriggerModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+                        </DockPanel>
+                    </StackPanel>
                 </DataTemplate>
                 <DataTemplate DataType="{x:Type vm:SoundCueViewModel}">
                     <StackPanel>

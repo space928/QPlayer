@@ -3,8 +3,10 @@ using QPlayer.ViewModels;
 using QPlayer.Views;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -132,6 +134,63 @@ public partial class MainWindow : Window
             CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.ContentVerticalOffset + delta.Y);
             CueListScrollViewer.ScrollToHorizontalOffset(CueListScrollViewer.ContentHorizontalOffset + delta.X);
         };
+
+        if (CueListControl.ItemsSource is INotifyCollectionChanged notifyCollection)
+            notifyCollection.CollectionChanged += VisualCuesCollectionChanged;
+    }
+
+    private void VisualCuesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        int count = CueListControl.Items.Count;
+        var generator = CueListControl.ItemContainerGenerator;
+        if (e.OldStartingIndex == -1 && e.NewStartingIndex == -1)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (!GetCueDataControl(i, out var item))
+                    continue;
+
+                item.NotifyGroupMarkerChange(i);
+            }
+        }
+        else
+        {
+            if (e.NewStartingIndex != -1)
+            {
+                for (int i = Math.Max(0, e.NewStartingIndex - 1); i < Math.Min(e.NewStartingIndex + 2, count); i++)
+                {
+                    if (!GetCueDataControl(i, out var item))
+                        continue;
+
+                    item.NotifyGroupMarkerChange(i);
+                }
+            }
+            if (e.OldStartingIndex != -1)
+            {
+                for (int i = Math.Max(0, e.OldStartingIndex - 1); i < Math.Min(e.OldStartingIndex + 2, count); i++)
+                {
+                    if (!GetCueDataControl(i, out var item))
+                        continue;
+
+                    item.NotifyGroupMarkerChange(i);
+                }
+            }
+        }
+
+        bool GetCueDataControl(int ind, [NotNullWhen(true)] out CueDataControl? control)
+        {
+            var container = generator.ContainerFromIndex(ind);
+            if (container != null
+                && VisualTreeHelper.GetChildrenCount(container) > 0
+                && VisualTreeHelper.GetChild(container, 0) is CueDataControl cdc)
+            {
+                control = cdc;
+                return true;
+            }
+
+            control = null;
+            return false;
+        }
     }
 
     public void Window_Closing(object sender, CancelEventArgs e)
@@ -159,6 +218,8 @@ public partial class MainWindow : Window
             case Key.Space:
             case Key.Up:
             case Key.Down:
+            case Key.Left:
+            case Key.Right:
                 e.Handled = true;
                 var mods = Keyboard.Modifiers;
                 if (keyBindings.TryGetValue((e.Key, mods), out var binding))

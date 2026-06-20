@@ -4,8 +4,10 @@ using QPlayer.Utilities;
 using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Collections.Specialized;
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -18,22 +20,107 @@ namespace QPlayer.ViewModels;
 /// </summary>
 public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewModel>
 {
-    protected internal readonly List<CueViewModel> rootCueList = [];
+    private readonly List<CueViewModel> rootCueList = [];
+    protected readonly HashSet<GroupCueViewModel> groups = [];
     protected internal List<Cue>? boundModel = [];
+    /// <summary>
+    /// Stores the total number of cues in this list. This number is set by the <see cref="CueList"/> at the root of the hierarchy.
+    /// </summary>
+    protected int totalCount = 0;
+
+    /// <summary>
+    /// This list of cues managed by this cue list, doesn't contain any cues belonging to child groups or parents.
+    /// </summary>
+    internal ReadOnlyCollection<CueViewModel> RootCueList { get; init; }
+    /// <summary>
+    /// The group cue which owns this cue list or <see langword="null"/> if this cue list is not owned by a group (or is the root cue list).
+    /// </summary>
+    internal virtual GroupCueViewModel? OwnerGroup => null;
 
     /// <summary>
     /// The number of cues at the root of the cue list (ie: not counting sub-cues)
     /// </summary>
-    public int Count => rootCueList.Count;
+    public virtual int Count => rootCueList.Count;
+    /// <summary>
+    /// The total number of cues in the cue list.
+    /// </summary>
+    public int TotalCount => totalCount;
+
+    public bool IsEmpty => rootCueList.Count == 0;
+
+    /// <summary>
+    /// Gets a cue by position.
+    /// </summary>
+    /// <param name="pos"></param>
+    /// <returns></returns>
+    public CueViewModel this[CuePosition pos]
+    {
+        get => pos.group != null ? pos.group.Cues[pos.index] : RootCueList[pos.index];
+    }
 
     /// <summary>
     /// Gets a root cue by index.
     /// </summary>
     /// <param name="index"></param>
     /// <returns></returns>
-    public CueViewModel this[int index]
+    public virtual CueViewModel this[int index]
     {
         get => rootCueList[index];
+    }
+
+    public AbstractCueList()
+    {
+        RootCueList = rootCueList.AsReadOnly();
+    }
+
+    /// <summary>
+    /// Finds the <see cref="CuePosition"/> of the specified cue in the cue list.
+    /// </summary>
+    /// <param name="cue"></param>
+    /// <param name="position"></param>
+    /// <param name="defaultGroup">Used internally.</param>
+    /// <returns><see langword="true"/> if the cue was found.</returns>
+    public bool Find(CueViewModel cue, out CuePosition position, GroupCueViewModel? defaultGroup = null)
+    {
+        // TODO: There isn't really a good way to make this more efficient, which unfortunately affects the
+        // performance of many methods that depend on this one. If testing indicates that this is a performance
+        // bottleneck, then maybe we could consider building an index cache. This cache would probably only be
+        // generated on save and would become invalid as soon as this cue list is mutated. I can't think of a
+        // way to keep an index cache up-to-date for cheap (even if it's just to get an approximately correct
+        // index).
+        int ind = rootCueList.IndexOf(cue);
+        if (ind == -1)
+        {
+            foreach (var group in groups)
+            {
+                var res = group.Cues.Find(cue, out position, group);
+                if (res)
+                    return true;
+            }
+            position = default;
+            return false;
+        }
+
+        position = new(ind, defaultGroup);
+        return true;
+    }
+
+    private void IncrementTotalCount(int delta)
+    {
+        if (delta == 0)
+            return;
+
+        totalCount += delta;
+        CueViewModel? parent = OwnerGroup;
+        if (parent != null)
+        {
+            while (parent.Parent is GroupCueViewModel group)
+            {
+                group.Cues.totalCount += delta;
+                parent = group;
+            }
+            parent.MainViewModel.Cues.totalCount += delta;
+        }
     }
 
     /// <summary>
@@ -58,8 +145,15 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
             list.Insert(index, item);
             model?.Insert(index, item.BoundModel!);
         }
-        //CollectionChanged?.Invoke(this, new(NotifyCollectionChangedAction.Add, item, index));
-        //OnPropertyChanged(nameof(Count));
+        int added = 1;
+        if (item is GroupCueViewModel group)
+        {
+            groups.Add(group);
+            added += group.Cues.totalCount;
+        }
+
+        item.Parent = OwnerGroup;
+        IncrementTotalCount(added);
 
         return true;
     }
@@ -80,8 +174,18 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
         list.InsertRange(index, items);
         model?.InsertRange(index, items.Select(x => x.BoundModel!));
 
-        //CollectionChanged?.Invoke(this, new(NotifyCollectionChangedAction.Add, item, index));
-        //OnPropertyChanged(nameof(Count));
+        int added = 0;
+        foreach (var item in items)
+        {
+            added++;
+            if (item is GroupCueViewModel group)
+            {
+                groups.Add(group);
+                added += group.Cues.totalCount;
+            }
+            item.Parent = OwnerGroup;
+        }
+        IncrementTotalCount(added);
 
         return true;
     }
@@ -103,8 +207,16 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
         list.RemoveAt(index);
         model?.RemoveAt(index);
 
-        //CollectionChanged?.Invoke(this, new(NotifyCollectionChangedAction.Remove, item, index));
-        //OnPropertyChanged(nameof(Count));
+        int removed = 1;
+        if (item is GroupCueViewModel group)
+        {
+            groups.Remove(group);
+            removed += group.Cues.totalCount;
+        }
+        IncrementTotalCount(-removed);
+        UndoManager.SuppressRecording();
+        item?.Parent = null;
+        UndoManager.UnSuppressRecording();
 
         return item;
     }
@@ -135,17 +247,30 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
         }
         inds = inds.FastReverse();
 
+        int removed = 0;
         foreach (var ind in indices)
         {
             if (ind < 0 || ind > list.Count)
                 continue;
 
+            var item = list[ind];
             if (returnRemoved)
-                results.Add(list[ind]);
+                results.Add(item);
 
             list.RemoveAt(ind);
             model?.RemoveAt(ind);
+
+            removed++;
+            if (item is GroupCueViewModel group)
+            {
+                groups.Remove(group);
+                removed += group.Cues.totalCount;
+            }
+            UndoManager.SuppressRecording();
+            item?.Parent = null;
+            UndoManager.UnSuppressRecording();
         }
+        IncrementTotalCount(-removed);
 
         tl.Dispose();
 
@@ -155,10 +280,20 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
             return [];
     }
 
+    /// <summary>
+    /// Removes all cues from the root cue list.
+    /// </summary>
     protected internal virtual void Clear()
     {
+        UndoManager.SuppressRecording();
+        foreach (var cue in rootCueList)
+            cue.Parent = null;
+        UndoManager.UnSuppressRecording();
+
+        IncrementTotalCount(-totalCount);
         rootCueList.Clear();
         boundModel?.Clear();
+        groups?.Clear();
     }
 
     /// <summary>
@@ -166,6 +301,14 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
     /// </summary>
     /// <returns>An iterator which enumerates each cue in order.</returns>
     protected internal IEnumerable<CueViewModel> EnumerateAll()
+    {
+        if (groups.Count == 0)
+            return rootCueList;
+
+        return EnumerateAllInternal();
+    }
+
+    private IEnumerable<CueViewModel> EnumerateAllInternal()
     {
         foreach (var cue in rootCueList)
         {
@@ -188,12 +331,19 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
     /// <returns></returns>
     protected internal IEnumerable<CueViewModel> EnumerateVisible()
     {
+        if (groups.Count == 0)
+            return rootCueList;
+        return EnumerateVisibleInternal();
+    }
+
+    private IEnumerable<CueViewModel> EnumerateVisibleInternal()
+    {
         foreach (var cue in rootCueList)
         {
             yield return cue;
             if (cue is GroupCueViewModel group && !group.IsCollapsed)
             {
-                var children = group.Cues.EnumerateVisible();
+                var children = group.Cues.EnumerateVisibleInternal();
                 foreach (var child in children)
                     yield return child;
             }
@@ -203,26 +353,29 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
     /// <summary>
     /// Enumerates all the visible cues (and subcues) in this cue list as well as their <see cref="CuePosition"/>.
     /// </summary>
-    /// <param name="parent">The group cue which is the parent of this <see cref="AbstractCueList"/> or <see langword="null"/>.</param>
     /// <returns></returns>
-    protected internal IEnumerable<(CueViewModel cue, CuePosition pos)> EnumerateVisiblePositions(GroupCueViewModel? parent = null)
+    protected internal IEnumerable<(CueViewModel cue, CuePosition pos)> EnumerateVisiblePositions()
     {
         int i = 0;
+        var parent = OwnerGroup;
+        if (parent?.IsCollapsed ?? false)
+            yield break;
+
         foreach (var cue in rootCueList)
         {
             yield return (cue, new(i++, parent));
             if (cue is GroupCueViewModel group && !group.IsCollapsed)
             {
-                var children = group.Cues.EnumerateVisiblePositions(group);
+                var children = group.Cues.EnumerateVisiblePositions();
                 foreach (var child in children)
                     yield return child;
             }
         }
     }
 
-    public IEnumerator<CueViewModel> GetEnumerator() => rootCueList.GetEnumerator();
+    public virtual IEnumerator<CueViewModel> GetEnumerator() => rootCueList.GetEnumerator();
 
-    IEnumerator IEnumerable.GetEnumerator() => rootCueList.GetEnumerator();
+    IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     /// <summary>
     /// Binds this <see cref="CueList"/> to the given model list. Changes to this list will 
@@ -326,6 +479,61 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
         public readonly GroupCueViewModel? group = group;
     }
 
+    internal readonly struct CuePositionRangeEnumerable(GroupCueViewModel? group, int startInd, int count) : IEnumerable<CuePosition>, IList<CuePosition>, IReadOnlyList<CuePosition>
+    {
+        public CuePosition this[int index] { get => throw new NotImplementedException(); set => throw new InvalidOperationException(); }
+
+        public int Count => count;
+        public bool IsReadOnly => true;
+
+        public IEnumerator<CuePosition> GetEnumerator() => new CuePositionRangeEnumerator(group, startInd, count);
+        IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+        public void CopyTo(CuePosition[] array, int arrayIndex)
+        {
+            int j = startInd;
+            for (int i = 0; i < count; i++)
+                array[i + arrayIndex] = new(j++, group);
+        }
+
+        public bool Contains(CuePosition item) => item.group == group && item.index >= startInd && item.index < startInd + count;
+        public int IndexOf(CuePosition item) => Contains(item) ? item.index - startInd : -1;
+
+        public void Add(CuePosition item) => throw new InvalidOperationException();
+        public void Clear() => throw new InvalidOperationException();
+        public void Insert(int index, CuePosition item) => throw new InvalidOperationException();
+        public bool Remove(CuePosition item) => throw new InvalidOperationException();
+        public void RemoveAt(int index) => throw new InvalidOperationException();
+
+        internal struct CuePositionRangeEnumerator(GroupCueViewModel? group, int startInd, int count) : IEnumerator<CuePosition>
+        {
+            private int pos = -1;
+            private readonly int end = startInd + count - 1;
+            private readonly GroupCueViewModel? group = group;
+            private readonly int startInd = startInd;
+
+            public readonly CuePosition Current => new(pos, group);
+
+            readonly object IEnumerator.Current => Current;
+
+            public readonly void Dispose() { }
+
+            public bool MoveNext()
+            {
+                if (pos == -1)
+                    pos = startInd;
+                else
+                    pos++;
+                return pos < end;
+            }
+
+            public void Reset()
+            {
+                pos = -1;
+            }
+        }
+    }
+
     /// <summary>
     /// A comparer which orders cues by their <see cref="CueViewModel.QID"/>.
     /// </summary>
@@ -364,7 +572,26 @@ public class AbstractCueList : ObservableObject, IReadOnlyCollection<CueViewMode
 /// </summary>
 public class SubCueList : AbstractCueList
 {
+    private readonly GroupCueViewModel? ownerGroup;
+    public SubCueList(GroupCueViewModel? ownerGroup) : base()
+    {
+        this.ownerGroup = ownerGroup;
+    }
 
+    internal override GroupCueViewModel? OwnerGroup => ownerGroup;
+
+    /// <summary>
+    /// Shuffles the contents of this subgroup by deleting and re-inserting them.
+    /// </summary>
+    internal void Shuffle()
+    {
+        if (ownerGroup == null)
+            return;
+        var mainList = ownerGroup.MainViewModel.Cues;
+        var cues = mainList.Delete(new CuePositionRangeEnumerable(ownerGroup, 0, Count), false);
+        Random.Shared.Shuffle(cues);
+        mainList.Insert(new CuePosition(0, ownerGroup), cues, false);
+    }
 }
 
 /// <summary>
@@ -373,9 +600,10 @@ public class SubCueList : AbstractCueList
 public class CueList : AbstractCueList, INotifyCollectionChanged
 {
     private readonly List<CueViewModel> visualCues = [];
-    private readonly List<CuePosition> visualPositions = [];
-    private readonly Dictionary<CueViewModel, (CuePosition pos, int visPos)> positionCache = [];
+    //private readonly List<CuePosition> visualPositions = [];
+    //private readonly Dictionary<CueViewModel, (CuePosition pos, int visPos)> positionCache = [];
     private readonly VisualCueList visualCueList;
+    private readonly MultiDict<decimal, CueViewModel> cuesDict = [];
 
     public event NotifyCollectionChangedEventHandler? CollectionChanged;
 
@@ -386,11 +614,41 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
     /// <summary>
     /// An enumerable cue list of only the visible cues in the cue list.
     /// </summary>
-    public VisualCueList VisualCues => visualCueList;
+    public VisualCueList VisualCues => visualCueList; // ---> remove this?? to make things easier, the CueList effectively just implements this (overriding the AbstractCueList behaviour)
 
     public CueList() : base()
     {
         visualCueList = new(this);
+    }
+
+    /// <summary>
+    /// The number of cues visible in the cue list.
+    /// </summary>
+    public override int Count => visualCues.Count;
+
+    /// <summary>
+    /// Gets a visual cue by index.
+    /// </summary>
+    /// <param name="index"></param>
+    /// <returns></returns>
+    public override CueViewModel this[int index]
+    {
+        get => visualCues[index];
+    }
+
+    /// <summary>
+    /// Informs the cue stack that the cue ID of a given cue view model has been changed. This should be called whenever a QID is changed.
+    /// <para/>
+    /// Note that since <see cref="CueViewModel.QID"/>'s setter calls this method, users which change QID's through this 
+    /// setter need not call this method.
+    /// </summary>
+    /// <param name="oldVal"></param>
+    /// <param name="newVal"></param>
+    /// <param name="src"></param>
+    internal void NotifyQIDChanged(decimal oldVal, decimal newVal, CueViewModel src)
+    {
+        if (!cuesDict.UpdateKey(oldVal, newVal, src))
+            cuesDict.Add(newVal, src);
     }
 
     private void OnCollectionChanged()
@@ -407,11 +665,34 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
         OnPropertyChanged(IndexerPropertyChanged);
     }
 
-    private void OnCollectionChanged(NotifyCollectionChangedAction action, object[]? changedItems)
+    private void OnCollectionChanged(NotifyCollectionChangedAction action, IList? changedItems, int startIndex)
     {
-        CollectionChanged?.Invoke(this, new(action, changedItems));
+        CollectionChanged?.Invoke(this, new(action, changedItems, startIndex));
         OnPropertyChanged(CountPropertyChanged);
         OnPropertyChanged(IndexerPropertyChanged);
+    }
+
+    #region Getters
+    /// <summary>
+    /// Checks if the cue at the given visual index is the last cue in a group.
+    /// </summary>
+    /// <param name="visualPos"></param>
+    /// <returns></returns>
+    internal bool IsLastInGroup(int visualPos)
+    {
+        if (visualPos >= visualCues.Count)
+            return true;  // Last cue in the stack must be at the end
+        if (visualPos < 0)
+            return false;  // Not in cue stack
+
+        var cur = visualCues[visualPos];
+        var next = visualCues[visualPos + 1];
+        // A change in parent indicates that this must be the last cue in this group
+        // unless the next parent is the current cue, in which case it's the start
+        // of a group.
+        if (cur.Parent != next.Parent && next.Parent != cur)
+            return true;
+        return false;
     }
 
     internal CueViewModel GetVisualCue(int index) => visualCues[index];
@@ -423,31 +704,28 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
     /// <returns></returns>
     public int FindVisualIndex(CueViewModel cue)
     {
-        /*if (assumeSorted)
-            return Math.Max(-1, visualCues.BinarySearch(item, default(QIDComparer)));
-        else
-            return visualCues.IndexOf(item);*/
-
-        if (positionCache.TryGetValue(cue, out var x))
-            return x.visPos;
-        return -1;
+        return visualCues.IndexOf(cue);
     }
 
-    /// <summary>
-    /// Finds the <see cref="CuePosition"/> of the specified cue in the cue list.
-    /// </summary>
-    /// <param name="cue"></param>
-    /// <param name="position"></param>
-    /// <returns><see langword="true"/> if the cue was found.</returns>
-    public bool Find(CueViewModel cue, out CuePosition position)
+    /// <inheritdoc cref="FindVisualIndex(CueViewModel)"/>
+    public int FindVisualIndex(CuePosition pos)
     {
-        if (positionCache.TryGetValue(cue, out var x))
-        {
-            position = x.pos;
-            return true;
-        }
-        position = default;
-        return false;
+        var cue = this[pos];
+        return FindVisualIndex(cue);
+    }
+
+    /// <inheritdoc cref="FindVisualIndex(CuePosition)"/>
+    public bool FindVisualIndex(CuePosition pos, out int visualIndex)
+    {
+        visualIndex = FindVisualIndex(pos);
+        return visualIndex != -1;
+    }
+
+    /// <inheritdoc cref="FindVisualIndex(CueViewModel)"/>
+    public bool FindVisualIndex(CueViewModel cue, out int visualIndex)
+    {
+        visualIndex = FindVisualIndex(cue);
+        return visualIndex != -1;
     }
 
     /// <summary>
@@ -461,22 +739,56 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
         position = default;
         if (visualIndex < 0 || visualIndex >= visualCues.Count)
             return false;
-        position = visualPositions[visualIndex];
-        return true;
+        return Find(visualCues[visualIndex], out position);
     }
 
-    private IEnumerable<CueViewModel> GetCues(IEnumerable<CuePosition> positions)
+    /// <summary>
+    /// Tries to find a cue view model given a cue ID.
+    /// </summary>
+    /// <param name="id">The cue ID to search for.</param>
+    /// <param name="cue">The returned cue view model if it was found.</param>
+    /// <returns><see langword="true"/> if the cue was found.</returns>
+    public bool Find(decimal id, [NotNullWhen(true)] out CueViewModel? cue)
+    {
+        return cuesDict.TryGetValue(id, out cue);
+    }
+
+    /// <summary>
+    /// Tries to find a cue's <see cref="CuePosition"/> given a cue ID.
+    /// </summary>
+    /// <param name="id">The cue ID to search for.</param>
+    /// <param name="pos">The position of the cue in the cue stack if it was found.</param>
+    /// <returns><see langword="true"/> if the cue was found.</returns>
+    public bool Find(decimal id, out CuePosition pos)
+    {
+        if (cuesDict.TryGetValue(id, out CueViewModel? val))
+            return Find(val!, out pos);
+        pos = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Enumerates the cues in this list from their <see cref="AbstractCueList.CuePosition"/>s.
+    /// </summary>
+    /// <param name="positions"></param>
+    /// <returns></returns>
+    internal IEnumerable<CueViewModel> GetCues(IEnumerable<CuePosition> positions)
     {
         foreach (var pos in positions)
         {
-            var src = pos.group?.Cues?.rootCueList ?? rootCueList;
+            var src = pos.group?.Cues?.RootCueList ?? RootCueList;
             if (pos.index < 0 || pos.index >= src.Count)
                 continue;
             yield return src[pos.index];
         }
     }
 
-    private IEnumerable<CuePosition> GetPositions(IEnumerable<CueViewModel> cues)
+    /// <summary>
+    /// Finds the cue positions for a range of cues.
+    /// </summary>
+    /// <param name="cues"></param>
+    /// <returns></returns>
+    internal IEnumerable<CuePosition> GetPositions(IEnumerable<CueViewModel> cues)
     {
         foreach (var cue in cues)
         {
@@ -485,11 +797,99 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
         }
     }
 
-    private IEnumerable<CuePosition> GetPositions(IEnumerable<int> visualInds)
+    /// <summary>
+    /// Finds the cue positions for a range of visual indices.
+    /// </summary>
+    /// <remarks>
+    /// The method provides an optimised path for consecutive visual indices.
+    /// </remarks>
+    /// <param name="visualInds"></param>
+    /// <param name="allowAdd"></param>
+    /// <returns></returns>
+    internal IEnumerable<CuePosition> GetPositions(IEnumerable<int> visualInds, bool allowAdd = false)
     {
-        return visualInds.Select(ind => visualPositions[ind]);
+        int lastInd = -1;
+        GroupCueViewModel? lastParent = null;
+        CuePosition lastCuePos = default;
+        foreach (var ind in visualInds)
+        {
+            CuePosition pos;
+            GroupCueViewModel? parent;
+            if (allowAdd && ind >= visualCues.Count) // Add
+            {
+                pos = new(RootCueList.Count, null);
+                parent = null;
+                goto Found;
+            }
+
+            parent = (ind >= 0 && ind < visualCues.Count) ? visualCues[ind].Parent as GroupCueViewModel : null;
+            if (lastInd != -1 && parent == lastParent)
+            {
+                // Shortcut for consecutive cues
+                if (ind == lastInd + 1)
+                {
+                    pos = new(lastCuePos.index + 1, lastCuePos.group);
+                    goto Found;
+                }
+                else if (ind == lastInd - 1)
+                {
+                    pos = new(lastCuePos.index - 1, lastCuePos.group);
+                    goto Found;
+                }
+            }
+            else if (Find(ind, out pos))
+            {
+                goto Found;
+            }
+
+            // No cue found, skip
+            continue;
+
+        Found:
+            lastInd = ind;
+            lastParent = parent;
+            lastCuePos = pos;
+            yield return pos;
+        }
     }
 
+    /// <summary>
+    /// Sorts an enumerable of cues by their visual index, returning an array of cues and an array of 
+    /// corresponding visual indices in ascending order. Hidden cues are not included in the results.
+    /// </summary>
+    /// <param name="cues">The enumerable of cues to sort.</param>
+    /// <returns></returns>
+    public (int[] visualIndices, CueViewModel[] sortedCues) SortCues(IEnumerable<CueViewModel> cues)
+    {
+        using TemporaryList<CueViewModel> cuesList = [];
+        using TemporaryList<int> inds = [];
+        if (cues.TryGetNonEnumeratedCount(out var estCount))
+        {
+            cuesList.EnsureCapacity(estCount);
+            inds.EnsureCapacity(estCount);
+        }
+
+        // Gather visual indices
+        foreach (var cue in cues)
+            if (FindVisualIndex(cue, out var visPos))
+                inds.Add(visPos);
+
+        // Sort them
+        inds.Sort();
+
+        // Get the corresponding visual cue index
+        for (int i = 0; i < inds.Count; i++)
+            cuesList.Add(visualCues[inds[i]]);
+
+        return (inds.ToArray(), cuesList.ToArray());
+    }
+    #endregion
+
+    /// <summary>
+    /// Keeps the visual list up to date when a group is collapsed or expanded.
+    /// </summary>
+    /// <param name="group"></param>
+    /// <param name="isCollapsed"></param>
     private void OnVisualGroupCollapsed(GroupCueViewModel group, bool isCollapsed)
     {
         var startInd = FindVisualIndex(group);
@@ -510,33 +910,37 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
                 var cue = visualCues[i];
                 if (cue is GroupCueViewModel subgroup)
                     subgroup.OnCollapse -= OnVisualGroupCollapsed;
-                positionCache.Remove(cue);
             }
+            var removed = visualCues.Slice(startInd, toRemove);
             // Remove from visual list
             visualCues.RemoveRange(startInd, toRemove);
-            visualPositions.RemoveRange(startInd, toRemove);
+            OnCollectionChanged(NotifyCollectionChangedAction.Remove, removed, startInd);
         }
         else
         {
             // Collect the visible subcues
-            using var subcues = group.Cues.EnumerateVisiblePositions(group).ToTempList();
+            using var subcues = group.Cues.EnumerateVisiblePositions().ToTempList();
             using var subcueInst = subcues.Select(x => x.cue).ToTempList();
-            using var subcuePos = subcues.Select(x => x.pos).ToTempList();
 
             // Insert them into the visible list and subscribe to events
             visualCues.InsertRange(startInd, subcueInst);
-            visualPositions.InsertRange(startInd, subcuePos);
             int i = startInd;
             foreach (var (cue, pos) in subcues)
             {
-                positionCache.Add(cue, (pos, i));
                 if (cue is GroupCueViewModel subgroup)
                     subgroup.OnCollapse += OnVisualGroupCollapsed;
                 i++;
             }
+            OnCollectionChanged(NotifyCollectionChangedAction.Add, subcueInst.ToArray(), startInd);
         }
     }
 
+    #region Delete Cues
+    /// <summary>
+    /// Deletes a cue from the cue list based on it's visual index.
+    /// </summary>
+    /// <param name="visualIndex"></param>
+    /// <returns></returns>
     protected internal CueViewModel? Delete(int visualIndex)
     {
         if (!Find(visualIndex, out var pos))
@@ -544,6 +948,12 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
 
         return Delete(pos);
     }
+
+    /// <summary>
+    /// Deletes a cue from the cue list by instance.
+    /// </summary>
+    /// <param name="cue"></param>
+    /// <returns><see langword="true"/> if the given cue was deleted.</returns>
     protected internal bool Delete(CueViewModel cue)
     {
         if (!Find(cue, out var pos))
@@ -551,133 +961,182 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
 
         return Delete(pos) != null;
     }
-    protected internal CueViewModel[] Delete(IEnumerable<CueViewModel> cues, bool collectResults = true) => Delete(GetPositions(cues), collectResults);
 
-    protected internal CueViewModel[] Delete(IEnumerable<int> visualIndices, bool collectResults = true) => Delete(GetPositions(visualIndices), collectResults);
+    /// <summary>
+    /// Deletes a range of cues from the cue list.
+    /// </summary>
+    /// <param name="cues">The cues to delete.</param>
+    /// <param name="collectResults">Whether the deleted cues should be collected and returned as an array.</param>
+    /// <returns>An array of deleted cues, sorted by visual index.</returns>
+    protected internal CueViewModel[] Delete(IEnumerable<CueViewModel> cues) => Delete(GetPositions(cues));
 
-    protected internal CueViewModel[] Delete(IEnumerable<CuePosition> cues, bool collectResults = true, bool needsSorting = true)
+    /// <inheritdoc cref="Delete(IEnumerable{CueViewModel}, bool)"/>
+    /// <remarks>This method takes advantage of certain optimisations to make consecutive cue deletion faster.</remarks>
+    protected internal CueViewModel[] Delete(IEnumerable<int> visualIndices, bool needsSorting = true)
     {
-        // using var deleted = GetCues(cues).ToTempList();
+        if (needsSorting)
+        {
+            using var inds = visualIndices.ToTempList();
+            inds.Sort();
+            return Delete(GetPositions(inds), false);
+        }
+        return Delete(GetPositions(visualIndices), needsSorting);
+    }
 
-        using var cuesList = cues.ToTempList();
-        // using var removedInds = new TemporaryList<int>();
+    /// <inheritdoc cref="Delete(IEnumerable{CueViewModel}, bool)"/>
+    protected internal CueViewModel[] Delete(IEnumerable<CuePosition> cues, bool needsSorting = true)
+    {
+        TemporaryList<CuePosition> cuesList = default;
         var removedItems = new TemporaryList<CueViewModel>();
 
         if (!needsSorting)
+        {
+            cuesList = new(cues);
             cuesList.Sort(default(CuePositionComparer));
+            cues = cuesList;
+        }
 
-        ref var removedItemsRef = ref (collectResults ? ref removedItems : ref Unsafe.NullRef<TemporaryList<CueViewModel>>());
-        foreach (var pos in cuesList.FastReverse())
+        foreach (var pos in cues.FastReverse())
         {
             AbstractCueList list = this;
             if (pos.group != null)
                 list = pos.group.Cues;
 
+            if (!FindVisualIndex(pos, out var visPos))
+                continue;
             if (list.Remove(pos.index) is not CueViewModel removed)
                 continue;
 
-            if (collectResults)
-                removedItems.Add(removed);
+            RemoveCueFromDict(removed);
+            removedItems.Add(removed);
 
-            if (removed is GroupCueViewModel group && !group.IsCollapsed)
-            {
-                RemoveGroupCueContents(group, ref removedItemsRef);
-                group.OnCollapse -= OnVisualGroupCollapsed;
-            }
+            if (removed is GroupCueViewModel group)
+                RemoveGroupCueContents(group, ref removedItems, true);
 
             // Update the visual list
-            if (positionCache.Remove(removed, out var oldPos) && oldPos.visPos != -1)
-            {
-                visualCues.RemoveAt(oldPos.visPos);
-                visualPositions.RemoveAt(oldPos.visPos);
-                // removedInds.Add(oldPos.visPos);
-            }
+            visualCues.RemoveAt(visPos);
         }
 
-        if (collectResults)
-        {
-            var removedArr = removedItems.ToArray();
-            removedItems.Dispose();
-            OnCollectionChanged(NotifyCollectionChangedAction.Remove, removedArr);
-            return removedArr;
-        }
-        else
-        {
-            OnCollectionChanged();
-            return [];
-        }
+        var removedArr = removedItems.FastReverse().ToArray();
+        removedItems.Dispose();
+        cuesList.Dispose();
+        OnCollectionChanged();
+        //OnCollectionChanged(NotifyCollectionChangedAction.Remove, removedArr);
+        return removedArr;
     }
 
+    /// <summary>
+    /// Deletes a cue from the cue list by position.
+    /// </summary>
+    /// <param name="cue"></param>
+    /// <returns></returns>
     protected internal CueViewModel? Delete(CuePosition cue)
     {
         AbstractCueList list = this;
         if (cue.group != null)
             list = cue.group.Cues;
 
+        if (!FindVisualIndex(cue, out var visPos))
+            return null;
         if (list.Remove(cue.index) is not CueViewModel removed)
             return null;
 
-        if (removed is GroupCueViewModel group && !group.IsCollapsed)
+        RemoveCueFromDict(removed);
+
+        if (removed is GroupCueViewModel group)
         {
-            RemoveGroupCueContents(group, ref Unsafe.NullRef<TemporaryList<CueViewModel>>());
-            group.OnCollapse -= OnVisualGroupCollapsed;
+            TemporaryList<CueViewModel> groupContents = [];
+            RemoveGroupCueContents(group, ref groupContents, true);
+
+            if (groupContents.Count > 0)
+            {
+                visualCues.RemoveAt(visPos);
+                groupContents.Add(group);
+                OnCollectionChanged(NotifyCollectionChangedAction.Remove, groupContents.FastReverse(), visPos);
+
+                return removed;
+            }
         }
 
         // Update the visual list
-        if (positionCache.Remove(removed, out var oldPos) && oldPos.visPos != -1)
-        {
-            visualCues.RemoveAt(oldPos.visPos);
-            visualPositions.RemoveAt(oldPos.visPos);
-
-            OnCollectionChanged(NotifyCollectionChangedAction.Remove, removed, oldPos.visPos);
-        }
+        visualCues.RemoveAt(visPos);
+        OnCollectionChanged(NotifyCollectionChangedAction.Remove, removed, visPos);
 
         return removed;
     }
 
-    private void RemoveGroupCueContents(GroupCueViewModel group, ref TemporaryList<CueViewModel> removed)
+    private void RemoveGroupCueContents(GroupCueViewModel group, ref TemporaryList<CueViewModel> removed, bool reverse)
     {
+        group.OnCollapse -= OnVisualGroupCollapsed;
+        if (group.IsCollapsed)
+        {
+            RemoveCuesFromDict(group.Cues.EnumerateAll());
+            return;
+        }
+
         using var visible = group.Cues.EnumerateVisible().ToTempList();
         foreach (var item in visible.FastReverse())
         {
-            if (positionCache.Remove(item, out var oldPos) && oldPos.visPos != -1)
+            // Update the visual list
+            if (FindVisualIndex(item, out var visPos))
             {
-                visualCues.RemoveAt(oldPos.visPos);
-                visualPositions.RemoveAt(oldPos.visPos);
-                // removedInds.Add(oldPos.visPos);
+                visualCues.RemoveAt(visPos);
             }
 
+            RemoveCueFromDict(item);
             if (item is GroupCueViewModel subgroup)
+            {
                 subgroup.OnCollapse -= OnVisualGroupCollapsed;
+                if (subgroup.IsCollapsed) // Remove any hidden cues too.
+                    RemoveCuesFromDict(subgroup.Cues.EnumerateAll());
+            }
         }
 
         if (!Unsafe.IsNullRef(ref removed))
-            removed.AddRange(visible.FastReverse());
+        {
+            if (reverse)
+                removed.AddRange(visible.FastReverse());
+            else
+                removed.AddRange(visible);
+        }
     }
+    #endregion
 
+    #region Insert Cues
+    /// <summary>
+    /// Inserts an ordered collection of cues at the given collection of visual indices in the cue list.
+    /// </summary>
+    /// <param name="visualIndices"></param>
+    /// <param name="cues"></param>
+    /// <param name="collectResults"></param>
+    /// <returns></returns>
     protected internal int[] Insert(IEnumerable<int> visualIndices, IEnumerable<CueViewModel> cues, bool collectResults = true)
     {
-        return Insert(visualIndices.Select(x => visualPositions[x]), cues, collectResults);
+        return Insert(GetPositions(visualIndices), cues, collectResults);
     }
 
     protected internal int Insert(int visualIndex, IEnumerable<CueViewModel> cues, bool collectResults = true)
     {
-        if (visualIndex < 0 || visualIndex >= visualPositions.Count)
-            return -2;
-        return Insert(visualPositions[visualIndex], cues, collectResults);
+        if (visualIndex == visualCues.Count) // Add
+            return Insert(new CuePosition(RootCueList.Count, null), cues, collectResults);
+        else if (Find(visualIndex, out var pos)) // Insert
+            return Insert(pos, cues, collectResults);
+        return -2;
     }
 
     protected internal new int Insert(int visualIndex, CueViewModel cue)
     {
-        if (visualIndex < 0 || visualIndex >= visualPositions.Count)
-            return -2;
-        return Insert(visualPositions[visualIndex], cue);
+        if (visualIndex == visualCues.Count) // Add
+            return Insert(new CuePosition(RootCueList.Count, null), cue);
+        else if (Find(visualIndex, out var pos)) // Insert
+            return Insert(pos, cue);
+        return -2;
     }
 
     protected internal int[] Insert(IEnumerable<CuePosition> positions, IEnumerable<CueViewModel> cues, bool collectResults = true)
     {
-        using var added = new TemporaryList<CueViewModel>();
         using var addedInds = new TemporaryList<int>();
+        using var _ = UndoManager.ScopedSuppress();
 
         foreach (var (cue, pos) in cues.Zip(positions))
         {
@@ -685,42 +1144,45 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
             if (pos.group != null)
                 list = pos.group.Cues;
 
-            if (!list.Insert(pos.index, cue))
-                continue;
-
             // Compute visPos
             int visPos = ComputeNewVisPos(pos);
-            // Update cache
-            positionCache.Add(cue, (pos, visPos));
+            if (visPos == -1)
+                continue;
+
+            // Insert the cue into the sublist
+            if (!list.Insert(pos.index, cue))
+                continue;
+            cue.Parent = pos.group;
+
+            AddCueToDict(cue);
 
             // Update the visual list
             if (visPos != -1)
             {
                 visualCues.Insert(visPos, cue);
-                visualPositions.Insert(visPos, pos);
                 if (collectResults)
-                {
-                    added.Add(cue);
                     addedInds.Add(visPos);
-                }
+
                 if (cue is GroupCueViewModel group)
                 {
-                    var res = added;
-                    if (!collectResults)
-                        res = [];
-                    int n = res.Count;
+                    int groupCount = InsertGroupCueContents(visPos + 1, group, ref Unsafe.NullRef<TemporaryList<CueViewModel>>(), false);
 
-                    InsertGroupCueContents(visPos + 1, group, ref res);
-                    addedInds.AddRange(Enumerable.Range(visPos + 1, res.Count - n));
-
-                    if (!collectResults)
-                        res.Dispose();
+                    if (collectResults)
+                        addedInds.AddRange(Enumerable.Range(visPos + 1, groupCount));
                 }
+            }
+            else
+            {
+                MainViewModel.Log($"Error adding cue to cue list, visPos invalid!", MainViewModel.LogLevel.Error);
             }
         }
         if (collectResults)
         {
-            OnCollectionChanged(NotifyCollectionChangedAction.Add, added.ToArray());
+            // There are probably some cases where sending more targetted collection change events would
+            // be more efficient; alas, the interface only supports insertion starting at a single index,
+            // so doing so would result in many calls to OnCollectionChanged (and lots of little
+            // allocations). Which is prooooobbbbaaabbbly worse than just a single Reset notification.
+            OnCollectionChanged();
             return addedInds.ToArray();
         }
 
@@ -731,6 +1193,7 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
     protected internal int Insert(CuePosition pos, IEnumerable<CueViewModel> cues, bool collectResults = true)
     {
         var added = new TemporaryList<CueViewModel>();
+        using var _ = UndoManager.ScopedSuppress();
 
         int firstVisPos = -2;
         foreach (var cue in cues)
@@ -739,26 +1202,33 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
             if (pos.group != null)
                 list = pos.group.Cues;
 
-            if (!list.Insert(pos.index, cue))
-                continue;
-
             // Compute visPos
             int visPos = ComputeNewVisPos(pos);
-            // Update cache
-            positionCache.Add(cue, (pos, visPos));
+            if (visPos == -1)
+                continue;
             if (firstVisPos == -2)
                 firstVisPos = visPos;
+
+            // Insert the cue into the sublist
+            if (!list.Insert(pos.index, cue))
+                continue;
+            cue.Parent = pos.group;
+
+            AddCueToDict(cue);
 
             // Update the visual list
             if (visPos != -1)
             {
                 visualCues.Insert(visPos, cue);
-                visualPositions.Insert(visPos, pos);
                 if (collectResults)
                     added.Add(cue);
 
                 if (cue is GroupCueViewModel group)
-                    InsertGroupCueContents(visPos + 1, group, ref collectResults ? ref added : ref Unsafe.NullRef<TemporaryList<CueViewModel>>());
+                    InsertGroupCueContents(visPos + 1, group, ref added, collectResults);
+            }
+            else
+            {
+                MainViewModel.Log($"Error adding cue to cue list, visPos invalid!", MainViewModel.LogLevel.Error);
             }
 
             // Increment the position
@@ -781,36 +1251,43 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
     /// <returns>The visual index of the newly inserted cue or <c>-1</c> if it's currently hidden, or <c>-2</c> if the cue couldn't be inserted.</returns>
     protected internal int Insert(CuePosition pos, CueViewModel cue)
     {
+        using var _ = UndoManager.ScopedSuppress();
+
         AbstractCueList list = this;
         if (pos.group != null)
             list = pos.group.Cues;
 
-        if (!list.Insert(pos.index, cue))
-            return -2;
-
         // Compute visPos
         int visPos = ComputeNewVisPos(pos);
+        if (visPos == -1)
+            return -1;
 
-        // Update cache
-        positionCache.Add(cue, (pos, visPos));
+        // Insert the cue into the sublist
+        if (!list.Insert(pos.index, cue))
+            return -2;
+        cue.Parent = pos.group;
+        AddCueToDict(cue);
 
         // Update the visual list
         if (visPos != -1)
         {
             visualCues.Insert(visPos, cue);
-            visualPositions.Insert(visPos, pos);
 
             if (cue is GroupCueViewModel group)
             {
                 TemporaryList<CueViewModel> added = [cue];
-                InsertGroupCueContents(visPos + 1, group, ref added);
-                OnCollectionChanged(NotifyCollectionChangedAction.Add, added.ToArray());
+                InsertGroupCueContents(visPos + 1, group, ref added, true);
+                OnCollectionChanged(NotifyCollectionChangedAction.Add, added, visPos);
                 added.Dispose();
             }
             else
             {
                 OnCollectionChanged(NotifyCollectionChangedAction.Add, cue, visPos);
             }
+        }
+        else
+        {
+            MainViewModel.Log($"Error adding cue to cue list, visPos invalid!", MainViewModel.LogLevel.Error);
         }
 
         return visPos;
@@ -819,46 +1296,94 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
     private int ComputeNewVisPos(CuePosition pos)
     {
         int visPos = -1;
-        if (pos.index != 0)
+
+        var list = ((pos.group?.Cues as AbstractCueList) ?? this).RootCueList;
+        if (list.Count > 0 && pos.index < list.Count)
         {
-            AbstractCueList list = (pos.group?.Cues as AbstractCueList) ?? this;
-            var prev = list[pos.index - 1];
-            int prevPos = FindVisualIndex(prev);
-            if (prevPos != -1)
-                visPos = prevPos + 1;
+            // If possible find a cue that's already in this position and steal it's visPos
+            var existing = list[pos.index];
+            int existingPos = FindVisualIndex(existing);
+            if (existingPos != -1)
+                visPos = existingPos;
         }
-        else
+        else if (pos.index > 0)
         {
-            var prev = pos.group;
-            if (prev == null)
-                visPos = pos.index;
+            // Otherwise pick the end of the current sublist
+            if (pos.group == null)
+                visPos = visualCues.Count;
             else
             {
-                int prevPos = FindVisualIndex(prev);
-                if (prevPos != -1)
-                    visPos = prevPos + 1;
+                var groupPos = FindVisualIndex(pos.group);
+                if (groupPos != -1)
+                    visPos = groupPos + pos.group.Cues.EnumerateVisible().Count() + 1; // Grrr, slow
             }
         }
+        else if (pos.index == 0)
+        {
+            // Otherwise pick the start of the sublist
+            if (pos.group == null)
+                visPos = 0;
+            else
+            {
+                var groupPos = FindVisualIndex(pos.group);
+                if (groupPos != -1)
+                    visPos = groupPos + 1;
+            }
+        }
+
         return visPos;
     }
 
-    private void InsertGroupCueContents(int visualIndex, GroupCueViewModel group, ref TemporaryList<CueViewModel> inserted)
+    private int InsertGroupCueContents(int visualIndex, GroupCueViewModel group, ref TemporaryList<CueViewModel> inserted, bool collectResults)
     {
-        using var visible = group.Cues.EnumerateVisiblePositions().ToTempList();
-        foreach (var (cue, pos) in visible)
+        group.OnCollapse += OnVisualGroupCollapsed;
+        if (group.IsCollapsed)
         {
-            positionCache.Add(cue, (pos, visualIndex));
-
-            // Update the visual list
-            visualCues.Insert(visualIndex, cue);
-            visualPositions.Insert(visualIndex, pos);
-
-            if (cue is GroupCueViewModel subgroup)
-                subgroup.OnCollapse += OnVisualGroupCollapsed;
+            AddCuesToDict(group.Cues.EnumerateAll());
+            return 0;
         }
 
-        if (!Unsafe.IsNullRef(ref inserted))
-            inserted.AddRange(visible.Select(x => x.cue));
+        var visible = group.Cues.EnumerateVisiblePositions();
+        int addedCount = 0;
+        foreach (var (cue, pos) in visible)
+        {
+            // Update the visual list
+            visualCues.Insert(visualIndex++, cue);
+            addedCount++;
+
+            if (cue is GroupCueViewModel subgroup)
+            {
+                subgroup.OnCollapse += OnVisualGroupCollapsed;
+                if (subgroup.IsCollapsed) // This subgroup contains cues that aren't visible, add them to the cache anyway
+                    AddCuesToDict(subgroup.Cues.EnumerateAll());
+            }
+            if (collectResults)
+                inserted.Add(cue);
+
+            AddCueToDict(cue);
+        }
+
+        return addedCount;
+    }
+    #endregion
+
+    private void AddCuesToDict(IEnumerable<CueViewModel> cues)
+    {
+        foreach (var cue in cues)
+            cuesDict.TryAdd(cue.QID, cue);
+    }
+    private void AddCueToDict(CueViewModel cue)
+    {
+        cuesDict.TryAdd(cue.QID, cue);
+    }
+    private void RemoveCuesFromDict(IEnumerable<CueViewModel> cues)
+    {
+        foreach (var cue in cues)
+            cuesDict.Remove(cue.QID, cue);
+    }
+    private void RemoveCueFromDict(CueViewModel cue)
+    {
+        cuesDict.Remove(cue.QID, cue);
     }
 
     private void ResetVisualCache()
@@ -869,18 +1394,20 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
 
         // Clear the visual cache
         visualCues.Clear();
-        visualPositions.Clear();
-        positionCache.Clear();
+        cuesDict.Clear();
 
         // Re-create the visual cue list from scratch
         int visPos = 0;
         foreach (var (cue, pos) in EnumerateVisiblePositions())
         {
             visualCues.Add(cue);
-            visualPositions.Add(pos);
-            positionCache.Add(cue, (pos, visPos));
+            AddCueToDict(cue);
             if (cue is GroupCueViewModel subgroup)
+            {
                 subgroup.OnCollapse += OnVisualGroupCollapsed;
+                if (subgroup.IsCollapsed)
+                    AddCuesToDict(subgroup.Cues.EnumerateAll());
+            }
 
             visPos++;
         }
@@ -895,9 +1422,9 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
 
     public void Create() { }*/
 
-
     protected internal override void Clear()
     {
+        cuesDict.Clear();
         base.Clear();
         ResetVisualCache();
     }
@@ -908,12 +1435,34 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
     {
         return mode switch
         {
-            EnumerationMode.Root => rootCueList,
+            EnumerationMode.Root => RootCueList,
             EnumerationMode.Visible => visualCues,
             EnumerationMode.All => EnumerateAll(),
             _ => EnumerateAll()
         };
     }
+
+    /// <summary>
+    /// Recursively enumerates all root cues and sub cues in this cue list in depth-first order. Starting from a given visual index.
+    /// </summary>
+    /// <param name="visualIndex">The index of the cue in the visual cue list to start iterating from.</param>
+    /// <returns>An iterator which enumerates each cue in order.</returns>
+    public IEnumerable<CueViewModel> EnumerateAllFrom(int visualIndex)
+    {
+        for (int i = visualIndex; i < visualCues.Count; i++)
+        {
+            var cue = visualCues[i];
+            yield return cue;
+            if (cue is GroupCueViewModel group && group.IsCollapsed)
+            {
+                var children = group.Cues.EnumerateAll();
+                foreach (var child in children)
+                    yield return child;
+            }
+        }
+    }
+
+    public override IEnumerator<CueViewModel> GetEnumerator() => visualCues.GetEnumerator();
 
     public override void SyncFromModel(Func<Cue, CueViewModel?> convertCue)
     {
@@ -962,7 +1511,7 @@ public class CueList : AbstractCueList, INotifyCollectionChanged
             CollectionChanged?.Invoke(sender, e);
         }
 
-        public readonly IEnumerator<CueViewModel> GetEnumerator() => list.GetEnumerator(AbstractCueList.EnumerationMode.Visible);
+        public readonly IEnumerator<CueViewModel> GetEnumerator() => list.GetEnumerator(EnumerationMode.Visible);
         readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
     }
 }

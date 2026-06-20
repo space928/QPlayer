@@ -9,3 +9,7 @@ SigningCertificate_Encoded.txt
 *.zip
 /QPlayerOld
 /api
+/TestProj
+/TestResults
+/QPlayer.Tests/CueListTests2.cs
+/QPlayer.Tests/CueListTests3.cs

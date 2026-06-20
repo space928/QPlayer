@@ -1869,7 +1869,9 @@
         </Setter>
     </Style>
 
-    <Style TargetType="{x:Type MenuItem}">
+    <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MenuItem}"/>
+
+    <Style TargetType="{x:Type MenuItem}" x:Key="MenuItem">
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type MenuItem}">

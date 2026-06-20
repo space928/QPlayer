@@ -11,7 +11,7 @@
     <Grid MouseDown="Grid_MouseDown" Loaded="Grid_Loaded">
         <Image Source="{StaticResource Icon_angle_down_solid_fullDrawingImage}" Width="16" Height="16">
             <Image.RenderTransform>
-                <RotateTransform CenterX="0" CenterY="0" Angle="0" x:Name="ArrowRotateTransform"/>
+                <RotateTransform CenterX="8" CenterY="8" Angle="0" x:Name="ArrowRotateTransform"/>
             </Image.RenderTransform>
         </Image>
     </Grid>

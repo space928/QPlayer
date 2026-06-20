@@ -27,6 +27,8 @@
         <KeyBinding Key="OemCloseBrackets" Command="{Binding UnpauseCommand}"/>
         <KeyBinding Key="Up" Command="{Binding UpCommand}"/>
         <KeyBinding Key="Down" Command="{Binding DownCommand}"/>
+        <KeyBinding Key="Left" Command="{Binding LeftCommand}"/>
+        <KeyBinding Key="Right" Command="{Binding RightCommand}"/>
         <KeyBinding Gesture="Shift+Up" Command="{Binding SelUpCommand}"/>
         <KeyBinding Gesture="Shift+Down" Command="{Binding SelDownCommand}"/>
         <KeyBinding Key="Delete" Command="{Binding DeleteCueCommand}"/>
@@ -39,6 +41,8 @@
         <KeyBinding Gesture="CTRL+Down" Command="{Binding MoveCueDownCommand}"/>
         <KeyBinding Gesture="CTRL+D" Command="{Binding DuplicateCueCommand}"/>
         <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueMenuCommand}"/>
+        <KeyBinding Gesture="CTRL+G" Command="{Binding GroupCuesCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+G" Command="{Binding UngroupCuesCommand}"/>
         <KeyBinding Gesture="CTRL+Z" Command="{Binding UndoCommand}"/>
         <KeyBinding Gesture="CTRL+Shift+Z" Command="{Binding RedoCommand}"/>
     </Window.InputBindings>
@@ -51,7 +55,9 @@
         <ItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
                       Background="{DynamicResource AREghZyBrush.Deep.1.Background.Static}" BorderBrush="{DynamicResource AREghZyBrush.Deep.1.Border.Static}" BorderThickness="1"
                       Panel.ZIndex="999" Width="400" MaxHeight="250" Grid.ColumnSpan="99" Grid.RowSpan="99" HorizontalAlignment="Left" VerticalAlignment="Top" 
-                      Visibility="Visible" IsTabStop="False" Focusable="False" IsHitTestVisible="False">
+                      Visibility="Visible" IsTabStop="False" Focusable="False" IsHitTestVisible="False"
+                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.CacheLength="16" 
+                      VirtualizingPanel.CacheLengthUnit="Item">
             <ItemsControl.ItemTemplate>
                 <DataTemplate>
                     <local:CueDataControl/>
@@ -71,7 +77,7 @@
             <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center" x:Name="MainMenu">
                 <MenuItem Header="File" Height="30">
                     <MenuItem.Resources>
-                        <Style x:Key="RecentItemStyle" TargetType="MenuItem">
+                        <Style x:Key="RecentItemStyle" BasedOn="{StaticResource MenuItem}" TargetType="MenuItem">
                             <Setter Property="Header" Value="{Binding Name}"/>
                             <Setter Property="CommandParameter" Value="{Binding Path}"/>
                             <Setter Property="Command" Value="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
@@ -84,11 +90,6 @@
                     <MenuItem Header="Autosave" IsCheckable="True" IsChecked="{Binding EnableAutosave}"/>
                     <MenuItem Header="Pack" InputGestureText="Ctrl+E" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" ItemsSource="{Binding RecentFiles}" ItemContainerStyle="{StaticResource RecentItemStyle}">
-                        <!--<MenuItem.ItemTemplate>
-                            <DataTemplate>
-                                <MenuItem Header="{Binding Name}" CommandParameter="{Binding Path}" Command="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
-                            </DataTemplate>
-                        </MenuItem.ItemTemplate>-->
                     </MenuItem>
                     <MenuItem Header="Exit" InputGestureText="Alt+F4" Click="ExitMenuItem_Click"/>
                 </MenuItem>

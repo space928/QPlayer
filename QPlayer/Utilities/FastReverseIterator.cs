@@ -19,7 +19,21 @@ public readonly struct FastReverseEnumerable<T>(IEnumerable<T> source) : ICollec
     IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
     public bool Contains(T item) => throw new InvalidOperationException();
-    public void CopyTo(T[] array, int arrayIndex) => throw new InvalidOperationException();
+    public void CopyTo(T[] array, int arrayIndex)
+    {
+        int count = Count; // This risks enumerating the collection twice...
+        if (arrayIndex + count > array.Length)
+            throw new ArgumentOutOfRangeException(nameof(array));
+
+        var iter = source.GetEnumerator();
+        for (int i = arrayIndex + count - 1; i >= arrayIndex; i--)
+        {
+            if (!iter.MoveNext())
+                break;
+            array[i] = iter.Current;
+        }
+    }
+
     public void Add(T item) => throw new InvalidOperationException();
     public void Clear() => throw new InvalidOperationException();
     public bool Remove(T item) => throw new InvalidOperationException();

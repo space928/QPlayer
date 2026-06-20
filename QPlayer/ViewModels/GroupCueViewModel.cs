@@ -13,7 +13,7 @@ namespace QPlayer.ViewModels;
 [Icon("IconGroupCue", typeof(Icons))]
 public partial class GroupCueViewModel : CueViewModel
 {
-    [Reactive] private readonly SubCueList cues = [];
+    [Reactive] private readonly SubCueList cues;
 
     [Reactive] private GroupTriggerMode groupTrigger;
     private bool isCollapsed;
@@ -33,40 +33,30 @@ public partial class GroupCueViewModel : CueViewModel
 
     public GroupCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
     {
-    }
-
-    public bool AddToGroup(CueViewModel cue)
-    {
-        if (cue == this || cue.Parent == this)
-            return false;
-
-        var ind = mainViewModel.FindCueIndex(cue);
-        if (ind == -1)
-            return false;
-
-        cue.Parent = this;
-        mainViewModel.DeleteCue(ind, false);
-        // cues.Add(cue);
-        if (ind > 0)
-        {
-            var prev = mainViewModel.Cues[ind - 1];
-            // if (prev == this || prev.HasParent(this))
-        }
-
-        return true;
+        cues = new(this);
     }
 
     public override void DelayedGo(CueViewModel? waitForCue = null)
     {
         base.DelayedGo(waitForCue);
+    }
+
+    public override void Go()
+    {
+        base.Go();
+
+        if (IsCollapsed && groupTrigger != GroupTriggerMode.All)
+            IsCollapsed = false;
 
         // Ony strictly needed for shuffling
         // groupCount = EnumerateContents(true).Count();
 
+        // This action should happen after any group delay (or wait cue)
         switch (groupTrigger)
         {
             case GroupTriggerMode.Next:
-                mainViewModel.Go();
+                if (!Cues.IsEmpty)
+                    mainViewModel.Go(Cues[0]);
                 break;
             case GroupTriggerMode.All:
                 foreach (var child in Cues)
@@ -74,6 +64,11 @@ public partial class GroupCueViewModel : CueViewModel
                         mainViewModel.Go(child);
                 break;
             case GroupTriggerMode.Shuffle:
+                if (!Cues.IsEmpty)
+                {
+                    Cues.Shuffle();
+                    mainViewModel.Go(Cues[0]);
+                }
                 break;
         }
     }

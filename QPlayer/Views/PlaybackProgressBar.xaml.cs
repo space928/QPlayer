@@ -57,15 +57,13 @@ public partial class PlaybackProgressBar : UserControl, INotifyPropertyChanged, 
 
     private void UnBindVM()
     {
-        if (cueVM != null)
-            cueVM.PropertyChanged -= CueVM_PropertyChanged;
+        cueVM?.PropertyChanged -= CueVM_PropertyChanged;
     }
 
     private void BindVM()
     {
         cueVM = (CueViewModel)DataContext;
-        if (cueVM != null)
-            cueVM.PropertyChanged += CueVM_PropertyChanged;
+        cueVM?.PropertyChanged += CueVM_PropertyChanged;
     }
 
     private void CueVM_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

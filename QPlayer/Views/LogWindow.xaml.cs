@@ -2,6 +2,7 @@
 using System.IO;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Media;
 using Microsoft.Win32;
 using QPlayer.ViewModels;
 
@@ -14,6 +15,8 @@ public partial class LogWindow : Window
 {
     public MainViewModel ViewModel { get; init; }
     private bool autoScrollToBottom;
+    private readonly SolidColorBrush errorBrush = new(Color.FromArgb(255, 220, 60, 40));
+    private readonly SolidColorBrush warningBrush = new(Color.FromArgb(255, 200, 220, 50));
 
     public LogWindow(MainViewModel viewModel)
     {
@@ -73,5 +76,16 @@ public partial class LogWindow : Window
         ViewModel.AudioBufferDispatcherDebug.ShouldUpdate = active;
         AudioBufferDbgControl.Visibility = active ? Visibility.Visible : Visibility.Collapsed;
         LogListBox.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
+    }
+
+    private void LogItemText_Loaded(object sender, RoutedEventArgs e)
+    {
+        if (sender is not TextBlock text)
+            return;
+
+        if (text.Text.Contains("[Error]"))
+            text.Foreground = errorBrush;
+        else if (text.Text.Contains("[Warning]"))
+            text.Foreground = warningBrush;
     }
 }

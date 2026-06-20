@@ -26,30 +26,33 @@ public partial class MainViewModel
         CueViewModel? waitCue = null;
         int i = SelectedCueInd;
 
+        using var ie = Cues.EnumerateAllFrom(i + 1).GetEnumerator();
         while (true)
         {
             // If this cue is enabled, run it
             if (cue.Enabled)
                 cue.DelayedGo(waitCue);
 
+            // Increment the selection
             i++;
-            if (i >= Cues.Count) break;
 
-            // Look at the next cue in the stack to determine if we should keep executing cues.
-            var next = Cues[i];
-            if (next == null)
+            // Check the next cue in the stack
+            if (!ie.MoveNext())
                 break;
+            var next = ie.Current;
 
             if (next.Enabled)
             {
                 if (next.Trigger == TriggerMode.Go)
-                    break;
+                    break; // Don't start the next cue automatically
                 else if (next.Trigger == TriggerMode.AfterLast)
-                    waitCue = cue;
+                    waitCue = cue; // Set the next cue to wait for this one to finish
             }
             cue = next;
         }
-        SelectedCueInd = i;
+
+        // Use max here to account for re-entrancy
+        SelectedCueInd = Math.Max(SelectedCueInd, i);
     }
 
     public void Pause()
@@ -69,8 +72,10 @@ public partial class MainViewModel
     {
         //for (int i = ActiveCues.Count - 1; i >= 0; i--)
         //    ActiveCues[i].Stop();
-        for (int i = 0; i < Cues.Count; i++)
-            Cues[i].Stop();
+        //for (int i = 0; i < Cues.Count; i++)
+        //    Cues[i].Stop();
+        foreach (var cue in Cues.EnumerateAll())
+            cue.Stop();
 
         AudioPlaybackManager.StopAllSounds();
     }

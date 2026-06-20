@@ -11,7 +11,7 @@
              d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded" DataContextChanged="UserControl_DataContextChanged">
     <UserControl.Resources>
         <util:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
-        <util:ParentIndentConverter x:Key="ParentIndentConverter" IndentSize="10"/>
+        <Border x:Key="CornerRadiusDummy" CornerRadius="{StaticResource AREghZy.CornerRadius}"/>
     </UserControl.Resources>
     <Grid x:Name="MainGrid" IsHitTestVisible="True" HorizontalAlignment="Left"
         MouseDown="Grid_MouseDown" PreviewMouseDown="Grid_PreviewMouseDown" AllowDrop="True"
@@ -34,7 +34,7 @@
             <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[9].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
             <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[10].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
         </Grid.ColumnDefinitions>
-        <Border x:Name="BG" Panel.ZIndex="-10" Grid.ColumnSpan="99" BorderBrush="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}">
+        <Border x:Name="BG" Panel.ZIndex="-50" Grid.ColumnSpan="99">
             <Border.Style>
                 <Style TargetType="{x:Type Border}">
                     <Style.Triggers>
@@ -43,18 +43,34 @@
                         </DataTrigger>
                         <DataTrigger Binding="{Binding IsSelected}" Value="True">
                             <Setter Property="Background" Value="{StaticResource AREghZyBrush.Primary.2.Border.Static}"/>
-                            <Setter Property="BorderThickness" Value="1"/>
                         </DataTrigger>
                     </Style.Triggers>
                 </Style>
             </Border.Style>
         </Border>
+        <Border x:Name="SelOutline" Panel.ZIndex="100" Grid.ColumnSpan="99">
+            <Border.Style>
+                <Style TargetType="{x:Type Border}">
+                    <Style.Triggers>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="True">
+                            <Setter Property="BorderBrush" Value="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
+                            <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadius}"/>
+                        </DataTrigger>
+                        <DataTrigger Binding="{Binding IsSelected}" Value="False">
+                            <Setter Property="BorderBrush" Value="{StaticResource AREghZyBrush.Primary.4.Border.Static}"/>
+                        </DataTrigger>
+                    </Style.Triggers>
+                </Style>
+            </Border.Style>
+        </Border>
+        <Border x:Name="GroupMarker" Visibility="Collapsed" Panel.ZIndex="-20" Grid.ColumnSpan="99"
+                Background="{Binding Parent.ColourBrush}" BorderBrush="{StaticResource AREghZyBrush.Primary.4.Background.Selected}"/>
         <Border x:Name="InsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Height="3" VerticalAlignment="Top" Grid.ColumnSpan="99" 
                 Background="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
         <Border x:Name="GroupInsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Grid.ColumnSpan="99" BorderThickness="1"
-                BorderBrush="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
+                CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
         <Border x:Name="ColourSwatch" Grid.Column="0" Background="{Binding ColourBrush}"/>
-        <local:ExpanderKnob Grid.Column="0" IsCollapsed="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
+        <local:ExpanderKnob Grid.Column="0" IsCollapsed="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=local:CueDataControl}, Mode=TwoWay}" 
                             Visibility="{Binding ExpanderVisibility, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
                             ToolTip="{Binding Parent.Name}"/>
         <local:HiddenTextbox Text="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
@@ -72,8 +88,8 @@
         </Label>
         <!--<ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>-->
         <local:PlaybackProgressBar Grid.Column="3" Focusable="False"/>
-        <local:HiddenTextbox Text="{Binding Name}" ToolTip="{Binding Name}" Margin="{Binding Parent, Converter={StaticResource ParentIndentConverter}}" 
-                             Grid.Column="4" VerticalContentAlignment="Center" Focusable="True" KeyboardNavigation.TabIndex="100"/>
+        <local:HiddenTextbox x:Name="NameTextBox" Text="{Binding Name}" ToolTip="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center" 
+                             Focusable="True" KeyboardNavigation.TabIndex="100"/>
         <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5"/>
         <!--<CheckBox IsChecked="{Binding Halt}" IsEnabled="{Binding IsSelected}" Grid.Column="6"/>-->
         <local:HiddenComboBox SelectedIndex="{Binding Trigger, Mode=TwoWay, Converter={StaticResource TriggerModeConverter}}" ItemsSource="{Binding TriggerModeVals}" 

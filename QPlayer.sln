@@ -24,6 +24,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.MagicQCTRLPlugin", 
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarlightDocNet", "StarlightDocNet\StarlightDocNet.csproj", "{C3B27B5B-C834-4271-A8D2-9C31BEA020E7}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.Tests", "QPlayer.Tests\QPlayer.Tests.csproj", "{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -168,6 +170,26 @@ Global
 		{C3B27B5B-C834-4271-A8D2-9C31BEA020E7}.Release|x64.Build.0 = Release|Any CPU
 		{C3B27B5B-C834-4271-A8D2-9C31BEA020E7}.Release|x86.ActiveCfg = Release|Any CPU
 		{C3B27B5B-C834-4271-A8D2-9C31BEA020E7}.Release|x86.Build.0 = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|ARM.Build.0 = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|x64.Build.0 = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Debug|x86.Build.0 = Debug|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|ARM.ActiveCfg = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|ARM.Build.0 = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|ARM64.Build.0 = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x64.ActiveCfg = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x64.Build.0 = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x86.ActiveCfg = Release|Any CPU
+		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

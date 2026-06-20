@@ -108,6 +108,8 @@ public partial class MainViewModel : ObservableObject
     [Reactive] private readonly EditModeCommand selDownCommand;
     [Reactive] private readonly EditModeCommand deleteCueCommand;
     [Reactive] private readonly EditModeCommand duplicateCueCommand;
+    [Reactive] private readonly EditModeCommand groupCuesCommand;
+    [Reactive] private readonly EditModeCommand ungroupCuesCommand;
 
     [Reactive] private readonly RelayCommand goCommand;
     [Reactive] private readonly RelayCommand pauseCommand;
@@ -115,6 +117,8 @@ public partial class MainViewModel : ObservableObject
     [Reactive] private readonly RelayCommand stopCommand;
     [Reactive] private readonly RelayCommand upCommand;
     [Reactive] private readonly RelayCommand downCommand;
+    [Reactive] private readonly RelayCommand leftCommand;
+    [Reactive] private readonly RelayCommand rightCommand;
     [Reactive] private readonly RelayCommand preloadCommand;
 
     [Reactive] private string? projectFilePath;
@@ -201,7 +205,6 @@ public partial class MainViewModel : ObservableObject
     private readonly DispatcherTimer autosaveTimer;
     private readonly AudioPlaybackManager audioPlaybackManager;
     private readonly Dispatcher dispatcher;
-    private readonly MultiDict<decimal, CueViewModel> cuesDict;
     private readonly OSCManager oscManager;
     private readonly MSCManager mscManager;
     private readonly PersistantDataManager persistantDataManager;
@@ -257,6 +260,7 @@ public partial class MainViewModel : ObservableObject
         {
             IncludeFields = true,
             AllowTrailingCommas = true,
+            NumberHandling = System.Text.Json.Serialization.JsonNumberHandling.AllowNamedFloatingPointLiterals,
             WriteIndented = true,
             TypeInfoResolver = new PolymorphicTypeResolver()
         };
@@ -294,10 +298,12 @@ public partial class MainViewModel : ObservableObject
 
         moveCueUpCommand = new(MoveCueUpExecute, this);
         moveCueDownCommand = new(MoveCueDownExecute, this);
-        selUpCommand = new(() => MultiSelect(SelectedCueInd - 1, SelectionMode.Add), this);
-        selDownCommand = new(() => MultiSelect(SelectedCueInd + 1, SelectionMode.Add), this);
+        selUpCommand = new(() => MultiSelect(SelectedCueInd - 1, SelectionMode.Range), this);
+        selDownCommand = new(() => MultiSelect(SelectedCueInd + 1, SelectionMode.Range), this);
         deleteCueCommand = new(DeleteCueExecute, this);
         duplicateCueCommand = new(DuplicateCueExecute, this);
+        groupCuesCommand = new(GroupCuesExecute, this);
+        ungroupCuesCommand = new(UngroupCuesExecute, this);
 
         goCommand = new(GoExecute);
         pauseCommand = new(Pause);
@@ -305,6 +311,8 @@ public partial class MainViewModel : ObservableObject
         stopCommand = new(StopExecute);
         upCommand = new(() => SelectedCueInd--);
         downCommand = new(() => SelectedCueInd++);
+        leftCommand = new(CollapseCueExecute);
+        rightCommand = new(ExpandCueExecute);
         preloadCommand = new(PreloadExecute);
 
         fastUpdateTimer = new(TimeSpan.FromMilliseconds(40), DispatcherPriority.Background, FastUpdate, Dispatcher.CurrentDispatcher);
@@ -331,9 +339,7 @@ public partial class MainViewModel : ObservableObject
         activeCues = [];
         cues = [];
         draggingCues = [];
-        cuesDict = [];
         multiSelection = [];
-        Cues.CollectionChanged += SyncCueDict;
         ProjectSettings = new(this);
         ProjectSettings.PropertyChanged += ProjectSettings_PropertyChanged;
 
@@ -415,7 +421,7 @@ public partial class MainViewModel : ObservableObject
 
         if (DateTime.Now - lastLogStatusMessageTime > TimeSpan.FromSeconds(5))
         {
-            StatusText = $"Ready – {Cues.Count} cues in project";
+            StatusText = $"Ready – {Cues.TotalCount} cues in project";
             StatusTextColour = StatusInfoBrush;
         }
         else
@@ -741,6 +747,43 @@ public partial class MainViewModel : ObservableObject
         }
     }
 
+    /// <summary>
+    /// Groups the selected cues in the cue stack under a new <see cref="GroupCue"/>.
+    /// </summary>
+    public void GroupCuesExecute()
+    {
+        GroupCues(multiSelection);
+    }
+
+    /// <summary>
+    /// Removes the selected cues in the cue stack from the 
+    /// </summary>
+    public void UngroupCuesExecute()
+    {
+        if (multiSelection.Count == 1 && SelectedCue is GroupCueViewModel group)
+            UngroupCues(group);
+        else
+            UngroupCues(multiSelection);
+    }
+
+    /// <summary>
+    /// If the selected cue is a group cue, it collapses the cue.
+    /// </summary>
+    public void CollapseCueExecute()
+    {
+        if (SelectedCue is GroupCueViewModel group)
+            group.IsCollapsed = true;
+    }
+
+    /// <summary>
+    /// If the selected cue is a group cue, it un-collapses the cue.
+    /// </summary>
+    public void ExpandCueExecute()
+    {
+        if (SelectedCue is GroupCueViewModel group)
+            group.IsCollapsed = false;
+    }
+
     internal void ShowCreateCueMenuExecute()
     {
         ContextMenu menu = new();
@@ -787,21 +830,6 @@ public partial class MainViewModel : ObservableObject
         Info,
         Warning,
         Error
-    }
-
-    /// <summary>
-    /// Informs the cue stack that the cue ID of a given cue view model has been changed. This should be called whenever a QID is changed.
-    /// <para/>
-    /// Note that since <see cref="CueViewModel.QID"/>'s setter calls this method, users which change QID's through this 
-    /// setter need not call this method.
-    /// </summary>
-    /// <param name="oldVal"></param>
-    /// <param name="newVal"></param>
-    /// <param name="src"></param>
-    internal void NotifyQIDChanged(decimal oldVal, decimal newVal, CueViewModel src)
-    {
-        if (!cuesDict.UpdateKey(oldVal, newVal, src))
-            cuesDict.Add(newVal, src);
     }
 
     public void OpenAudioDevice()

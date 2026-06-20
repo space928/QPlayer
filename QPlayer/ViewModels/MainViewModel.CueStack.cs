@@ -24,9 +24,9 @@ public partial class MainViewModel
     public CueViewModel? DeleteCue(int index, bool recordUndo = true)
     {
         var cue = cues.Delete(index);
-        if (cue == null) 
+        if (cue == null)
             return null;
-       
+
         if (recordUndo)
             UndoManager.RegisterAction($"Deleted cue '{cue.Name}' ({cue.QID})",
                 () => { SelectedCue = null; InsertCue(index, cue, true); },
@@ -84,24 +84,13 @@ public partial class MainViewModel
         if (lastInd >= cues.Count)
             return [];
 
-        using TemporaryList<CueViewModel> deleted = [];
-        for (int i = count - 1; i >= 0; i--)
-        {
-            int ind = i + startIndex;
+        var deleted = cues.Delete(Enumerable.Range(startIndex, count), needsSorting: false);
 
-            var cue = cues.Delete(ind);
-            if (cue == null)
-                break;
-
-            deleted.Add(cue);
-        }
-
-        var deletedArr = deleted.ToArray();
         if (recordUndo)
-            UndoManager.RegisterAction($"Deleted {deletedArr.Length} cues",
-                () => InsertCues([.. Enumerable.Range(startIndex, deletedArr.Length)], deletedArr, true),
+            UndoManager.RegisterAction($"Deleted {deleted.Length} cues",
+                () => InsertCues([.. Enumerable.Range(startIndex, deleted.Length)], deleted, true),
                 () => DeleteCues(startIndex, count, false));
-        return deletedArr;
+        return deleted;
     }
 
     /// <summary>
@@ -125,21 +114,13 @@ public partial class MainViewModel
         if (indices[0] < 0 || indices[^1] >= cues.Count)
             return [];
 
-        using TemporaryList<CueViewModel> deleted = [];
-        for (int i = indices.Length - 1; i >= 0; i--)
-        {
-            int ind = indices[i];
-            var cue = cues.Delete(ind);
-            if (cue != null)
-                deleted.Add(cue);
-        }
+        var deleted = cues.Delete(indices, needsSorting: false);
 
-        var deletedArr = deleted.Reverse().ToArray();
         if (recordUndo)
-            UndoManager.RegisterAction($"Deleted {deletedArr.Length} cues",
-                () => InsertCues(indices, deletedArr, true, false),
+            UndoManager.RegisterAction($"Deleted {deleted.Length} cues",
+                () => InsertCues(indices, deleted, true, false),
                 () => DeleteCues(indices, false));
-        return deletedArr;
+        return deleted;
     }
 
     /// <summary>
@@ -151,11 +132,12 @@ public partial class MainViewModel
     /// <param name="cue">The cue to insert.</param>
     /// <param name="select">Whether the newly inserted cue should be selected.</param>
     /// <param name="registerUndo">Whether an undo item should be recorded.</param>
-    public void InsertCue(int index, CueViewModel cue, bool select = false, bool registerUndo = true)
+    /// <param name="insertIntoGroup">If <paramref name="index"/> succeeds the index of a cue in a group, then this 
+    /// option will attempt to insert the <paramref name="cue"/> into that group.</param>
+    public void InsertCue(int index, CueViewModel cue, bool select = false, bool registerUndo = true, bool insertIntoGroup = false)
     {
         index = Math.Clamp(index, 0, cues.Count);
         Cues.Insert(index, cue);
-        showFile.cues.Insert(index, cue.BoundModel!);
         if (registerUndo)
             UndoManager.RegisterAction($"Inserted cue '{cue.Name}' ({cue.QID})",
                 () => DeleteCue(index),
@@ -199,13 +181,7 @@ public partial class MainViewModel
     /// <param name="registerUndo">Whether an undo item should be recorded.</param>
     public void InsertCues(int[] indices, CueViewModel[] cues, bool select = false, bool registerUndo = true)
     {
-        for (int i = 0; i < indices.Length; i++)
-        {
-            var ind = indices[i];
-            var cue = cues[i];
-            Cues.Insert(ind, cue);
-            showFile.cues.Insert(ind, cue.BoundModel!);
-        }
+        Cues.Insert(indices, cues, collectResults: false);
 
         if (registerUndo)
             UndoManager.RegisterAction($"Inserted {cues.Length} cues",
@@ -300,14 +276,14 @@ public partial class MainViewModel
         switch (id)
         {
             case int idInt:
-                return cuesDict.TryGetValue(idInt, out cue);
+                return cues.Find(idInt, out cue);
             case float idFloat:
-                return cuesDict.TryGetValue(decimal.CreateTruncating(idFloat), out cue);
+                return cues.Find(decimal.CreateTruncating(idFloat), out cue);
             case decimal idDec:
-                return cuesDict.TryGetValue(idDec, out cue);
+                return cues.Find(idDec, out cue);
             case string idString:
                 if (decimal.TryParse(idString, numberFormat, out var idNum))
-                    return cuesDict.TryGetValue(idNum, out cue);
+                    return cues.Find(idNum, out cue);
                 else
                     return false;
             default:
@@ -323,10 +299,7 @@ public partial class MainViewModel
     /// <param name="id">The cue ID to search for.</param>
     /// <param name="cue">The returned cue view model if it was found.</param>
     /// <returns><see langword="true"/> if the cue was found.</returns>
-    public bool FindCue(decimal id, [NotNullWhen(true)] out CueViewModel? cue)
-    {
-        return cuesDict.TryGetValue(id, out cue);
-    }
+    public bool FindCue(decimal id, [NotNullWhen(true)] out CueViewModel? cue) => cues.Find(id, out cue);
 
     /// <summary>
     /// Gets the index of a cue in the cue list. 
@@ -396,7 +369,7 @@ public partial class MainViewModel
         // Fidn the index at which to move the cues.
         int dstInd;
         var selected = multiSelection;
-        var allCues = this.cues;
+        var allCues = cues;
         if (!down)
         {
             for (dstInd = 0; dstInd < allCues.Count; dstInd++)
@@ -428,6 +401,14 @@ public partial class MainViewModel
     /// <param name="registerUndo"></param>
     public void MoveCues(IEnumerable<CueViewModel> cues, int index, bool select = true, bool registerUndo = true)
     {
+        if (cues.TryGetNonEnumeratedCount(out var count) && count <= 1)
+        {
+            using var cuesEnum = cues.GetEnumerator();
+            if (count == 1 && cuesEnum.MoveNext())
+                MoveCue(cuesEnum.Current, index, select, null, registerUndo);
+            return;
+        }
+
         UndoManager.SuppressRecording();
         index = Math.Clamp(index, 0, Cues.Count);
         var srcIndices = cues.Select(x => FindCueIndex(x)).ToArray();
@@ -455,10 +436,12 @@ public partial class MainViewModel
     /// sorted.
     /// </summary>
     /// <param name="cues">The sorted array of cues.</param>
-    /// <param name="indices">The sorted array of cue indices.</param>
+    /// <param name="indices">The sorted array of cue indices. Enumerables which implement <see cref="IReadOnlyList{T}"/> are preferred.</param>
     /// <param name="index">The starting index to move the cues to.</param>
     /// <param name="removedBefore">The number of cues which were at an index smaller than <paramref name="index"/>.</param>
-    private void MoveCuesInternal(CueViewModel[] cues, int[] indices, int index, out int removedBefore)
+    /// <param name="moveIntoGroup">If <paramref name="index"/> succeeds the index of a cue in a group, then this 
+    /// option will attempt to move the cues into that group.</param>
+    private void MoveCuesInternal(CueViewModel[] cues, IEnumerable<int> indices, int index, out int removedBefore, bool moveIntoGroup = false)
     {
         removedBefore = 0;
         foreach (var ind in indices.FastReverse())
@@ -471,7 +454,7 @@ public partial class MainViewModel
         foreach (var cue in cues)
         {
             cue.QID = ChooseQID(i - 1, false);
-            InsertCue(i, cue, false, false);
+            InsertCue(i, cue, false, false, moveIntoGroup);
             i++;
         }
     }
@@ -546,7 +529,7 @@ public partial class MainViewModel
 
         // Find the src and dst indices
         dstIndex = Math.Clamp(dstIndex, 0, cues.Count);
-        if (srcIndex < 0 || srcIndex > cues.Count)
+        if (srcIndex < 0 || srcIndex >= cues.Count)
             return false;
 
         // The cue doesn't need to be moved, don't do anything.
@@ -554,11 +537,12 @@ public partial class MainViewModel
             return false;
 
         var cue = DeleteCue(srcIndex, false)!;
-        InsertCue(dstIndex, cue, select, false);
 
         var oldQID = cue.QID;
         using (UndoManager.ScopedSuppress())
-            cue.QID = newQID ?? ChooseQID(dstIndex, true);
+            cue.QID = newQID ?? ChooseQID(dstIndex - 1, false);
+
+        InsertCue(dstIndex, cue, select, false);
 
         if (registerUndo)
             UndoManager.RegisterAction($"Moved cue Q{oldQID} --> Q{cue.QID}",
@@ -714,54 +698,73 @@ public partial class MainViewModel
     /// Creates a new group cue containing the specified cues.
     /// </summary>
     /// <param name="cues">The cues to put in the group, the order within the cue stack of these cues is maintained.</param>
-    /// <param name="recordUndo">Whether an undo item should be recorded.</param>
-    public void GroupCues(IEnumerable<CueViewModel> cues, bool recordUndo = true)
+    /// <param name="registerUndo">Whether an undo item should be recorded.</param>
+    public void GroupCues(IEnumerable<CueViewModel> cues, bool registerUndo = true)
     {
-        using var srcIndices = cues.Select(x => FindCueIndex(x)).ToTempList();
-        if (srcIndices.Count == 0)
-            return;
+        var (srcIndices, srcCues) = Cues.SortCues(cues);
 
-        srcIndices.Sort();
-
-        GroupCues([.. srcIndices.Select(x => this.cues[x])], srcIndices[0], recordUndo);
+        GroupCues(srcCues, srcIndices[0], registerUndo, false, srcIndices);
     }
 
     /// <summary>
     /// Creates a new group cue containing the specified cues.
     /// </summary>
+    /// <remarks>
+    /// If <paramref name="needsSorting"/> is false, then the caller must ensure that all the cues in 
+    /// <paramref name="cues"/> are in the visual cue list.
+    /// </remarks>
     /// <param name="cues">The ordered indices of the cues to add to the group.</param>
-    /// <param name="recordUndo">Whether an undo item should be recorded.</param>
-    public void GroupCues(CueViewModel[] cues, int dstIndex, bool recordUndo = true, int[]? cueIndices = null)
+    /// <param name="registerUndo">Whether an undo item should be recorded.</param>
+    /// <param name="needsSorting">Whether the cues array needs sorting by visual index.</param>
+    public void GroupCues(CueViewModel[] cues, int dstIndex, bool registerUndo = true, bool needsSorting = true, int[]? cueIndices = null)
     {
         if (cues.Length == 0)
             return;
 
+        if (needsSorting) // Expensive
+            (cueIndices, cues) = Cues.SortCues(cues);
+
         cueIndices ??= [.. cues.Select(x => FindCueIndex(x))];
-        var firstInd = cueIndices[0];
-        if (firstInd == -1)
-            return;
-        // if they all share the same parent, make a subgroup
+
+        // Find the lowest common parent of the given cues
         var parent = cues[0].Parent;
         foreach (var cue in cues)
         {
-
+            if (parent == null)
+                break;
+            while (parent != null && !cue.HasParent(parent))
+                parent = parent.Parent;
         }
 
         UndoManager.SuppressRecording();
 
-        var group = (GroupCueViewModel)CreateCue(nameof(GroupCue), firstInd, false)!;
-        group.Parent = parent;
+        // Find an appropriate place to put the group cue
+        if (dstIndex > 0 || dstIndex < Cues.Count)
+        {
+            // We're not in the target group at this index, try to reduce the index till we're out of said group.
+            while (Cues[dstIndex].Parent != parent
+                && Cues.Find(dstIndex, out var pos))
+            {
+                dstIndex -= pos.index + 1;
+            }
+        }
 
-        // Bulk move all the cues to the right place before adding each to the group to avoid more work later.
-        MoveCuesInternal(cues, cueIndices, dstIndex, out var removedBefore);
-        foreach (var cue in cues)
-            group.AddToGroup(cue);
+        var groupQid = ChooseQID(dstIndex, true);
+        var group = (GroupCueViewModel)CreateCueNoInsert(nameof(GroupCue), groupQid)!;
+
+        Cues.Delete(cueIndices, false);
+        group.Cues.Insert(0, cues);
+        InsertCue(dstIndex, group, select: true, registerUndo: false);
+        // group.Parent = parent;
+
         UndoManager.UnSuppressRecording();
 
-        if (recordUndo)
+        if (registerUndo)
+        {
             UndoManager.RegisterAction($"Grouped {cues.Length} cues",
                 () => UngroupCues(group, false),
-                () => GroupCues(cues, dstIndex, false, cueIndices));
+                () => GroupCues(cues, dstIndex, false, false, cueIndices));
+        }
     }
 
     /// <summary>
@@ -771,8 +774,23 @@ public partial class MainViewModel
     /// <param name="recordUndo">Whether an undo item should be recorded.</param>
     public void UngroupCues(IEnumerable<CueViewModel> cues, bool recordUndo = true)
     {
-        //foreach (var cue in cues)
-        //    cue.Parent
+        var cuesArr = Cues.Delete(cues.Where(CueHasParent));
+        foreach (var cue in cuesArr.FastReverse())
+        {
+            if (cue.Parent is not GroupCueViewModel group)
+                continue;
+
+            if (Cues.Find(group, out var pos))
+            {
+                // If the group is empty, remove it
+                if (group.Cues.IsEmpty)
+                    Cues.Delete(pos);
+                // Reinsert the ungrouped cue just before it's old group.
+                Cues.Insert(pos, cue);
+            }
+        }
+
+        static bool CueHasParent(CueViewModel x) => x.HasParent();
     }
 
     /// <summary>
@@ -782,7 +800,11 @@ public partial class MainViewModel
     /// <param name="recordUndo">Whether an undo item should be recorded.</param>
     public void UngroupCues(GroupCueViewModel group, bool recordUndo = true)
     {
-        
+        if (!Cues.Find(group, out var pos))
+            return;
+
+        Cues.Delete(pos);
+        Cues.Insert(pos, group.Cues);
     }
 
     /// <summary>
@@ -967,8 +989,8 @@ public partial class MainViewModel
                 int start, end;
                 if (prevSelected < selected)
                 {
-                    start = prevSelected + 1;
-                    end = selected + 1;
+                    start = prevSelected;
+                    end = selected;
                 }
                 else
                 {
@@ -976,10 +998,17 @@ public partial class MainViewModel
                     end = prevSelected;
                 }
 
-                for (int i = start; i < end; i++)
+                bool shouldRemove = multiSelection.Contains(cues[selected]);
+                start = Math.Min(start, nCues - 1);
+                end = Math.Min(end, nCues - 1);
+
+                for (int i = start; i <= end; i++)
                 {
                     var q = cues[i];
-                    multiSelection.Add(q);
+                    if (shouldRemove)
+                        multiSelection.Remove(q);
+                    else
+                        multiSelection.Add(q);
                     NotifyCueSelectionChanged(q);
                 }
                 break;
@@ -1033,48 +1062,6 @@ public partial class MainViewModel
                 continue;
 
             cue.CopyRemoteProperty(mainSel, e.PropertyName);
-        }
-    }
-
-    private void SyncCueDict(object? sender, NotifyCollectionChangedEventArgs e)
-    {
-        switch (e.Action)
-        {
-            case NotifyCollectionChangedAction.Add:
-                {
-                    CueViewModel item = (CueViewModel)e.NewItems![0]!;
-                    cuesDict.TryAdd(item.QID, item);
-                    break;
-                }
-            case NotifyCollectionChangedAction.Remove:
-                {
-                    CueViewModel item = (CueViewModel)e.OldItems![0]!;
-                    cuesDict.Remove(item.QID);
-                    break;
-                }
-            case NotifyCollectionChangedAction.Replace:
-                {
-                    CueViewModel oldItm = (CueViewModel)e.OldItems![0]!;
-                    CueViewModel newItm = (CueViewModel)e.NewItems![0]!;
-                    cuesDict.Remove(oldItm.QID);
-                    cuesDict.TryAdd(newItm.QID, newItm);
-                    break;
-                }
-            case NotifyCollectionChangedAction.Move:
-                break;
-            case NotifyCollectionChangedAction.Reset:
-                {
-                    cuesDict.Clear();
-                    if (e.NewItems != null)
-                    {
-                        foreach (var item in e.NewItems)
-                        {
-                            CueViewModel x = (CueViewModel)item!;
-                            cuesDict.TryAdd(x.QID, x);
-                        }
-                    }
-                    break;
-                }
         }
     }
 }

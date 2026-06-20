@@ -158,6 +158,20 @@ public class LoopModeConverter : IValueConverter
     }
 }
 
+[ValueConversion(typeof(GroupTriggerMode), typeof(int))]
+public class GroupTriggerModeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (int)(GroupTriggerMode)value;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (GroupTriggerMode)(int)value;
+    }
+}
+
 [ValueConversion(typeof(bool), typeof(Visibility))]
 public class VisibilityConverter : IValueConverter
 {
@@ -182,27 +196,4 @@ public class VisibilityConverter : IValueConverter
         }
         return invert ^ (Visibility)value == Visibility.Visible;
     }
-}
-
-[ValueConversion(typeof(CueViewModel), typeof(Thickness))]
-public class ParentIndentConverter : IValueConverter
-{
-    public double IndentSize { get; set; } = 10;
-
-    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
-    {
-        if (value == null)
-            return default(Thickness);
-
-        int i = 0;
-        var parent = value as CueViewModel;
-        while (parent != null)
-        {
-            i++;
-            parent = parent.Parent;
-        }
-        return new Thickness(i * IndentSize, 0, 0, 0);
-    }
-
-    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture) => DependencyProperty.UnsetValue;
 }

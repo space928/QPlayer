@@ -12,6 +12,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Cue = QPlayer.Models.Cue;
 
 namespace QPlayer.ViewModels;
@@ -51,7 +52,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         get => qid;
         set
         {
-            mainViewModel.NotifyQIDChanged(qid, value, this);
+            mainViewModel.Cues.NotifyQIDChanged(qid, value, this);
             qid = value;
         }
     }
@@ -96,6 +97,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<StopMode>? stopModeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? groupTriggerModeVals;
 
     public bool IsRemoteControlling => mainViewModel.ProjectSettings.EnableRemoteControl
         && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
@@ -108,7 +110,8 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     public event EventHandler? OnCompleted;
 
-    protected SynchronizationContext? synchronizationContext;
+    // TODO: Replace with dispatcher for finer grained task control
+    protected Dispatcher? dispatcher;
     protected DispatcherDelay goDelay;
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
@@ -119,7 +122,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     {
         this.mainViewModel = mainViewModel;
         colourBrush = new(Colour.ToMediaColor(127));
-        synchronizationContext = SynchronizationContext.Current;
+        dispatcher = Dispatcher.CurrentDispatcher;
 
         if (CueFactory.ViewModelToCueType.TryGetValue(GetType(), out var registered))
         {
@@ -143,6 +146,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
         FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
         TriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<TriggerMode>().Select(x => EnumToString(x)));
+        GroupTriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<GroupTriggerMode>().Select(x => EnumToString(x)));
     }
 
     /// <summary>
@@ -318,6 +322,12 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
 
     }
     #endregion
+
+    /// <summary>
+    /// Checks whether this cue has any parent.
+    /// </summary>
+    /// <returns></returns>
+    public bool HasParent() => Parent != null;
 
     /// <summary>
     /// Checks whether this cue has the given cue as one of it's parents. If <paramref name="target"/> 
