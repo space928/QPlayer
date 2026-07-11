@@ -10,7 +10,7 @@
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
         Title="{Binding WindowTitle}" Height="900" Width="1400" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
-        Closing="Window_Closing" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
+        Closing="Window_Closing" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" DragEnter="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
@@ -45,6 +45,7 @@
         <KeyBinding Gesture="CTRL+Shift+G" Command="{Binding UngroupCuesCommand}"/>
         <KeyBinding Gesture="CTRL+Z" Command="{Binding UndoCommand}"/>
         <KeyBinding Gesture="CTRL+Shift+Z" Command="{Binding RedoCommand}"/>
+        <KeyBinding Gesture="CTRL+A" Command="{Binding SelectAllCommand}"/>
     </Window.InputBindings>
     <Grid>
         <Grid.RowDefinitions>
@@ -81,6 +82,13 @@
                             <Setter Property="Header" Value="{Binding Name}"/>
                             <Setter Property="CommandParameter" Value="{Binding Path}"/>
                             <Setter Property="Command" Value="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Name}" Value="Recovered Files">
+                                    <DataTrigger.Setters>
+                                        <Setter Property="ItemsSource" Value="{Binding SubList}"/>
+                                    </DataTrigger.Setters>
+                                </DataTrigger>
+                            </Style.Triggers>
                         </Style>
                     </MenuItem.Resources>
                     <MenuItem Header="New" InputGestureText="Ctrl+N"  Command="{Binding NewProjectCommand}"/>

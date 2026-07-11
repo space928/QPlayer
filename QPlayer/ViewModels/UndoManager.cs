@@ -537,7 +537,7 @@ public static class UndoManager
         {
             return target switch
             {
-                CueViewModel cue => $"Changed Q{cue.QID} / {path}",
+                CueViewModel cue => $"Changed Q{cue.FullQID} / {path}",
                 EQViewModel => $"Changed EQ / {path}",
                 AudioLimiterViewModel => $"Changed Limiter / {path}",
                 ProjectSettingsViewModel => $"Changed Project Settings / {path}",

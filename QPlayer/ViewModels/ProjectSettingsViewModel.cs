@@ -14,6 +14,7 @@ using System.Net.Sockets;
 using System.Text;
 using System.Threading;
 using System.Diagnostics.CodeAnalysis;
+using CommunityToolkit.Mvvm.ComponentModel;
 
 namespace QPlayer.ViewModels;
 
@@ -78,6 +79,8 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>,
     [Reactive, ModelBindsTo(nameof(ShowSettings.mscExecutor))] private int mAMSCExecutor = -1;
     [Reactive, ModelSkip] private bool monitorMSCMessages = false;
 
+    [Reactive] private readonly StringDict<ObservableObject> pluginSettings = [];
+
     [Reactive] private readonly RelayCommand<RemoteNodeViewModel> removeRemoteNodeCommand;
     [Reactive] private readonly MainViewModel mainViewModel;
     #endregion
@@ -106,6 +109,7 @@ public partial class ProjectSettingsViewModel : BindableViewModel<ShowSettings>,
 
     public ProjectSettingsViewModel(MainViewModel mainViewModel)
     {
+        // pluginSettings = new(PluginLoader.LoadedPlugins.Values.First().pluginInst.);
         remoteNodes = new(remoteNodesOb);
         this.mainViewModel = mainViewModel;
         SetupLimiter();

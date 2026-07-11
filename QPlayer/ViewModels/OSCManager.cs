@@ -94,33 +94,33 @@ public class OSCManager
         oscDriver.SendMessage(new(addr, args));
     }
 
-    public void SendRemoteGo(string target, decimal qid)
+    public void SendRemoteGo(string target, string qid)
     {
-        OscMessage msg = new("/qplayer/remote/go", [target, qid.ToString()]);
+        OscMessage msg = new("/qplayer/remote/go", [target, qid]);
         oscDriver.SendMessage(msg);
     }
 
-    public void SendRemotePause(string target, decimal qid)
+    public void SendRemotePause(string target, string qid)
     {
-        OscMessage msg = new("/qplayer/remote/pause", [target, qid.ToString()]);
+        OscMessage msg = new("/qplayer/remote/pause", [target, qid]);
         oscDriver.SendMessage(msg);
     }
 
-    public void SendRemoteUnpause(string target, decimal qid)
+    public void SendRemoteUnpause(string target, string qid)
     {
-        OscMessage msg = new("/qplayer/remote/unpause", [target, qid.ToString()]);
+        OscMessage msg = new("/qplayer/remote/unpause", [target, qid]);
         oscDriver.SendMessage(msg);
     }
 
-    public void SendRemoteStop(string target, decimal qid)
+    public void SendRemoteStop(string target, string qid)
     {
-        OscMessage msg = new("/qplayer/remote/stop", [target, qid.ToString()]);
+        OscMessage msg = new("/qplayer/remote/stop", [target, qid]);
         oscDriver.SendMessage(msg);
     }
 
-    public void SendRemotePreload(string target, decimal qid, float time)
+    public void SendRemotePreload(string target, string qid, float time)
     {
-        OscMessage msg = new("/qplayer/remote/preload", [target, qid.ToString(), time]);
+        OscMessage msg = new("/qplayer/remote/preload", [target, qid, time]);
         oscDriver.SendMessage(msg);
     }
 
@@ -160,13 +160,13 @@ public class OSCManager
         }
     }
 
-    public void SendRemoteStatus(string target, decimal qid, CueState state, float? playbackTime = null)
+    public void SendRemoteStatus(string target, string qid, CueState state, float? playbackTime = null)
     {
         OscMessage msg;
         if (playbackTime != null)
-            msg = new("/qplayer/remote/fb/cue-status", [target, qid.ToString(), (int)state, playbackTime]);
+            msg = new("/qplayer/remote/fb/cue-status", [target, qid, (int)state, playbackTime]);
         else
-            msg = new("/qplayer/remote/fb/cue-status", [target, qid.ToString(), (int)state]);
+            msg = new("/qplayer/remote/fb/cue-status", [target, qid, (int)state]);
         oscDriver.SendMessage(msg);
     }
 

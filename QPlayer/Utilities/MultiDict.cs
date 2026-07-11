@@ -181,11 +181,15 @@ public class MultiDict<TKey, TValue> : IDictionary<TKey, MultiDict<TKey, TValue>
                 first = item;
                 return;
             }
-            else
+            else if (first != item)
             {
                 values = [first, item];
                 first = default!;
             }
+#if DEBUG
+            else
+                MainViewModel.Log($"Tried adding an item which was already in the multidict! {item}", MainViewModel.LogLevel.Warning);
+#endif
         }
 
         public void Clear()

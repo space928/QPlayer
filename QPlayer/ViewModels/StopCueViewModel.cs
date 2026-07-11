@@ -16,7 +16,7 @@ namespace QPlayer.ViewModels;
 public partial class StopCueViewModel : CueViewModel
 {
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeOutTime);
-    [Reactive, ModelBindsTo(nameof(StopCue.stopQid))] private decimal stopTarget;
+    [Reactive, ModelBindsTo(nameof(StopCue.stopQid))] private string stopTarget = string.Empty;
     [Reactive] private StopMode stopMode;
     [Reactive, ChangesProp(nameof(Duration))] private float fadeOutTime;
     [Reactive] private FadeType fadeType;

@@ -63,15 +63,18 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
     private Point startPos;
     private CueViewModel? vm;
     private GroupCueViewModel? group;
-    private CornerRadius defaultCornerRadius;
+    private static CornerRadius defaultCornerRadius;
+    private static DrawingImage? defaultCueIcon;
 
     internal static readonly StringDict<DrawingImage> cueIcons = [];
     internal static DrawingImage? DefaultCueIcon
     {
         get
         {
+            if (defaultCueIcon != null)
+                return defaultCueIcon;
             if (App.Current.Resources.Contains("IconPlay"))
-                return (DrawingImage)App.Current.Resources["IconPlay"];
+                return defaultCueIcon = (DrawingImage)App.Current.Resources["IconPlay"];
             return null;
         }
     }
@@ -137,20 +140,42 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
     private void UserControl_Loaded(object sender, RoutedEventArgs e)
     {
+        if (defaultCueIcon == default && Resources["CornerRadiusDummy"] is Border border)
+            defaultCornerRadius = border.CornerRadius;
+
+        Init();
+    }
+
+    private void UserControl_Unloaded(object sender, RoutedEventArgs e)
+    {
+        vm?.PropertyChanged -= OnCuePropertyChanged;
+    }
+
+    private void UserControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        Init();
+    }
+
+    private void Init()
+    {
+        OnPropertyChanged(nameof(CueIcon));
+        OnPropertyChanged(nameof(ExpanderVisibility));
+        OnPropertyChanged(nameof(IsCollapsed));
+
+        this.vm?.PropertyChanged -= OnCuePropertyChanged;
+
         if (DataContext is not CueViewModel vm)
             return;
+
+        vm.PropertyChanged += OnCuePropertyChanged;
+
         this.vm = vm;
         this.group = vm as GroupCueViewModel;
 
-        if (Resources["CornerRadiusDummy"] is Border border)
-            defaultCornerRadius = border.CornerRadius;
-
+        SetGroupMarkerBGBinding();
         if ((vm.Parent != null || group != null)
             && vm.MainViewModel.Cues.FindVisualIndex(vm, out var ind))
             NotifyGroupMarkerChange(ind);
-        SetGroupMarkerBGBinding();
-
-        vm.PropertyChanged += OnCuePropertyChanged;
     }
 
     private void OnCuePropertyChanged(object? sender, PropertyChangedEventArgs e)
@@ -193,6 +218,7 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
         if (vm.IsSelected)
         {
+            // Debug.WriteLine($"Selected: {vm.FullQID}");
             // Primary selection just gets a simple full outline
             SelOutline.BorderThickness = new(1);
             SelOutline.CornerRadius = defaultCornerRadius;
@@ -231,8 +257,6 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
         if (vm == null)
             return;
         var mainVm = vm.MainViewModel;
-        if (mainVm == null)
-            return;
 
         if (e.LeftButton == MouseButtonState.Pressed && delta.Length > DragDeadzone
             && mainVm.DraggingCues.Count == 0
@@ -253,63 +277,79 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
             }
             data.SetData("Cues", mainVm.DraggingCues.ToArray());
 
-            DragDrop.DoDragDrop(this, data, DragDropEffects.Move | DragDropEffects.Scroll);
+            // Debug.WriteLine($"Cue DragStart!");
+            DragDrop.DoDragDrop(this, data, DragDropEffects.Copy | DragDropEffects.Link | DragDropEffects.Move | DragDropEffects.Scroll);
 
-            vm.MainViewModel.DraggingCues.Clear();
+            mainVm.DraggingCues.Clear();
         }
-    }
-
-    private void Grid_GiveFeedback(object sender, GiveFeedbackEventArgs e)
-    {
-        base.OnGiveFeedback(e);
-
-        if (e.Effects.HasFlag(DragDropEffects.Copy))
-            Mouse.SetCursor(Cursors.Cross);
-        else if (e.Effects.HasFlag(DragDropEffects.Move))
-            Mouse.SetCursor(Cursors.Hand);
-        else
-            Mouse.SetCursor(Cursors.No);
-
-        e.Handled = true;
-    }
-
-    private void Grid_Drop(object sender, DragEventArgs e)
-    {
-        base.OnDrop(e);
-
-        InsertMarker.Visibility = Visibility.Collapsed;
-
-        var mainVm = vm?.MainViewModel;
-        if (mainVm != null)
-            MainWindow.HandleCueListDrop(e, mainVm, vm);
-
-        e.Handled = true;
-    }
-
-    private void Grid_DragEnter(object sender, DragEventArgs e)
-    {
-        InsertMarker.Visibility = Visibility.Visible;
     }
 
     private void Grid_DragLeave(object sender, DragEventArgs e)
     {
         InsertMarker.Visibility = Visibility.Collapsed;
+        GroupInsertMarker.Visibility = Visibility.Collapsed;
     }
 
-    private void UserControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    private void Grid_Drop(object sender, DragEventArgs e)
     {
-        OnPropertyChanged(nameof(CueIcon));
-        OnPropertyChanged(nameof(ExpanderVisibility));
-        OnPropertyChanged(nameof(IsCollapsed));
+        ComputeDragEffects(sender, e);
+        Grid_DragLeave(sender, e);
+        if (vm != null)
+            MainWindow.HandleCueListDrop(e, vm.MainViewModel, vm);
+        e.Handled = true;
+    }
 
-        if (DataContext is not CueViewModel vm)
+    private void ComputeDragEffects(object sender, DragEventArgs e)
+    {
+        if (vm == null)
             return;
-        this.vm = vm;
-        this.group = vm as GroupCueViewModel;
 
-        SetGroupMarkerBGBinding();
-        if ((vm.Parent != null || group != null)
-            && vm.MainViewModel.Cues.FindVisualIndex(vm, out var ind))
-            NotifyGroupMarkerChange(ind);
+        if (!IsDropAllowed())
+        {
+            InsertMarker.Visibility = Visibility.Collapsed;
+            GroupInsertMarker.Visibility = Visibility.Collapsed;
+            e.Effects = DragDropEffects.None;
+        }
+        else if (IsGroupDragEffect(e))
+        {
+            InsertMarker.Visibility = Visibility.Collapsed;
+            GroupInsertMarker.Visibility = Visibility.Visible;
+            e.Effects = DragDropEffects.Link;
+        }
+        else
+        {
+            InsertMarker.Visibility = Visibility.Visible;
+            GroupInsertMarker.Visibility = Visibility.Collapsed;
+            if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
+                e.Effects = DragDropEffects.Copy;
+            else
+                e.Effects = DragDropEffects.Move;
+        }
+    }
+
+    private void Grid_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+    {
+        // This event is handled by the MainWindow
+        base.OnGiveFeedback(e);
+    }
+
+    private bool IsDropAllowed()
+    {
+        if (vm == null)
+            return false;
+        var dragging = vm.MainViewModel.DraggingCues;
+        foreach (var cand in dragging)
+            if (vm.HasParent(cand))
+                return false;
+        if (dragging.Count == 1 && dragging[0] == vm)
+            return false;
+        return true;
+    }
+
+    private bool IsGroupDragEffect(DragEventArgs e)
+    {
+        var pos = e.GetPosition(this);
+        var height = ActualHeight;
+        return pos.Y > height * 0.5;
     }
 }

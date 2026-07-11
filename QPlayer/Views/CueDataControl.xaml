@@ -8,7 +8,7 @@
              xmlns:util="clr-namespace:QPlayer.Utilities" 
              d:DataContext="{d:DesignInstance Type=vm:DummyCueViewModel}"
              mc:Ignorable="d" 
-             d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded" DataContextChanged="UserControl_DataContextChanged">
+             d:DesignHeight="50" d:DesignWidth="800" Loaded="UserControl_Loaded" Unloaded="UserControl_Unloaded" DataContextChanged="UserControl_DataContextChanged">
     <UserControl.Resources>
         <util:FloatGridLengthConverter x:Key="FloatGridLengthConverter"/>
         <Border x:Key="CornerRadiusDummy" CornerRadius="{StaticResource AREghZy.CornerRadius}"/>
@@ -16,7 +16,7 @@
     <Grid x:Name="MainGrid" IsHitTestVisible="True" HorizontalAlignment="Left"
         MouseDown="Grid_MouseDown" PreviewMouseDown="Grid_PreviewMouseDown" AllowDrop="True"
           MouseMove="Grid_MouseMove" GiveFeedback="Grid_GiveFeedback" Drop="Grid_Drop" 
-          DragEnter="Grid_DragEnter" DragLeave="Grid_DragLeave">
+          DragEnter="ComputeDragEffects" DragLeave="Grid_DragLeave" DragOver="ComputeDragEffects">
         <Grid.Resources>
             <util:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
             <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
@@ -34,7 +34,7 @@
             <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[9].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
             <ColumnDefinition Width="{Binding MainViewModel.ColumnWidths[10].Value, Converter={StaticResource FloatGridLengthConverter}}"/>
         </Grid.ColumnDefinitions>
-        <Border x:Name="BG" Panel.ZIndex="-50" Grid.ColumnSpan="99">
+        <Border x:Name="BG" Panel.ZIndex="-50" Grid.ColumnSpan="99" IsHitTestVisible="True">
             <Border.Style>
                 <Style TargetType="{x:Type Border}">
                     <Style.Triggers>
@@ -48,7 +48,7 @@
                 </Style>
             </Border.Style>
         </Border>
-        <Border x:Name="SelOutline" Panel.ZIndex="100" Grid.ColumnSpan="99">
+        <Border x:Name="SelOutline" Panel.ZIndex="100" Grid.ColumnSpan="99" IsHitTestVisible="False">
             <Border.Style>
                 <Style TargetType="{x:Type Border}">
                     <Style.Triggers>
@@ -63,17 +63,17 @@
                 </Style>
             </Border.Style>
         </Border>
-        <Border x:Name="GroupMarker" Visibility="Collapsed" Panel.ZIndex="-20" Grid.ColumnSpan="99"
+        <Border x:Name="GroupMarker" Visibility="Collapsed" Panel.ZIndex="-20" Grid.ColumnSpan="99" IsHitTestVisible="True"
                 Background="{Binding Parent.ColourBrush}" BorderBrush="{StaticResource AREghZyBrush.Primary.4.Background.Selected}"/>
         <Border x:Name="InsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Height="3" VerticalAlignment="Top" Grid.ColumnSpan="99" 
-                Background="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
-        <Border x:Name="GroupInsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Grid.ColumnSpan="99" BorderThickness="1"
+                Background="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}" IsHitTestVisible="False"/>
+        <Border x:Name="GroupInsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Grid.ColumnSpan="99" BorderThickness="1" IsHitTestVisible="False"
                 CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
         <Border x:Name="ColourSwatch" Grid.Column="0" Background="{Binding ColourBrush}"/>
         <local:ExpanderKnob Grid.Column="0" IsCollapsed="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=local:CueDataControl}, Mode=TwoWay}" 
                             Visibility="{Binding ExpanderVisibility, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
                             ToolTip="{Binding Parent.Name}"/>
-        <local:HiddenTextbox Text="{Binding QID}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
+        <local:HiddenTextbox Text="{Binding QID}" PreviewText="{Binding FullQID}" CanEdit="{Binding MainViewModel.EditMode}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
         <Label Content="{Binding}" VerticalContentAlignment="Center" Grid.Column="2">
             <Label.ContentTemplate>
                 <DataTemplate>
@@ -88,23 +88,23 @@
         </Label>
         <!--<ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>-->
         <local:PlaybackProgressBar Grid.Column="3" Focusable="False"/>
-        <local:HiddenTextbox x:Name="NameTextBox" Text="{Binding Name}" ToolTip="{Binding Name}" Grid.Column="4" VerticalContentAlignment="Center" 
+        <local:HiddenTextbox x:Name="NameTextBox" Text="{Binding Name}" PreviewText="{Binding NamePreview}" CanEdit="{Binding MainViewModel.EditMode}" ToolTip="{Binding NamePreview}" Grid.Column="4" VerticalContentAlignment="Center" 
                              Focusable="True" KeyboardNavigation.TabIndex="100"/>
         <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5"/>
         <!--<CheckBox IsChecked="{Binding Halt}" IsEnabled="{Binding IsSelected}" Grid.Column="6"/>-->
         <local:HiddenComboBox SelectedIndex="{Binding Trigger, Mode=TwoWay, Converter={StaticResource TriggerModeConverter}}" ItemsSource="{Binding TriggerModeVals}" 
-                              InactiveContent="{Binding Trigger}" InactiveContentTemplate="{StaticResource TriggerModeTemplate}" 
+                              InactiveContent="{Binding Trigger}" CanEdit="{Binding MainViewModel.EditMode}" InactiveContentTemplate="{StaticResource TriggerModeTemplate}" 
                               VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="6" IsTabStop="False"/>
         <local:HiddenTextbox Text="{Binding Delay, 
             Converter={StaticResource TimeSpanStringConverter}, 
-            ConverterParameter=False}"
+            ConverterParameter=False}" CanEdit="{Binding MainViewModel.EditMode}"
                Grid.Column="7" VerticalContentAlignment="Center" Focusable="True" TabIndex="300"/>
         <Label Content="{Binding Duration, 
             Converter={StaticResource TimeSpanStringConverter}, 
             ConverterParameter=False}" 
                Grid.Column="8" VerticalContentAlignment="Center"/>
         <local:HiddenComboBox SelectedIndex="{Binding LoopMode, Mode=TwoWay, Converter={StaticResource LoopModeConverter}}" ItemsSource="{Binding LoopModeVals}" 
-                      InactiveContent="{Binding LoopMode}" InactiveContentTemplate="{StaticResource LoopModeTemplate}" 
+                      InactiveContent="{Binding LoopMode}" InactiveContentTemplate="{StaticResource LoopModeTemplate}" CanEdit="{Binding MainViewModel.EditMode}"
                       VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="9" IsTabStop="False"/>
     </Grid>
 </UserControl>

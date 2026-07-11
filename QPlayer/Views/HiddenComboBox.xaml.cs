@@ -25,6 +25,16 @@ public partial class HiddenComboBox : UserControl
 
     public bool IsEditing => editing;
 
+    public bool CanEdit
+    {
+        get { return (bool)GetValue(CanEditProperty); }
+        set { SetValue(CanEditProperty, value); }
+    }
+
+    // Using a DependencyProperty as the backing store for CanEdit.  This enables animation, styling, binding, etc...
+    public static readonly DependencyProperty CanEditProperty =
+        DependencyProperty.Register(nameof(CanEdit), typeof(bool), typeof(HiddenComboBox), new PropertyMetadata(true));
+
     public HiddenComboBox()
     {
         InitializeComponent();
@@ -72,7 +82,7 @@ public partial class HiddenComboBox : UserControl
 
     private void Edit()
     {
-        if (editing)
+        if (!CanEdit || editing)
             return;
 
         editing = true;

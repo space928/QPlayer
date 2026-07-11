@@ -253,10 +253,24 @@ public class ObservableSelectionSet<T> : ISet<T>, INotifyCollectionChanged, INot
 
         if (!hashSet.Remove(item))
             return false;
+        if (hashSet.Count == 1)
+            DemoteHashSetItem();
 
     Success:
         OnCollectionChanged(NotifyCollectionChangedAction.Remove, item);
         return true;
+    }
+
+    private void DemoteHashSetItem()
+    {
+        var ie = hashSet.GetEnumerator();
+        if (ie.MoveNext())
+        {
+            var item = ie.Current;
+            firstItem = item;
+            hashSet.Clear();
+        }
+        ie.Dispose();
     }
 
     [Obsolete] public void ExceptWith(IEnumerable<T> other) => throw new NotImplementedException();

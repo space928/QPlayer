@@ -85,30 +85,11 @@ public partial class MainViewModel
     /// Must be called on the dispatcher thread.
     /// </remarks>
     /// <returns>false if the user decided to cancel the current operation.</returns>
-    public async Task<bool> UnsavedChangedCheck(bool canCancel = true, bool sync = false)
+    public bool UnsavedChangedCheck(bool canCancel = true)
     {
-        ProgressBoxViewModel.Message = "Checking for unsaved changes...";
-        ProgressBoxViewModel.Progress = 0.1f;
-        if (!sync)
-            await Dispatcher.Yield();
+        bool changes = UndoManager.CanUndo || UndoManager.CanRedo;
 
-        using var ms = new MemoryStream();
-        SerializeShowFile(ms).Wait();
-        var curr = ms.ToArray();
-
-        byte[]? prev = null;
-        try
-        {
-            prev = string.IsNullOrEmpty(ProjectFilePath) ? null : File.ReadAllBytes(ProjectFilePath);
-        }
-        catch { }
-
-        // Check it's not the default file
-        if (curr != null && curr.SequenceEqual(defaultShowfile))
-            return true;
-
-        // Compare current file with last saved file.
-        if (curr != null && prev != null && curr.SequenceEqual(prev))
+        if (!changes)
             return true;
 
         // There are unsaved changes!
@@ -188,8 +169,8 @@ public partial class MainViewModel
         int j = 0;
         await Cues.SyncFromModelAsync(async cue =>
         {
-            ProgressBoxViewModel.Progress = (j + 1) / (float)showFile.cues.Count;
-            ProgressBoxViewModel.Message = $"Loading cues... ({j + 1}/{showFile.cues.Count})";
+            ProgressBoxViewModel.Progress = (j + 1) / (float)totalCueCount;
+            ProgressBoxViewModel.Message = $"Loading cues... ({j + 1}/{totalCueCount})";
             if (!sync)
                 await Dispatcher.Yield(DispatcherPriority.Input);
 
@@ -197,17 +178,17 @@ public partial class MainViewModel
             try
             {
                 var vm = CueFactory.CreateViewModelForCue(cue, this)
-                    ?? throw new Exception($"Couldn't create view model for cue of type {cue.GetType().Name}, qid: {cue.qid}!");
+                    ?? throw new Exception($"Cue type doesn't exist!");
                 return vm;
             }
             catch (Exception ex)
             {
-                Log($"Error occurred while trying to create cue from save file! {ex.Message}\n{ex}", LogLevel.Error);
+                Log($"Couldn't create cue (qid: {cue.qid}) from save file! Ensure that any plugins used by the save file are loaded. {ex.Message}\n{ex}", LogLevel.Error);
             }
             return null;
         });
 
-        OnPropertyChanged(nameof(SelectedCue));
+        SelectedCueInd = 0;
         oscManager.ConnectOSC();
         mscManager.ConnectMSC();
         OpenAudioDevice();
@@ -231,48 +212,11 @@ public partial class MainViewModel
     /// </summary>
     private void EnsureShowfileModelSync()
     {
-        bool resync = false;
-        Dictionary<decimal, Cue> cueModels = [];
-        foreach (var cue in showFile.cues)
-            if (!cueModels.TryAdd(cue.qid, cue))
-                resync = true;
-
         using var _ = UndoManager.ScopedSuppress();
 
-        if (!resync)
-        {
-            foreach (CueViewModel vm in Cues)
-            {
-                if (!cueModels.TryGetValue(vm.QID, out Cue? value))
-                {
-                    Log($"Cue with id {vm.QID} exists in the editor but not in the internal model! Potential corruption detected!", LogLevel.Warning);
-                    // TODO: If we want to be nice we could just create the model here...
-                    resync = true;
-                }
-                else
-                {
-                    var q = value;
-                    vm.Bind(q);
-                    vm.SyncToModel();
-                }
-            }
-        }
-        if (resync)
-        {
-            Log($"Rebuilding internal cue database...", LogLevel.Info);
-            showFile.cues.Clear();
-            foreach (var vm in Cues)
-            {
-                vm.Bind(null);
-                var cue = CueFactory.CreateCueForViewModel(vm);
-                if (cue == null)
-                {
-                    Log($"Failed to create model for cue of type '{vm.GetType().Name}' (qid = {vm.QID}).", LogLevel.Warning);
-                    continue;
-                }
-                showFile.cues.Add(cue);
-            }
-        }
+        Cues.Bind(showFile.cues);
+        Cues.SyncToModel();
+
         ProjectSettings.Bind(showFile.showSettings);
         ProjectSettings.SyncToModel();
         showFile.columnWidths = [.. ColumnWidths.Select(x => x.Value)];
@@ -303,9 +247,9 @@ public partial class MainViewModel
                 showFile = await JsonSerializer.DeserializeAsync<ShowFile>(f, jsonSerializerOptions)
                     ?? throw new FileFormatException("Show file deserialized as null!");
             }
-            catch
+            catch (Exception ex)
             {
-                Log($"Show file is corrupt or out of date, attempting to repair...", LogLevel.Warning);
+                Log($"Show file is corrupt or out of date, attempting to repair...\n{ex}", LogLevel.Warning);
                 f.Position = 0;
                 showFile = await ShowFileConverter.LoadShowFileSafeAsync(f);
             }
@@ -325,7 +269,9 @@ public partial class MainViewModel
         }
         catch (Exception e)
         {
-            Log($"Couldn't load project from disk. Trying to load {path} \n  failed with: {e}", LogLevel.Warning);
+            Log($"Couldn't load project from disk. Trying to load {path} \n  failed with: {e}", LogLevel.Error);
+            // If we fail to load a showfile, create a new showfile to clear the potentially corrupted state.
+            await NewProject();
         }
 
         ProgressBoxViewModel.Visible = Visibility.Collapsed;
@@ -392,6 +338,8 @@ public partial class MainViewModel
                 }
             }
 
+            persistantDataManager.AddRecentFile(path);
+
             Log($"Saved project to {path}!");
         }
         catch (Exception e)
@@ -436,6 +384,8 @@ public partial class MainViewModel
                 ms.Position = 0;
                 oscManager.SendRemoteUpdateShowFile(ProjectSettings.RemoteNodes.Select(x => x.Name), ms.ToArray());
             }
+
+            persistantDataManager.AddRecentFile(path);
 
             Log($"Saved project to {path}!");
         }

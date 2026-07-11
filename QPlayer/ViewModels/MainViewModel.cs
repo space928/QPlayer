@@ -31,27 +31,12 @@ namespace QPlayer.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     #region Bindable Properties
-    [Reactive, TemplateProp(nameof(SelectedCueInd_Template))]
+    [Reactive, TemplateProp(nameof(SelectedCueInd_Template)), SkipEqualityCheck]
     private int selectedCueInd;
     private int SelectedCueInd_Template
     {
         get => selectedCueInd;
-        set
-        {
-            var prev = selectedCueInd;
-            HandleSelection(prev, ref value);
-
-            selectedCueInd = value;
-            foreach (var cue in cues)
-                NotifyCueSelectionChanged(cue);
-            /*if (prev >= 0 && prev < cues.Count)
-                cues[prev].OnSelectionChanged();
-            if (value >= 0 && value < cues.Count)
-                cues[value].OnSelectionChanged();*/
-
-            if (prev != value)
-                OnPropertyChanged(nameof(SelectedCue));
-        }
+        set => MultiSelect(value, SelectionMode.Normal);
     }
     [Reactive("SelectedCue")]
     private CueViewModel? SelectedCue_Template
@@ -60,7 +45,6 @@ public partial class MainViewModel : ObservableObject
         set => SelectedCueInd = FindCueIndex(value);
     }
     [Reactive] private readonly ObservableSelectionSet<CueViewModel> multiSelection;
-    [Reactive] private SelectionMode selectionMode = SelectionMode.Normal;
     [Reactive] private readonly CueList cues;
     [Reactive] private readonly ObservableCollection<CueViewModel> activeCues;
     [Reactive] private readonly ObservableCollection<ObservableStruct<float>> columnWidths;
@@ -110,6 +94,7 @@ public partial class MainViewModel : ObservableObject
     [Reactive] private readonly EditModeCommand duplicateCueCommand;
     [Reactive] private readonly EditModeCommand groupCuesCommand;
     [Reactive] private readonly EditModeCommand ungroupCuesCommand;
+    [Reactive] private readonly EditModeCommand selectAllCommand;
 
     [Reactive] private readonly RelayCommand goCommand;
     [Reactive] private readonly RelayCommand pauseCommand;
@@ -208,7 +193,6 @@ public partial class MainViewModel : ObservableObject
     private readonly OSCManager oscManager;
     private readonly MSCManager mscManager;
     private readonly PersistantDataManager persistantDataManager;
-    private readonly NumberFormatInfo numberFormat = CultureInfo.InvariantCulture.NumberFormat;
     private static readonly SolidColorBrush StatusInfoBrush = new(Color.FromArgb(255, 220, 220, 220));
     private static readonly SolidColorBrush StatusWarningBrush = new(Color.FromArgb(255, 200, 220, 50));
     private static readonly SolidColorBrush StatusErrorBrush = new(Color.FromArgb(255, 220, 60, 40));
@@ -225,7 +209,7 @@ public partial class MainViewModel : ObservableObject
         ReturnSpecialDirectories = false,
         MaxRecursionDepth = 5
     };
-    private byte[] defaultShowfile = []; // So that the unsaved changes check works correctly, we compare against the default showfile
+    internal static readonly NumberFormatInfo numberFormat = CultureInfo.InvariantCulture.NumberFormat;
 
     //public static DateTime dbg_cueStartTime;
 
@@ -272,7 +256,7 @@ public partial class MainViewModel : ObservableObject
         audioPlaybackManager = new(this);
         oscManager = new(this);
         mscManager = new(this);
-        persistantDataManager = new();
+        persistantDataManager = new(dispatcher);
         progressBoxViewModel = new();
         mainAudioMeter = new(dispatcher);
 
@@ -304,6 +288,7 @@ public partial class MainViewModel : ObservableObject
         duplicateCueCommand = new(DuplicateCueExecute, this);
         groupCuesCommand = new(GroupCuesExecute, this);
         ungroupCuesCommand = new(UngroupCuesExecute, this);
+        selectAllCommand = new(SelectAllExecute, this);
 
         goCommand = new(GoExecute);
         pauseCommand = new(Pause);
@@ -337,7 +322,7 @@ public partial class MainViewModel : ObservableObject
         SetDefaultColumnWidths();
         projectFilePath = null;
         activeCues = [];
-        cues = [];
+        cues = new(this);
         draggingCues = [];
         multiSelection = [];
         ProjectSettings = new(this);
@@ -348,15 +333,7 @@ public partial class MainViewModel : ObservableObject
 
         showFile = new();
         LoadShowfileModel(showFile, true).Wait();
-        CreateCue(nameof(SoundCue));
-
-        // Wait before doing this so that the audio driver has a chance to be discovered. This is a hack.
-        Task.Delay(2000).ContinueWith(async _ =>
-        {
-            using var ms = new MemoryStream();
-            await SerializeShowFile(ms);
-            defaultShowfile = ms.ToArray();
-        });
+        CreateCue(nameof(SoundCue), 0, recordUndo: false);
 
         var args = Environment.GetCommandLineArgs();
         if (args.Length > 1)
@@ -376,7 +353,7 @@ public partial class MainViewModel : ObservableObject
         if (!RunningCuesCheck())
             return false;
 
-        if (!UnsavedChangedCheck(true, true).Result)
+        if (!UnsavedChangedCheck(true))
             return false;
 
         Log("Shutting down...");
@@ -446,8 +423,12 @@ public partial class MainViewModel : ObservableObject
         {
             string path = Path.Combine(persistantDataManager.AutoBackDir, $"autoback{autoBackInd + 1}.qproj");
             autoBackInd = (autoBackInd + 1) % 5;
-            Task.Run(() =>
-                SaveProjectAsync(path, false, false).ContinueWith((_) => Log($"Autosaved project to '{path}'.")));
+            Task.Run(async () =>
+            {
+                await SaveProjectAsync(path, false, false);
+                Log($"Autosaved project to '{path}'.");
+                await persistantDataManager.RefreshAutoBackFiles();
+            });
         }
     }
 
@@ -465,12 +446,17 @@ public partial class MainViewModel : ObservableObject
         {
             if (!RunningCuesCheck())
                 return;
-            if (!await UnsavedChangedCheck())
+            if (!UnsavedChangedCheck())
                 return;
 
-            ProjectFilePath = null;
-            await LoadShowfileModel(new());
+            await NewProject();
         });
+    }
+
+    private Task NewProject()
+    {
+        ProjectFilePath = null;
+        return LoadShowfileModel(new());
     }
 
     public void SaveProjectExecute(bool async = true)
@@ -535,7 +521,7 @@ public partial class MainViewModel : ObservableObject
             await Dispatcher.Yield();
             if (!RunningCuesCheck())
                 return;
-            if (!await UnsavedChangedCheck())
+            if (!UnsavedChangedCheck())
             {
                 ProgressBoxViewModel.Visible = Visibility.Collapsed;
                 return;
@@ -574,7 +560,7 @@ public partial class MainViewModel : ObservableObject
                 ProgressBoxViewModel.Visible = Visibility.Collapsed;
                 return;
             }
-            if (!await UnsavedChangedCheck())
+            if (!UnsavedChangedCheck())
             {
                 ProgressBoxViewModel.Visible = Visibility.Collapsed;
                 return;
@@ -673,6 +659,7 @@ public partial class MainViewModel : ObservableObject
     {
         if (activeCues.Count == 0)
         {
+            MultiSelect(SelectedCueInd, 1, true);
             if (SelectedCue != null)
                 multiSelection.Replace(SelectedCue);
             else
@@ -782,6 +769,14 @@ public partial class MainViewModel : ObservableObject
     {
         if (SelectedCue is GroupCueViewModel group)
             group.IsCollapsed = false;
+    }
+
+    /// <summary>
+    /// Selects all the cues in the cue stack.
+    /// </summary>
+    public void SelectAllExecute()
+    {
+        MultiSelect(Cues.EnumerateAll());
     }
 
     internal void ShowCreateCueMenuExecute()

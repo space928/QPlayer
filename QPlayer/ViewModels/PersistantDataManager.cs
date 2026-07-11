@@ -9,23 +9,28 @@ using System.Text;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using System.Threading.Tasks;
+using System.Windows.Threading;
 
 namespace QPlayer.ViewModels;
 
 public class PersistantDataManager : ObservableObject
 {
     private const int MAX_RECENT_FILES = 10;
+    private const string AUTO_BACK_FILES_NAME = "Recovered Files";
 
     private string? dataDir;
     private string? autoBackDir;
 
-    private readonly ObservableCollection<RecentFile> recentFiles = [];
+    private readonly Dispatcher dispatcher;
+    private readonly ObservableCollection<RecentFile> recentFilesView = [];
+    private readonly ObservableCollection<RecentFile> autoBackupFiles = [];
 
-    public ObservableCollection<RecentFile> RecentFiles => recentFiles;
+    public ObservableCollection<RecentFile> RecentFiles => recentFilesView;
     public string AutoBackDir => autoBackDir ?? string.Empty;
 
-    public PersistantDataManager()
+    public PersistantDataManager(Dispatcher dispatcher)
     {
+        this.dispatcher = dispatcher;
         Initialise();
     }
 
@@ -59,16 +64,46 @@ public class PersistantDataManager : ObservableObject
         {
             using var f = File.OpenRead(Path.Combine(dataDir, "recent_files.json"));
             var recent = JsonSerializer.Deserialize<RecentFile[]>(f);
-            recentFiles.Clear();
+            recentFilesView.Clear();
             if (recent != null)
             {
                 foreach (var item in recent)
-                    recentFiles.Add(item);
+                    recentFilesView.Add(item);
             }
+
+            recentFilesView.Add(new() { Name = AUTO_BACK_FILES_NAME, SubList = autoBackupFiles });
+            var _ = RefreshAutoBackFiles();
         }
         catch (Exception ex)
         {
             MainViewModel.Log($"[PersistantData] Couldn't load to recent files list!\n{ex}");
+        }
+    }
+
+    public async Task RefreshAutoBackFiles()
+    {
+        autoBackupFiles.Clear();
+        try
+        {
+            var files = await Task.Run(() =>
+            {
+                var paths = Directory.EnumerateFiles(AutoBackDir, "*.qproj");
+                var fileInfos = paths.Select(x => new FileInfo(x));
+                return fileInfos.OrderByDescending(x => x.LastWriteTimeUtc).ToArray();
+            });
+            await dispatcher.InvokeAsync(() =>
+            {
+                foreach (var info in files)
+                    autoBackupFiles.Add(new RecentFile()
+                    {
+                        Name = Path.GetFileNameWithoutExtension(info.Name),
+                        Path = info.FullName
+                    });
+            });
+        }
+        catch (Exception ex)
+        {
+            MainViewModel.Log($"Couldn't refresh recovered files list. {ex.Message}\n{ex}", MainViewModel.LogLevel.Warning);
         }
     }
 
@@ -83,15 +118,15 @@ public class PersistantDataManager : ObservableObject
             Name = $"{Path.GetFileNameWithoutExtension(fileName)} ({shortPath})"
         };
 
-        if (recentFiles.Remove(recent))
+        if (recentFilesView.Remove(recent))
         {
-            recentFiles.Insert(0, recent);
+            recentFilesView.Insert(0, recent);
         }
         else
         {
-            recentFiles.Insert(0, recent);
-            if (recentFiles.Count > MAX_RECENT_FILES)
-                recentFiles.RemoveAt(recentFiles.Count - 1);
+            recentFilesView.Insert(0, recent);
+            if (recentFilesView.Count > MAX_RECENT_FILES)
+                recentFilesView.RemoveAt(recentFilesView.Count - 2); // Remove the last recent file, excluding the list of autoback files
         }
 
         if (dataDir == null)
@@ -101,7 +136,7 @@ public class PersistantDataManager : ObservableObject
         {
             using var f = File.OpenWrite(Path.Combine(dataDir, "recent_files.json"));
             f.SetLength(0);
-            JsonSerializer.Serialize(f, recentFiles.ToArray());
+            JsonSerializer.Serialize(f, recentFilesView.SkipLast(1).ToArray());
         }
         catch (Exception ex)
         {
@@ -113,5 +148,6 @@ public class PersistantDataManager : ObservableObject
 public struct RecentFile
 {
     public string Name { get; set; }
-    public string Path { get; set; }
+    public string? Path { get; set; }
+    public ObservableCollection<RecentFile>? SubList { get; set; }
 }

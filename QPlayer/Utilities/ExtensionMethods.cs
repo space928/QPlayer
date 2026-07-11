@@ -237,5 +237,13 @@ public static partial class ExtensionMethods
     /// <typeparam name="T"></typeparam>
     /// <param name="source"></param>
     /// <returns></returns>
-    public static IEnumerable<T> FastReverse<T>(this IEnumerable<T> source) => new FastReverseEnumerable<T>(source);
+    public static IEnumerable<T> FastReverse<T>(this IEnumerable<T> source)
+    {
+        if (source is IList<T> list)
+            return new FastReverseList<T>(list);
+        return new FastReverseEnumerable<T>(source);
+    }
+
+    /// <inheritdoc cref="FastReverse{T}(IEnumerable{T})"/>
+    public static FastReverseList<T> FastReverse<T>(this IList<T> source) => new(source);
 }

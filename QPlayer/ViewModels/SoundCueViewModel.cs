@@ -214,7 +214,7 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
         if (IsRemoteControlling)
             return;
         if (shouldSendRemoteStatus)
-            mainViewModel.OSCManager.SendRemoteStatus(RemoteNode, qid, State);
+            mainViewModel.OSCManager.SendRemoteStatus(RemoteNode, FullQID, State);
         StopAudio();
         PlaybackTime = TimeSpan.Zero;
         loopingAudioStream?.EndTime = StartTime + PlaybackDuration;
@@ -339,7 +339,7 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
         OnPropertyChanged(nameof(PlaybackTime));
 
         if (shouldSendRemoteStatus)
-            mainViewModel.OSCManager.SendRemoteStatus(thisNodeName ?? string.Empty, qid, State,
+            mainViewModel.OSCManager.SendRemoteStatus(thisNodeName ?? string.Empty, FullQID, State,
                 State != CueState.Ready ? (float)PlaybackTime.TotalSeconds : null);
     }
 
