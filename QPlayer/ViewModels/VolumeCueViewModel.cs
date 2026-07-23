@@ -19,6 +19,7 @@ public partial class VolumeCueViewModel : CueViewModel
     [Reactive] private float volume;
     [Reactive, ChangesProp(nameof(Duration))] private float fadeTime;
     [Reactive] private FadeType fadeType;
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Change Volume --> Q{target}" : Name;
 
     private DateTime startTime;
 
@@ -30,6 +31,9 @@ public partial class VolumeCueViewModel : CueViewModel
             {
                 case nameof(FadeTime):
                     OnPropertyChanged(nameof(Duration));
+                    break;
+                case nameof(Target):
+                    OnPropertyChanged(nameof(NamePreview));
                     break;
             }
         };

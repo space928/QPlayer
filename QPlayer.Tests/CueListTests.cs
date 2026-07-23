@@ -19,7 +19,7 @@ public class CueListTests
     private const int defaultCount = 10;
     private static CueViewModel MakeCue() => new DummyCueViewModel(mainVM);
     private static GroupCueViewModel MakeGroupCue() => new(mainVM);
-    private static GroupCueViewModel MakeGroupCue(CueList owner) => new(mainVM, owner);
+    private static GroupCueViewModel MakeGroupCue(VisualCueList owner) => new(mainVM, owner);
 
     static CueListTests()
     {
@@ -28,9 +28,9 @@ public class CueListTests
             UndoManager.SuppressRecording();
     }
 
-    private static CueList MakeCueList()
+    private static VisualCueList MakeCueList()
     {
-        CueList cl = new();
+        VisualCueList cl = new();
         List<Cue> model = [];
         cl.Bind(model);
         for (int i = 0; i < defaultCount; i++)
@@ -42,9 +42,9 @@ public class CueListTests
         return cl;
     }
 
-    private static (CueList, GroupCueViewModel) MakeGroupCueList()
+    private static (VisualCueList, GroupCueViewModel) MakeGroupCueList()
     {
-        CueList cl = new();
+        VisualCueList cl = new();
         List<Cue> model = [];
         cl.Bind(model);
         int i = 0;
@@ -68,7 +68,7 @@ public class CueListTests
         {
             var cue = MakeCue();
             cue.QID = i;
-            cl.Insert(new AbstractCueList.CuePosition(j++, group), cue);
+            cl.Insert(new CueList.CuePosition(j++, group), cue);
         }
 
         // Normal cues
@@ -130,7 +130,7 @@ public class CueListTests
 
         // TODO: These tests all test success conditions and not the failure conditions
         decimal qid = 9;
-        await cl.Find(qid, out AbstractCueList.CuePosition pos).Should().BeTrue();
+        await cl.Find(qid, out CueList.CuePosition pos).Should().BeTrue();
         await cl.FindVisualIndex(pos, out int visPos).Should().BeTrue();
 
         await visPos.Should().BeEqualTo((int)qid);
@@ -156,7 +156,7 @@ public class CueListTests
         await Assert.That(cl.Delete(1)?.QID).IsNotNull().And.IsEqualTo(1);
         await cl.TotalCount.Should().BeEqualTo(startCount - 1);
         (cl, _) = MakeGroupCueList();
-        await Assert.That(cl.Delete(new AbstractCueList.CuePosition(1, null))?.QID).IsNotNull().And.IsEqualTo(1);
+        await Assert.That(cl.Delete(new CueList.CuePosition(1, null))?.QID).IsNotNull().And.IsEqualTo(1);
         await cl.TotalCount.Should().BeEqualTo(startCount - 1);
         (cl, _) = MakeGroupCueList();
         await Assert.That(cl.Delete(cl[1])).IsTrue();
@@ -197,7 +197,7 @@ public class CueListTests
         await cl.Find(deleted1.QID, out CueViewModel? _).Should().BeFalse();
 
         // Delete by cuepos
-        var deleted2 = cl.Delete(new AbstractCueList.CuePosition(1, null));
+        var deleted2 = cl.Delete(new CueList.CuePosition(1, null));
         await deleted1.Should().NotBeNull();
         await deleted2!.QID.Should().BeEqualTo(2);
 
@@ -529,12 +529,12 @@ public class CueListTests
     [Test]
     public async Task TestCuePositionComparer()
     {
-        var comparer = new CueList.CuePositionComparer();
+        var comparer = new VisualCueList.CuePositionComparer();
         var group = MakeGroupCue();
 
-        var posNullGroup = new AbstractCueList.CuePosition(0, null);
-        var posWithGroup = new AbstractCueList.CuePosition(0, group);
-        var posNullGroupHigherIndex = new AbstractCueList.CuePosition(1, null);
+        var posNullGroup = new CueList.CuePosition(0, null);
+        var posWithGroup = new CueList.CuePosition(0, group);
+        var posNullGroupHigherIndex = new CueList.CuePosition(1, null);
 
         // x.group == null && y.group != null should return 1
         await comparer.Compare(posNullGroup, posWithGroup).Should().BeGreaterThan(0);

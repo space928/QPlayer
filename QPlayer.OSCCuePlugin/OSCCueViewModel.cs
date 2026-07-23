@@ -41,8 +41,20 @@ public partial class OSCCueViewModel : CueViewModel
         }
     }*/
 
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"OSC {command}" : Name;
+
     public OSCCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-    { }
+    {
+        PropertyChanged += (o, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(Command):
+                    OnPropertyChanged(nameof(NamePreview));
+                    break;
+            }
+        };
+    }
 
     public override void Go()
     {

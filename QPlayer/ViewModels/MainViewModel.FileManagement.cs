@@ -163,11 +163,11 @@ public partial class MainViewModel
         for (int i = 0; i < Math.Min(showFile.columnWidths.Count, ColumnWidths.Count); i++)
             ColumnWidths[i].Value = showFile.columnWidths[i];
 
-        Cues.Clear();
-        Cues.Bind(show.cues);
+        CueList.Clear();
+        CueList.Bind(show.cues);
         int totalCueCount = CountModelCues(show.cues);
         int j = 0;
-        await Cues.SyncFromModelAsync(async cue =>
+        await CueList.SyncFromModelAsync(async cue =>
         {
             ProgressBoxViewModel.Progress = (j + 1) / (float)totalCueCount;
             ProgressBoxViewModel.Message = $"Loading cues... ({j + 1}/{totalCueCount})";
@@ -214,8 +214,8 @@ public partial class MainViewModel
     {
         using var _ = UndoManager.ScopedSuppress();
 
-        Cues.Bind(showFile.cues);
-        Cues.SyncToModel();
+        CueList.Bind(showFile.cues);
+        CueList.SyncToModel();
 
         ProjectSettings.Bind(showFile.showSettings);
         ProjectSettings.SyncToModel();

@@ -353,7 +353,7 @@ public class VirtualStackPanel : VirtualizingPanel, IScrollInfo
     /// <returns>A <see cref="Rect"/> in the coordinate space that is made visible.</returns>
     public Rect MakeVisible(Visual visual, Rect rectangle)
     {
-        Vector newOffset = default;
+        //Vector newOffset = default;
         Rect newRect = default;
         if (rectangle.IsEmpty || visual == null || visual == this || !IsAncestorOf(visual))
             return Rect.Empty;
@@ -394,7 +394,7 @@ public class VirtualStackPanel : VirtualizingPanel, IScrollInfo
         var totalItems = Math.Max(1, itemsOwner?.Items?.Count ?? 0);
         var itemContainerGenerator = ItemContainerGenerator;
 
-        var minVis = Math.Clamp(FirstVisibleItem, 0, totalItems - 1);
+        //var minVis = Math.Clamp(FirstVisibleItem, 0, totalItems - 1);
         var maxVis = Math.Clamp(LastVisibleItem, 0, totalItems - 1);
         var pos = itemContainerGenerator.IndexFromGeneratorPosition(args.Position);
         var oldPos = itemContainerGenerator.IndexFromGeneratorPosition(args.OldPosition);

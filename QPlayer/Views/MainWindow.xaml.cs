@@ -267,11 +267,9 @@ public partial class MainWindow : Window
 
     internal static void HandleCueListDrop(DragEventArgs e, MainViewModel vm, CueViewModel? dropTargetVm)
     {
-        int dstIndex;
-        if (dropTargetVm == null)
-            dstIndex = vm.Cues.Count;
-        else
-            dstIndex = vm.FindCueIndex(dropTargetVm);
+        CuePosition dstPos = vm.CueList.CreateCuePosition(vm.CueList.Count);
+        if (vm.FindCuePosition(dropTargetVm, out var pos))
+            dstPos = pos;
 
         if (e.Data.GetDataPresent("Cues"))
         {
@@ -279,15 +277,15 @@ public partial class MainWindow : Window
 
             if (e.Effects.HasFlag(DragDropEffects.Copy))
             {
-                vm.DuplicateCues(dataCues, dstIndex);
+                vm.DuplicateCues(dataCues, dstPos);
             }
             else if (e.Effects.HasFlag(DragDropEffects.Move))
             {
-                vm.MoveCues(dataCues, dstIndex);
+                vm.MoveCues(dataCues, dstPos);
             }
             else if (e.Effects.HasFlag(DragDropEffects.Link))
             {
-                vm.GroupCues(dataCues, vm.Cues[dstIndex]);
+                vm.GroupCues(dataCues, vm.Cues[dstPos]);
             }
 
             vm.DraggingCues.Clear();
@@ -312,7 +310,8 @@ public partial class MainWindow : Window
                                     break;
                                 cue.Path = file;
                                 cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                                vm.MoveCue(cue, dstIndex++);
+                                vm.MoveCue(cue, dstPos);
+                                dstPos += 1;
                             }
                             break;
                         //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov

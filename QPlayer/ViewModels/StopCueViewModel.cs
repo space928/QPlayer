@@ -21,6 +21,8 @@ public partial class StopCueViewModel : CueViewModel
     [Reactive, ChangesProp(nameof(Duration))] private float fadeOutTime;
     [Reactive] private FadeType fadeType;
 
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Stop Q{stopTarget}" : Name;
+
     private DateTime startTime;
 
     public StopCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
@@ -31,6 +33,9 @@ public partial class StopCueViewModel : CueViewModel
             {
                 case nameof(FadeOutTime):
                     OnPropertyChanged(nameof(Duration));
+                    break;
+                case nameof(StopTarget):
+                    OnPropertyChanged(nameof(NamePreview));
                     break;
             }
         };

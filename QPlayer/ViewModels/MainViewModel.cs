@@ -44,8 +44,23 @@ public partial class MainViewModel : ObservableObject
         get => SelectedCueInd >= 0 && SelectedCueInd < Cues.Count ? Cues[SelectedCueInd] : null;
         set => SelectedCueInd = FindCueIndex(value);
     }
+    [Reactive, TemplateProp(nameof(SelectedCuePos_Template)), SkipEqualityCheck]
+    private CuePosition selectedCuePos;
+    private CuePosition SelectedCuePos_Template
+    {
+        get => selectedCuePos;
+        set
+        {
+            selectedCuePos = value;
+            if (!cues.BoundsCheck(value))
+                SelectedCueInd = -1;
+            else
+                SelectedCueInd = FindCueIndex(cues[value]);
+        }
+    }
     [Reactive] private readonly ObservableSelectionSet<CueViewModel> multiSelection;
-    [Reactive] private readonly CueList cues;
+    [Reactive] private readonly VisualCueList cues;
+    public CueList CueList => cues.CueList;
     [Reactive] private readonly ObservableCollection<CueViewModel> activeCues;
     [Reactive] private readonly ObservableCollection<ObservableStruct<float>> columnWidths;
     [Reactive] private readonly ObservableCollection<CueViewModel> draggingCues;
@@ -322,7 +337,7 @@ public partial class MainViewModel : ObservableObject
         SetDefaultColumnWidths();
         projectFilePath = null;
         activeCues = [];
-        cues = new(this);
+        cues = new(new(this));
         draggingCues = [];
         multiSelection = [];
         ProjectSettings = new(this);
@@ -333,7 +348,7 @@ public partial class MainViewModel : ObservableObject
 
         showFile = new();
         LoadShowfileModel(showFile, true).Wait();
-        CreateCue(nameof(SoundCue), 0, recordUndo: false);
+        CreateCue(nameof(SoundCue), default, recordUndo: false);
 
         var args = Environment.GetCommandLineArgs();
         if (args.Length > 1)
@@ -715,8 +730,8 @@ public partial class MainViewModel : ObservableObject
         switch (multiSelection.Count)
         {
             case 0: return;
-            case 1: DeleteCue(SelectedCueInd); break;
-            default: DeleteCues([.. multiSelection.Select(x => FindCueIndex(x))]); break;
+            case 1: DeleteCue(SelectedCue!); break;
+            default: DeleteCues(multiSelection); break;
         }
         NotifyCueSelectionChanged(SelectedCue);
     }

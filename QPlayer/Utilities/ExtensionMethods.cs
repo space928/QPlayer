@@ -246,4 +246,62 @@ public static partial class ExtensionMethods
 
     /// <inheritdoc cref="FastReverse{T}(IEnumerable{T})"/>
     public static FastReverseList<T> FastReverse<T>(this IList<T> source) => new(source);
+
+    /*/// <summary>
+    /// Returns the first element in a collection or the default value if it's empty.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    public static T? FirstOrDefault<T>(this IList<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+
+        return source[0];
+    }
+
+    /// <inheritdoc cref="FirstOrDefault{T}(IList{T})"/>
+    public static T? FirstOrDefault<T>(this ICollection<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+       
+        using var iter = source.GetEnumerator();
+        if (iter.MoveNext())
+            return iter.Current;
+        return default;
+    }*/
+
+    /// <summary>
+    /// Returns the first element in a collection or the default value if it's empty.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    public static T? FirstOrDefault<T>(this IReadOnlyList<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+
+        return source[0];
+    }
+
+    /// <inheritdoc cref="FirstOrDefault{T}(IReadOnlyList{T})"/>
+    public static T? FirstOrDefault<T>(this IReadOnlyCollection<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+
+        using var iter = source.GetEnumerator();
+        if (iter.MoveNext())
+            return iter.Current;
+
+        return default;
+    }
+
+    /// <inheritdoc cref="FastZipEnumerable{TA, TB}"/>
+    public static IEnumerable<(TA first, TB second)> FastZip<TA, TB>(this IEnumerable<TA> first, IEnumerable<TB> second) => new FastZipEnumerable<TA, TB>(first, second);
+    /// <inheritdoc cref="FastZipEnumerable{TA, TB}"/>
+    public static TemporaryList<TA>.TempListZipEnumerable<TB> FastZip<TA, TB>(this in TemporaryList<TA> first, in TemporaryList<TB> second) => new(in first, in second);
 }

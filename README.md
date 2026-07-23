@@ -41,3 +41,15 @@ To run, simply extract the `.zip` file and run `QPlayer.exe`
 QPlayer can be built with Visual Studio 2026 using the .NET SDK 10.
 
 Only Windows is officially supported for now.
+
+## AI Policy
+We live in a time of rapid technological development, and large language models seem to be the current bubble. As a software 
+engineer I find the technology fascinating, as an artist and craftsperson, I find it worrying. Fundamentally, I take issue
+with the way LLMs are trained (off of the hard work and un-licensed intellectual property of others), how they are often 
+used (as a means to skirt licensing requirements of open source projects, by 're-writing' them), and the ethical and 
+environmental issues that surround this. 
+
+Hence, my wish is that LLMs not be used to generate derivative or transformative works based on QPlayer, further, contributions 
+consisting largely of LLM generated content will not be accepted at my discretion. Consider these stipulations to be additional
+requirements to those in the LICENSE.md file. That being said, I'm not your mother, and what you do in private is none of my 
+concern, I only take issue when you publish works which break these requirements. <3

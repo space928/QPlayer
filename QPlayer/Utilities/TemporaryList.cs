@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace QPlayer.Utilities;
@@ -145,6 +146,13 @@ public struct TemporaryList<T> : ITempList<T>
 #else
         arrayPool.Return(old, true);
 #endif
+    }
+
+    public void SetCount(int newCount)
+    {
+        EnsureCapacity(newCount);
+        count = newCount;
+        version++;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -338,6 +346,73 @@ public struct TemporaryList<T> : ITempList<T>
     {
         if (items != null)
             Array.Copy(items, 0, array, index, count);
+    }
+
+    public readonly ref struct TempListZipEnumerable<TOther>(ref readonly TemporaryList<T> first, ref readonly TemporaryList<TOther> second)
+    {
+        private readonly FastZipIterator iterator = new(in first, in second);
+        public FastZipIterator GetEnumerator() => iterator;
+
+        public ref struct FastZipIterator : IEnumerator<(T first, TOther second)>
+        {
+#if NET10_0_OR_GREATER
+            private readonly ref T aRef;
+            private readonly ref TOther bRef;
+#else
+            private readonly T[]? aArr;
+            private readonly TOther[]? bArr;
+#endif
+            private readonly int count;
+            private nint pos;
+
+            public FastZipIterator(ref readonly TemporaryList<T> first, ref readonly TemporaryList<TOther> second)
+            {
+                count = Math.Min(first.count, second.count);
+                pos = -1;
+#if NET10_0_OR_GREATER
+                if (count > 0)
+                {
+                    aRef = ref MemoryMarshal.GetArrayDataReference(first.items!);
+                    bRef = ref MemoryMarshal.GetArrayDataReference(second.items!);
+                }
+                else
+                {
+                    aRef = ref Unsafe.NullRef<T>();
+                    bRef = ref Unsafe.NullRef<TOther>();
+                }
+#else
+                aArr = first.items;
+                bArr = second.items;
+#endif
+            }
+
+            public readonly (T first, TOther second) Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if NET10_0_OR_GREATER
+                get => (Unsafe.Add(ref aRef, pos), Unsafe.Add(ref bRef, pos));
+#else
+                get => (aArr![pos], bArr![pos]);
+#endif
+            }
+
+            readonly object IEnumerator.Current => Current;
+
+            public readonly void Dispose() { }
+
+            public bool MoveNext()
+            {
+                if (pos >= count)
+                    return false;
+                pos++;
+                return true;
+            }
+
+            public void Reset()
+            {
+                pos = -1;
+            }
+        }
     }
 }
 

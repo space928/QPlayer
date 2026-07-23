@@ -6,7 +6,7 @@
 		<Nullable>enable</Nullable>
 		<UseWPF>true</UseWPF>
 		<Title>QPlayer</Title>
-		<Version>1.12.4</Version>
+		<Version>1.12.5</Version>
 		<Authors>Thomas Mathieson</Authors>
 		<Company>Thomas Mathieson</Company>
 		<Copyright>©️ Thomas Mathieson 2026</Copyright>
@@ -86,11 +86,11 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.0" />
+		<PackageReference Include="CommunityToolkit.Mvvm" Version="8.4.2" />
 		<!--<PackageReference Include="JetBrains.Profiler.Api" Version="1.4.10" />-->
-		<PackageReference Include="NAudio" Version="2.2.1" />
+		<PackageReference Include="NAudio" Version="2.3.0" />
 		<PackageReference Include="OscCoreNetStd2" Version="1.1.4" />
-		<PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2.2" />
+		<PackageReference Include="PixiEditor.ColorPicker" Version="3.4.2.3" />
 	</ItemGroup>
 
 	<ItemGroup>

@@ -24,11 +24,11 @@ public partial class GroupCueViewModel : CueViewModel
     private TimeSpan playbackTime;
     private TimeSpan computedDuration;
 
-    [Reactive, Readonly, NoUndo] private SubCueList cues;
+    [Reactive, Readonly, NoUndo] private CueList cues;
 
     [Reactive] private GroupTriggerMode groupTrigger;
     private bool isCollapsed;
-    [Reactive("IsCollapsed"), ModelBindsTo("isCollapsed")]
+    [Reactive("IsCollapsed"), ModelBindsTo("isCollapsed"), NoUndo]
     private bool IsCollapsed_Template
     {
         get => isCollapsed;
@@ -51,9 +51,9 @@ public partial class GroupCueViewModel : CueViewModel
     /// </summary>
     /// <param name="mainViewModel"></param>
     /// <param name="ownerCueList"></param>
-    internal GroupCueViewModel(MainViewModel mainViewModel, CueList? ownerCueList) : base(mainViewModel)
+    internal GroupCueViewModel(MainViewModel mainViewModel, VisualCueList? ownerCueList) : base(mainViewModel)
     {
-        cues = new(this, ownerCueList);
+        cues = new(mainViewModel, this);
 
         PropertyChanged += GroupCueViewModel_PropertyChanged;
         cues.CueListChanged += Cues_CueListChanged;
@@ -70,7 +70,7 @@ public partial class GroupCueViewModel : CueViewModel
         }
     }
 
-    private void Cues_CueListChanged(bool wasInserted, IEnumerable<CueViewModel> changedCues, IEnumerable<AbstractCueList.CuePosition>? positions)
+    private void Cues_CueListChanged(bool wasInserted, IEnumerable<CueViewModel> changedCues, IEnumerable<CuePosition>? positions)
     {
         OnPropertyChanged(nameof(NamePreview));
         // TODO: For the duration to be correct we need to subscribe/unsubscribe from duration changes of the children here...

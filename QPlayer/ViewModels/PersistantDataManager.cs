@@ -49,7 +49,7 @@ public class PersistantDataManager : ObservableObject
         }
         catch (Exception ex)
         {
-            MainViewModel.Log($"[PersistantData] Couldn't initialise persistant data directory, program settings won't be loaded!\n{ex}");
+            MainViewModel.Log($"[PersistantData] Couldn't initialise persistant data directory, program settings won't be loaded!\n{ex}", MainViewModel.LogLevel.Warning);
         }
 
         LoadRecentFiles();
@@ -76,7 +76,7 @@ public class PersistantDataManager : ObservableObject
         }
         catch (Exception ex)
         {
-            MainViewModel.Log($"[PersistantData] Couldn't load to recent files list!\n{ex}");
+            MainViewModel.Log($"[PersistantData] Couldn't load to recent files list!\n{ex}", MainViewModel.LogLevel.Warning);
         }
     }
 
@@ -109,25 +109,32 @@ public class PersistantDataManager : ObservableObject
 
     public void AddRecentFile(string fileName)
     {
+        string fileNameShort = Path.GetFileNameWithoutExtension(fileName);
+        if (fileNameShort.StartsWith("autoback"))
+            return;
+
         string shortPath = fileName;
         if (fileName.Length > 32)
             shortPath = string.Concat("...", shortPath.AsSpan(fileName.Length - 32, 32));
         RecentFile recent = new()
         {
             Path = fileName,
-            Name = $"{Path.GetFileNameWithoutExtension(fileName)} ({shortPath})"
+            Name = $"{fileNameShort} ({shortPath})"
         };
 
-        if (recentFilesView.Remove(recent))
+        _ = dispatcher.InvokeAsync(() =>
         {
-            recentFilesView.Insert(0, recent);
-        }
-        else
-        {
-            recentFilesView.Insert(0, recent);
-            if (recentFilesView.Count > MAX_RECENT_FILES)
-                recentFilesView.RemoveAt(recentFilesView.Count - 2); // Remove the last recent file, excluding the list of autoback files
-        }
+            if (recentFilesView.Remove(recent))
+            {
+                recentFilesView.Insert(0, recent);
+            }
+            else
+            {
+                recentFilesView.Insert(0, recent);
+                if (recentFilesView.Count > MAX_RECENT_FILES)
+                    recentFilesView.RemoveAt(recentFilesView.Count - 2); // Remove the last recent file, excluding the list of autoback files
+            }
+        });
 
         if (dataDir == null)
             return;
@@ -140,7 +147,7 @@ public class PersistantDataManager : ObservableObject
         }
         catch (Exception ex)
         {
-            MainViewModel.Log($"[PersistantData] Couldn't save to recent files list!\n{ex}");
+            MainViewModel.Log($"[PersistantData] Couldn't save to recent files list!\n{ex}", MainViewModel.LogLevel.Warning);
         }
     }
 }

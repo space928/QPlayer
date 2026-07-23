@@ -26,7 +26,7 @@ namespace QPlayer.Views
 
         // Using a DependencyProperty as the backing store for IsExpanded.  This enables animation, styling, binding, etc...
         public static readonly DependencyProperty IsExpandedProperty =
-            DependencyProperty.Register(nameof(IsCollapsed), typeof(bool), typeof(ExpanderKnob), new PropertyMetadata(false, IsCollapsedChanged));
+            DependencyProperty.Register(nameof(IsCollapsed), typeof(bool), typeof(ExpanderKnob), new FrameworkPropertyMetadata(false, FrameworkPropertyMetadataOptions.BindsTwoWayByDefault, IsCollapsedChanged));
 
         public ExpanderKnob()
         {

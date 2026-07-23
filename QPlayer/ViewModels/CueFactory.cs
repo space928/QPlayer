@@ -113,7 +113,7 @@ public static class CueFactory
 
             if (vmType.GetCustomAttribute<ModelAttribute>() is not ModelAttribute modelAttr)
             {
-                MainViewModel.Log($"failed to register cue type '{vmType.Name}' as it does not specify an associated model type. " +
+                MainViewModel.Log($"Failed to register cue type '{vmType.Name}' as it does not specify an associated model type. " +
                     $"(See the [Model(...)] attribute for details.)", MainViewModel.LogLevel.Error);
                 continue;
             }
@@ -141,6 +141,11 @@ public static class CueFactory
             var icon = vmType.GetCustomAttribute<IconAttribute>();
 
             var vmCtor = vmType.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, [typeof(MainViewModel)]);
+            if (vmCtor == null)
+            {
+                MainViewModel.Log($"Failed to register cue type '{vmType.Name}' as it does not have a constructor with the expected signature.", MainViewModel.LogLevel.Error);
+                continue;
+            }
 
             RegisteredCueType cueDetails = new(modelType.Name, displayName, modelType, vmType, vmCtor, viewType, assembly.FullName ?? string.Empty, icon?.Name, icon?.ResourceDictionary);
 
