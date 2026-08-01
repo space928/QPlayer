@@ -14,11 +14,15 @@ played. Media playback is handled by NAudio, providing a large range of supporte
 **Features:**
  - Playback of a range of audio types (wav, mp3, etc...)
  - Playback of multiple cues concurrently
- - Fade in and fade out
+ - Group cues
+ - Fade in, fade out, and fade cues
  - Pausing and preloading cues
  - Cue pre-delays
  - Per-cue EQ and a global limiter
  - OSC support
+ - Super reliable audio engine
+ - A detailed user manual
+ - An easy to use editor, with undo/redo, drag & drop, batch editing, and more...
 
 
 ![Application screenshot](https://github.com/space928/QPlayer/assets/15130114/1a63eaaa-2c13-48e4-be0e-e33b5921bb41)
@@ -53,3 +57,6 @@ Hence, my wish is that LLMs not be used to generate derivative or transformative
 consisting largely of LLM generated content will not be accepted at my discretion. Consider these stipulations to be additional
 requirements to those in the LICENSE.md file. That being said, I'm not your mother, and what you do in private is none of my 
 concern, I only take issue when you publish works which break these requirements. <3
+
+Further to the stipulations of the GPLv3 license, QPlayer, it's source code, and any derivative projects of this code, may not 
+be used to train large language models.

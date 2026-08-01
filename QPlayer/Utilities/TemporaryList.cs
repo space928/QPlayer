@@ -313,8 +313,10 @@ public struct TemporaryList<T> : ITempList<T>
         return res;
     }
 
+    [Obsolete("Prefer using the typed variant of this method instead.")]
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
+    [Obsolete("Prefer using the typed variant of this method instead.")]
     public int Add(object? value)
     {
         if (value is T item)
@@ -326,22 +328,27 @@ public struct TemporaryList<T> : ITempList<T>
         return -1;
     }
 
+    [Obsolete("Prefer using the typed variant of this method instead.")]
     public readonly bool Contains(object? value) => value is T item && Contains(item);
 
+    [Obsolete("Prefer using the typed variant of this method instead.")]
     public readonly int IndexOf(object? value) => value is T item ? IndexOf(item) : -1;
 
+    [Obsolete("Prefer using the typed variant of this method instead.")]
     public void Insert(int index, object? value)
     {
         if (value is T item)
             Insert(index, item);
     }
 
+    [Obsolete("Prefer using the typed variant of this method instead.")]
     public void Remove(object? value)
     {
         if (value is T item)
             Remove(item);
     }
 
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     public readonly void CopyTo(Array array, int index)
     {
         if (items != null)

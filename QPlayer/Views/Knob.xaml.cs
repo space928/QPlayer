@@ -246,6 +246,8 @@ public partial class Knob : UserControl, INotifyPropertyChanged, INotifyProperty
         double val = Value;
         val = UnApplyPower(Math.Clamp(val, min, max));
         UpdateKnobMarker(min, max, val);
+
+        KnobGrid.MaxWidth = KnobInst.MaxHeight - KnobOuterGrid.Margin.Top - KnobOuterGrid.Margin.Bottom - TextRow.MaxHeight;
     }
 
     private void UpdateKnobMarker(double min, double max, double val)

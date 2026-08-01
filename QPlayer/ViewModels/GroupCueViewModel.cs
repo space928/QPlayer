@@ -139,7 +139,11 @@ public partial class GroupCueViewModel : CueViewModel
 
     public override void Go()
     {
+        bool wasPaused = State == CueState.Paused;
         base.Go();
+
+        if (wasPaused)
+            return; // Unpause logic is handled by the individual cues, no need for the group cue to do anything
 
         if (IsCollapsed && groupTrigger != GroupTriggerMode.All)
             IsCollapsed = false;

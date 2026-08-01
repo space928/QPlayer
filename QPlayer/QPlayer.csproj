@@ -94,10 +94,6 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!--<SplashScreen Include="Resources\SplashV2.png" />-->
-	</ItemGroup>
-
-	<ItemGroup>
 		<Folder Include="SourceGenerator\" />
 	</ItemGroup>
 
@@ -117,6 +113,12 @@
 		<!--<None Update="Resources\Inter-VariableFont_LICENSE_OFL.txt">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>-->
+	</ItemGroup>
+
+	<ItemGroup>
+	  <Page Update="Views\SharedResources.xaml">
+	    <Generator>MSBuild:Compile</Generator>
+	  </Page>
 	</ItemGroup>
 
 </Project>

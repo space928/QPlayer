@@ -71,7 +71,7 @@ public sealed class TemplatePropAttribute(string propName) : Attribute
 }
 
 /// <summary>
-/// Marks the setter on the generated property as private.
+/// Marks the setter on the generated property as private. Use this attribute on init-only properties; this has the same effect as the <c>readonly</c> keyword.
 /// <br/>
 /// Requires a <see cref="ReactiveAttribute"/> on this same property.
 /// </summary>
@@ -84,6 +84,12 @@ public sealed class ReadonlyAttribute : Attribute
 /// <summary>
 /// Specifies that, for the annotated property, the provided delegates should be called to synchronise 
 /// data to and from the model for this property.
+/// <para/>
+/// The signatures of the two methods should look like:
+/// <code>
+///     private static void M2VM_Prop(CueViewModel vm, Cue m) => ...
+///     private static void VM2M_Prop(CueViewModel vm, Cue m) => ...
+/// </code>
 /// </summary>
 /// <param name="vmToModel">The name of a static method in this class to copy this property's value from this instance to the model.</param>
 /// <param name="modelToVM">The name of a static method in this class to copy this property's value from the model to this instance.</param>
@@ -174,7 +180,8 @@ public sealed class ModelAttribute(Type modelType) : Attribute
 }
 
 /// <summary>
-/// Specifies the view type associated with this view model.
+/// Specifies the view type associated with this view model. This is expected to derive from a 
+/// <see cref="System.Windows.Controls.UserControl"/> or an <see cref="QPlayer.ViewModels.ICueView"/>.
 /// </summary>
 /// <param name="viewType"></param>
 [System.AttributeUsage(AttributeTargets.Class, Inherited = false, AllowMultiple = false)]

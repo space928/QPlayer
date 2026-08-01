@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
     <ImplicitUsings>enable</ImplicitUsings>
@@ -9,8 +9,7 @@
 
   <ItemGroup>
     <PackageReference Include="TUnit" Version="1.5*" />
-    <PackageReference Include="TUnit.Assertions" Version="1.61.29" />
-    <PackageReference Include="TUnit.Assertions.Should" Version="1.61.29-beta" />
+    <PackageReference Include="TUnit.Assertions.Should" Version="1.62.0-beta" />
   </ItemGroup>
 
   <ItemGroup>

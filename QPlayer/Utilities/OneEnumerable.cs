@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Text;
 
 namespace QPlayer.Utilities;
@@ -9,9 +10,11 @@ namespace QPlayer.Utilities;
 /// A simple iterator that just wraps a single element.
 /// </summary>
 /// <typeparam name="T"></typeparam>
+[DebuggerDisplay("[{Value}]")]
 public readonly struct OneEnumerable<T>(T value) : IEnumerable<T>, IEnumerable, IList<T>, IList, IReadOnlyList<T>, ICollection<T>, ICollection
 {
     private readonly T value = value;
+    public readonly T Value => value;
 
     public T this[int index] { get => index == 0 ? value : throw new IndexOutOfRangeException(); set => throw new NotSupportedException(); }
     object? IList.this[int index] { get => index == 0 ? value : throw new IndexOutOfRangeException(); set => throw new NotSupportedException(); }

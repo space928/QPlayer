@@ -82,7 +82,6 @@ public class PersistantDataManager : ObservableObject
 
     public async Task RefreshAutoBackFiles()
     {
-        autoBackupFiles.Clear();
         try
         {
             var files = await Task.Run(() =>
@@ -93,6 +92,7 @@ public class PersistantDataManager : ObservableObject
             });
             await dispatcher.InvokeAsync(() =>
             {
+                autoBackupFiles.Clear();
                 foreach (var info in files)
                     autoBackupFiles.Add(new RecentFile()
                     {
@@ -124,6 +124,7 @@ public class PersistantDataManager : ObservableObject
 
         _ = dispatcher.InvokeAsync(() =>
         {
+            UndoManager.OnSave(); // We do this here to filter out autobacks
             if (recentFilesView.Remove(recent))
             {
                 recentFilesView.Insert(0, recent);

@@ -168,24 +168,25 @@ public partial class ViewGeneratorGenerator
             }
 
             // Bind the value
+            var bindingMode = prop.ReadOnly ? "Mode=OneWay" : "Mode=TwoWay";
             if (controlType == "local:TextField")
             {
-                attrs.Add($"Text='{{Binding {prop.PropName}, UpdateSourceTrigger=Default}}'");
+                attrs.Add($"Text='{{Binding {prop.PropName}, {bindingMode}, UpdateSourceTrigger=Default}}'");
             }
             else if (prop.EnumValues != null)
             {
                 // <ComboBox SelectedItem="{Binding LoopMode}" ItemsSource="{Binding LoopModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
-                attrs.Add($"SelectedItem='{{Binding {prop.PropName}}}'");
+                attrs.Add($"SelectedItem='{{Binding {prop.PropName}, {bindingMode}}}'");
                 attrs.Add($"ItemsSource='{{Binding {prop.PropType}Vals}}'");
             }
             else
             {
-                attrs.Add($"Value='{{Binding {prop.PropName}, UpdateSourceTrigger=Default}}'");
+                attrs.Add($"Value='{{Binding {prop.PropName}, {bindingMode}, UpdateSourceTrigger=Default}}'");
             }
 
             attrs.Add("Margin='8,2,2,2'");
 
-            if (prop.ReadOnly) // TODO: We also need to set the binding to OneWay
+            if (prop.ReadOnly)
                 attrs.Add("IsEnabled='False'");
 
             if (prop.FilePickerCmd is string fpCmd)

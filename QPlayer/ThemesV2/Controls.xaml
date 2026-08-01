@@ -15,22 +15,6 @@
         </Setter>
     </Style>
 
-    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ButtonBase}">
-        <Style.Resources>
-            <Style TargetType="Border">
-                <Setter Property="CornerRadius" Value="{StaticResource AREghZy.CornerRadius}" />
-            </Style>
-        </Style.Resources>
-    </Style>
-
-    <Style x:Key="ButtonRoundNone" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
-        <Style.Resources>
-            <Style TargetType="Border">
-                <Setter Property="CornerRadius" Value="0" />
-            </Style>
-        </Style.Resources>
-    </Style>
-
     <Style x:Key="ButtonBase" TargetType="{x:Type Button}">
         <Setter Property="FocusVisualStyle" Value="{StaticResource FocusVisual}" />
         <Setter Property="Background" Value="{DynamicResource Button.Static.Background}" />
@@ -71,6 +55,22 @@
                 </ControlTemplate>
             </Setter.Value>
         </Setter>
+    </Style>
+
+    <Style TargetType="{x:Type Button}" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="{DynamicResource AREghZy.CornerRadius}" />
+            </Style>
+        </Style.Resources>
+    </Style>
+
+    <Style x:Key="ButtonRoundNone" TargetType="Button" BasedOn="{StaticResource ButtonBase}">
+        <Style.Resources>
+            <Style TargetType="Border">
+                <Setter Property="CornerRadius" Value="0" />
+            </Style>
+        </Style.Resources>
     </Style>
 
     <Style TargetType="{x:Type ToggleButton}">
@@ -143,7 +143,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ToggleButton}">
-                    <Border x:Name="templateRoot" CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{DynamicResource ComboBox.Static.Border}" BorderThickness="{TemplateBinding BorderThickness}" Background="{DynamicResource ComboBox.Static.Background}" SnapsToDevicePixels="true">
+                    <Border x:Name="templateRoot" CornerRadius="{DynamicResource AREghZy.CornerRadius}" BorderBrush="{DynamicResource ComboBox.Static.Border}" BorderThickness="{TemplateBinding BorderThickness}" Background="{DynamicResource ComboBox.Static.Background}" SnapsToDevicePixels="true">
                         <Border x:Name="splitBorder" BorderBrush="Transparent" BorderThickness="1" HorizontalAlignment="Right" Margin="0" SnapsToDevicePixels="true" Width="{DynamicResource {x:Static SystemParameters.VerticalScrollBarWidthKey}}">
                             <Path x:Name="arrow" Data="F1 M 0,0 L 2.667,2.66665 L 5.3334,0 L 5.3334,-1.78168 L 2.6667,0.88501 L0,-1.78168 L0,0 Z" Fill="{DynamicResource ComboBox.Static.Glyph}" HorizontalAlignment="Center" Margin="0 3 0 0" VerticalAlignment="Center" />
                         </Border>
@@ -237,7 +237,7 @@
             </Grid.ColumnDefinitions>
             <Popup x:Name="PART_Popup" AllowsTransparency="true" Grid.ColumnSpan="2" IsOpen="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Margin="1" PopupAnimation="{DynamicResource {x:Static SystemParameters.ComboBoxPopupAnimationKey}}" Placement="Bottom">
                 <aero:SystemDropShadowChrome x:Name="shadow" Color="Transparent" MaxHeight="{TemplateBinding MaxDropDownHeight}" MinWidth="{Binding ActualWidth, ElementName=templateRoot}">
-                    <Border x:Name="dropDownBorder" CornerRadius="{StaticResource AREghZy.CornerRadiusMedium}" BorderBrush="{DynamicResource Popup.Static.Border}" BorderThickness="1" Background="{DynamicResource Popup.Static.Background}">
+                    <Border x:Name="dropDownBorder" CornerRadius="{DynamicResource AREghZy.CornerRadiusMedium}" BorderBrush="{DynamicResource Popup.Static.Border}" BorderThickness="1" Background="{DynamicResource Popup.Static.Background}">
                         <ScrollViewer x:Name="DropDownScrollViewer">
                             <Grid x:Name="grid" RenderOptions.ClearTypeHint="Enabled">
                                 <Canvas x:Name="canvas" HorizontalAlignment="Left" Height="0" VerticalAlignment="Top" Width="0">
@@ -312,7 +312,7 @@
                 </aero:SystemDropShadowChrome>
             </Popup>
             <ToggleButton x:Name="toggleButton" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Grid.ColumnSpan="2" IsChecked="{Binding IsDropDownOpen, Mode=TwoWay, RelativeSource={RelativeSource TemplatedParent}}" Style="{StaticResource ComboBoxToggleButton}" />
-            <Border x:Name="border" CornerRadius="{StaticResource AREghZy.CornerRadius}" Background="{DynamicResource TextBox.Static.Background}" Margin="{TemplateBinding BorderThickness}">
+            <Border x:Name="border" CornerRadius="{DynamicResource AREghZy.CornerRadius}" Background="{DynamicResource TextBox.Static.Background}" Margin="{TemplateBinding BorderThickness}">
                 <TextBox x:Name="PART_EditableTextBox" HorizontalContentAlignment="{TemplateBinding HorizontalContentAlignment}" IsReadOnly="{Binding IsReadOnly, RelativeSource={RelativeSource TemplatedParent}}" Margin="{TemplateBinding Padding}" Style="{StaticResource ComboBoxEditableTextBox}" VerticalContentAlignment="{TemplateBinding VerticalContentAlignment}" />
             </Border>
         </Grid>
@@ -356,7 +356,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type ComboBoxItem}">
-                    <Border x:Name="Bd" CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
+                    <Border x:Name="Bd" CornerRadius="{DynamicResource AREghZy.CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -735,7 +735,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Label}">
-                    <Border CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
+                    <Border CornerRadius="{DynamicResource AREghZy.CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" Padding="{TemplateBinding Padding}" SnapsToDevicePixels="true">
                         <ContentPresenter HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" RecognizesAccessKey="True" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -856,7 +856,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type RepeatButton}">
-                    <Border x:Name="border" CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{DynamicResource ScrollBar.Static.Border}" BorderThickness="1" Background="{DynamicResource ScrollBar.Static.Background}" SnapsToDevicePixels="true">
+                    <Border x:Name="border" CornerRadius="{DynamicResource AREghZy.CornerRadius}" BorderBrush="{DynamicResource ScrollBar.Static.Border}" BorderThickness="1" Background="{DynamicResource ScrollBar.Static.Background}" SnapsToDevicePixels="true">
                         <ContentPresenter x:Name="contentPresenter" Focusable="False" HorizontalAlignment="{TemplateBinding HorizontalContentAlignment}" Margin="{TemplateBinding Padding}" SnapsToDevicePixels="{TemplateBinding SnapsToDevicePixels}" VerticalAlignment="{TemplateBinding VerticalContentAlignment}" />
                     </Border>
                     <ControlTemplate.Triggers>
@@ -899,7 +899,7 @@
         <Setter Property="Template">
             <Setter.Value>
                 <ControlTemplate TargetType="{x:Type Thumb}">
-                    <Border x:Name="rectangle" CornerRadius="{StaticResource AREghZy.CornerRadius}" Background="{DynamicResource ScrollBar.Static.Thumb}" Height="{TemplateBinding Height}" SnapsToDevicePixels="True" Width="{TemplateBinding Width}" Margin="1,0" />
+                    <Border x:Name="rectangle" CornerRadius="{DynamicResource AREghZy.CornerRadius}" Background="{DynamicResource ScrollBar.Static.Thumb}" Height="{TemplateBinding Height}" SnapsToDevicePixels="True" Width="{TemplateBinding Width}" Margin="1,0" />
                     <ControlTemplate.Triggers>
                         <Trigger Property="IsMouseOver" Value="true">
                             <Setter Property="Background" TargetName="rectangle" Value="{DynamicResource ScrollBar.MouseOver.Thumb}" />
@@ -1869,8 +1869,6 @@
         </Setter>
     </Style>
 
-    <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MenuItem}"/>
-
     <Style TargetType="{x:Type MenuItem}" x:Key="MenuItem">
         <Setter Property="Template">
             <Setter.Value>
@@ -1944,6 +1942,8 @@
             </Trigger>
         </Style.Triggers>
     </Style>
+
+    <Style TargetType="{x:Type MenuItem}" BasedOn="{StaticResource MenuItem}"/>
 
     <ControlTemplate x:Key="NormalMenuItemHead" TargetType="{x:Type MenuItem}">
         <Border x:Name="templateRoot" CornerRadius="{DynamicResource AREghZy.CornerRadius}" BorderBrush="{TemplateBinding BorderBrush}" BorderThickness="{TemplateBinding BorderThickness}" Background="{TemplateBinding Background}" SnapsToDevicePixels="True">
@@ -2733,7 +2733,7 @@
         <Setter Property="TextTrimming" Value="CharacterEllipsis" />
         <Setter Property="TextAlignment" Value="Left" />
         <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}" />
-        <!--<Setter Property="FontFamily" Value="{StaticResource AREghZy.FontFamily}"/>-->
+        <!--<Setter Property="FontFamily" Value="{DynamicResource AREghZy.FontFamily}"/>-->
         <Style.Triggers>
             <Trigger Property="IsEnabled" Value="False">
                 <Setter Property="Opacity" Value="0.5" />
@@ -2745,7 +2745,7 @@
         <Setter Property="Background" Value="{DynamicResource Popup.Static.Background}" />
         <Setter Property="BorderBrush" Value="{DynamicResource Popup.Static.Border}" />
         <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}" />
-        <!--<Setter Property="FontFamily" Value="{StaticResource AREghZy.FontFamily}"/>-->
+        <!--<Setter Property="FontFamily" Value="{DynamicResource AREghZy.FontFamily}"/>-->
         <Setter Property="MaxWidth" Value="800" />
         <Setter Property="OverridesDefaultStyle" Value="true" />
         <Setter Property="HasDropShadow" Value="True" />
@@ -3083,7 +3083,7 @@
         <Setter Property="Foreground" Value="{DynamicResource AREghZyBrush.Foreground.Static}" />
         <Setter Property="CaretBrush" Value="{DynamicResource AREghZyBrush.Glyph.Static}" />
         <Setter Property="SelectionBrush" Value="{DynamicResource TextBox.Selection}" />
-        <!--<Setter Property="FontFamily" Value="{StaticResource AREghZy.FontFamily}"/>-->
+        <!--<Setter Property="FontFamily" Value="{DynamicResource AREghZy.FontFamily}"/>-->
         <Setter Property="BorderThickness" Value="1"/>
         <Setter Property="KeyboardNavigation.TabNavigation" Value="None"/>
         <Setter Property="HorizontalContentAlignment" Value="Left"/>

@@ -45,17 +45,8 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
     [Reactive("IsCollapsed")]
     private bool IsCollapsed_Template
     {
-        get
-        {
-            if (DataContext is not GroupCueViewModel gc)
-                return false;
-            return gc.IsCollapsed;
-        }
-        set
-        {
-            if (DataContext is GroupCueViewModel gc)
-                gc.IsCollapsed = value;
-        }
+        get => group != null && group.IsCollapsed;
+        set => group?.IsCollapsed = value;
     }
 
     const int DragDeadzone = 10;
@@ -200,6 +191,9 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
             case nameof(CueViewModel.IsMultiSelected):
                 ComputeSelOutline();
                 break;
+            case nameof(GroupCueViewModel.IsCollapsed):
+                OnPropertyChanged(nameof(IsCollapsed));
+                break;
         }
     }
 
@@ -257,6 +251,9 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
         if (vm == null)
             return;
         var mainVm = vm.MainViewModel;
+
+        if (!mainVm.IsEditMode())
+            return;
 
         if (e.LeftButton == MouseButtonState.Pressed && delta.Length > DragDeadzone
             && mainVm.DraggingCues.Count == 0

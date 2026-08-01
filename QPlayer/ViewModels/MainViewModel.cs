@@ -103,6 +103,8 @@ public partial class MainViewModel : ObservableObject
 
     [Reactive] private readonly EditModeCommand moveCueUpCommand;
     [Reactive] private readonly EditModeCommand moveCueDownCommand;
+    [Reactive] private readonly EditModeCommand moveCueIntoUpCommand;
+    [Reactive] private readonly EditModeCommand moveCueIntoDownCommand;
     [Reactive] private readonly EditModeCommand selUpCommand;
     [Reactive] private readonly EditModeCommand selDownCommand;
     [Reactive] private readonly EditModeCommand deleteCueCommand;
@@ -143,7 +145,7 @@ public partial class MainViewModel : ObservableObject
     }
     public AudioBufferDispatcherViewModel AudioBufferDispatcherDebug { get; private set; }
 
-    public string WindowTitle => $"QPlayer – {ProjectSettings.Title}";
+    public string WindowTitle => $"QPlayer – {ProjectSettings.Title}{(UndoManager.UnsavedChanges ? '*' : ' ')}";
     public string VersionString
     {
         get
@@ -297,6 +299,8 @@ public partial class MainViewModel : ObservableObject
 
         moveCueUpCommand = new(MoveCueUpExecute, this);
         moveCueDownCommand = new(MoveCueDownExecute, this);
+        moveCueIntoUpCommand = new(() => MoveCueUpExecute(true), this);
+        moveCueIntoDownCommand = new(() => MoveCueDownExecute(true), this);
         selUpCommand = new(() => MultiSelect(SelectedCueInd - 1, SelectionMode.Range), this);
         selDownCommand = new(() => MultiSelect(SelectedCueInd + 1, SelectionMode.Range), this);
         deleteCueCommand = new(DeleteCueExecute, this);
@@ -407,6 +411,7 @@ public partial class MainViewModel : ObservableObject
     {
         OnPropertyChanged(nameof(Clock));
         OnPropertyChanged(nameof(IsAudioActive));
+        OnPropertyChanged(nameof(WindowTitle));
 
         OnSlowUpdate?.Invoke();
         PluginLoader.OnSlowUpdate();
@@ -696,29 +701,39 @@ public partial class MainViewModel : ObservableObject
         SelectedCue?.Preload(PreloadTime);
     }
 
+    /// <inheritdoc cref="MoveCueUpExecute(bool)"/>
+    public void MoveCueUpExecute() => MoveCueUpExecute(false);
+
     /// <summary>
     /// Moves the selected cues up by one position in the cue stack.
     /// </summary>
-    public void MoveCueUpExecute()
+    /// <param name="intoGroup">When <see langword="false"/> skips over sub-groups when moving the cues, when 
+    /// <see langword="true"/> the cues can be moved into adjacant groups.</param>
+    public void MoveCueUpExecute(bool intoGroup)
     {
         switch (multiSelection.Count)
         {
             case 0: return;
-            case 1: MoveCue(SelectedCue!, false); return;
-            default: MoveSelectedCues(false); return;
+            case 1: MoveCue(SelectedCue!, false, intoGroup); return;
+            default: MoveSelectedCues(false, intoGroup); return;
         }
     }
+
+    /// <inheritdoc cref="MoveCueDownExecute(bool)"/>
+    public void MoveCueDownExecute() => MoveCueDownExecute(false);
 
     /// <summary>
     /// Moves the selected cues down by one position in the cue stack.
     /// </summary>
-    public void MoveCueDownExecute()
+    /// <param name="intoGroup">When <see langword="false"/> skips over sub-groups when moving the cues, when 
+    /// <see langword="true"/> the cues can be moved into adjacant groups.</param>
+    public void MoveCueDownExecute(bool intoGroup)
     {
         switch (multiSelection.Count)
         {
             case 0: return;
-            case 1: MoveCue(SelectedCue!, true); return;
-            default: MoveSelectedCues(true); return;
+            case 1: MoveCue(SelectedCue!, true, intoGroup); return;
+            default: MoveSelectedCues(true, intoGroup); return;
         }
     }
 

@@ -41,6 +41,7 @@ public partial class OSCCueViewModel : CueViewModel
         }
     }*/
 
+    [SkipView]
     public override string NamePreview => string.IsNullOrEmpty(Name) ? $"OSC {command}" : Name;
 
     public OSCCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)

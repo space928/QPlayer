@@ -135,13 +135,13 @@ public partial class TextField : UserControl
         if (!IsEnabled)
             return;
 
-        isCapturingMouse = true;
-        e.MouseDevice.Capture(Spinner);
         ShowCursor(false);
-        //GetCursorPos(out mouseStartPos);
         var spinnerCentre = Spinner.PointToScreen(new Point(Spinner.ActualWidth / 2, Spinner.ActualHeight / 2));
         mouseStartPos = new((int)spinnerCentre.X, (int)spinnerCentre.Y);
         SetCursorPos(mouseStartPos.x, mouseStartPos.y);
+
+        isCapturingMouse = true;
+        e.MouseDevice.Capture(Spinner);
     }
 
     private void Spinner_MouseUp(object sender, MouseButtonEventArgs e)

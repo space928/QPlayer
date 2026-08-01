@@ -3,5 +3,5 @@
 &".\SvgToXaml\SvgToXaml.exe" BuildDict /inputdir:. /outputdir:. /outputname ConvertedIcons /nameprefix "Icon" /buildhtmlfile=false
 Read-Host
 
-(Get-Content .\ConvertedIcons.xaml) -replace 'Brush=\"#.*?\"','Brush="{StaticResource IconColor}"' | Out-File .\ConvertedIcons.xaml
+(Get-Content .\ConvertedIcons.xaml) -replace 'Brush=\"#.*?\"','Brush="{DynamicResource IconColor}"' | Out-File .\ConvertedIcons.xaml
 Write-Output "Updated icons!"

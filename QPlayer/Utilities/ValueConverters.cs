@@ -130,6 +130,22 @@ public class MultiplyByConverter : IValueConverter
     }
 }
 
+[ValueConversion(typeof(float), typeof(double))]
+public class MultiplyByFConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        var fmtNum = CultureInfo.InvariantCulture.NumberFormat;
+
+        return (float)value * double.Parse((string)parameter, fmtNum);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        return DependencyProperty.UnsetValue;
+    }
+}
+
 [ValueConversion(typeof(TriggerMode), typeof(int))]
 public class TriggerModeConverter : IValueConverter
 {

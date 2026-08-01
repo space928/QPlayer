@@ -247,6 +247,16 @@ public static partial class ExtensionMethods
     /// <inheritdoc cref="FastReverse{T}(IEnumerable{T})"/>
     public static FastReverseList<T> FastReverse<T>(this IList<T> source) => new(source);
 
+    public static Span<T> AsSpan<T>(this List<T> source, int start = 0, int count = -1)
+    {
+        var span = CollectionsMarshal.AsSpan(source);
+        if (start > 0)
+            span = span[start..];
+        if (count > -1)
+            span = span[..count];
+        return span;
+    }
+
     /*/// <summary>
     /// Returns the first element in a collection or the default value if it's empty.
     /// </summary>
@@ -302,6 +312,7 @@ public static partial class ExtensionMethods
 
     /// <inheritdoc cref="FastZipEnumerable{TA, TB}"/>
     public static IEnumerable<(TA first, TB second)> FastZip<TA, TB>(this IEnumerable<TA> first, IEnumerable<TB> second) => new FastZipEnumerable<TA, TB>(first, second);
+    public static IReadOnlyList<(TA first, TB second)> FastZip<TA, TB>(this IReadOnlyList<TA> first, IReadOnlyList<TB> second) => new FastZipList<TA, TB>(first, second);
     /// <inheritdoc cref="FastZipEnumerable{TA, TB}"/>
     public static TemporaryList<TA>.TempListZipEnumerable<TB> FastZip<TA, TB>(this in TemporaryList<TA> first, in TemporaryList<TB> second) => new(in first, in second);
 }

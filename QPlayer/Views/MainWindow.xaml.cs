@@ -135,7 +135,12 @@ public partial class MainWindow : Window
         if (cue.viewType.GetMethod(nameof(ICueView.CreateDataTemplate), BindingFlags.Public | BindingFlags.Static) is MethodInfo genView)
             dataTemplate = (DataTemplate)genView.Invoke(null, null)!;
         else
-            dataTemplate = (DataTemplate)Activator.CreateInstance(cue.viewType)!;
+            dataTemplate = CreateDataTempate(cue.viewModelType, cue.viewType);
+        /*{
+            dataTemplate = new DataTemplate();
+            dataTemplate.DataType = cue.viewModelType;
+            dataTemplate.VisualTree = new FrameworkElementFactory(cue.viewType);
+        }*/
 
         CueEditorInst.CueEditorTemplates.Add(new DataTemplateKey(cue.viewModelType), dataTemplate);
 
@@ -156,6 +161,26 @@ public partial class MainWindow : Window
             if (CueListContextMenu.Items[insertInd] is Separator)
                 break;
         CueListContextMenu.Items.Insert(insertInd, menuItem1);
+    }
+
+    private static DataTemplate CreateDataTempate(Type vmType, Type viewType)
+    {
+        var xaml = System.Windows.Markup.XamlReader.Parse($$"""
+            <DataTemplate DataType='{x:Type vt:{{vmType.Name}}}'
+                          xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                          xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                          xmlns:mc='http://schemas.openxmlformats.org/markup-compatibility/2006'
+                          xmlns:d='http://schemas.microsoft.com/expression/blend/2008'
+                          xmlns:local='clr-namespace:QPlayer.Views;assembly=QPlayer'
+                          xmlns:vm='clr-namespace:QPlayer.ViewModels;assembly=QPlayer'
+                          xmlns:util='clr-namespace:QPlayer.Utilities;assembly=QPlayer'
+                          xmlns:t='clr-namespace:{{viewType.Namespace}};assembly={{viewType.Assembly?.GetName()?.Name}}'
+                          xmlns:vt='clr-namespace:{{vmType.Namespace}};assembly={{viewType.Assembly?.GetName()?.Name}}'
+                          mc:Ignorable='d'>
+                <t:{{viewType.Name}}/>
+            </DataTemplate>
+            """);
+        return (DataTemplate)xaml;
     }
 
     private void Window_Loaded(object sender, RoutedEventArgs e)
@@ -259,7 +284,7 @@ public partial class MainWindow : Window
             case Key.Right:
                 e.Handled = true;
                 var mods = Keyboard.Modifiers;
-                if (keyBindings.TryGetValue((e.Key, mods), out var binding))
+                if (keyBindings.TryGetValue((e.Key, mods), out var binding) && binding.Command.CanExecute(null))
                     binding.Command.Execute(null);
                 break;
         }
@@ -270,6 +295,9 @@ public partial class MainWindow : Window
         CuePosition dstPos = vm.CueList.CreateCuePosition(vm.CueList.Count);
         if (vm.FindCuePosition(dropTargetVm, out var pos))
             dstPos = pos;
+
+        if (!vm.IsEditMode())
+            return;
 
         if (e.Data.GetDataPresent("Cues"))
         {
@@ -314,7 +342,7 @@ public partial class MainWindow : Window
                                 dstPos += 1;
                             }
                             break;
-                        //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov
+                        //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp
                         case ".mp4":
                         case ".mkv":
                         case ".avi":
@@ -322,12 +350,23 @@ public partial class MainWindow : Window
                         case ".flv":
                         case ".wmv":
                         case ".mov":
-                            /*{
-                                var cue = (VideoCueViewModel)vm.CreateCue(Models.CueType.VideoCue, afterLast: true);
-                                cue.Path = file;
+                        case ".png":
+                        case ".jpg":
+                        case ".jpeg":
+                        case ".bmp":
+                        case ".exr":
+                        case ".hdr":
+                        case ".webp":
+                            {
+                                var media = vm.CreateCue("VideoCue", afterLast: true) as IMediaCue;
+                                media ??= vm.CreateCue("PyVideoCue", afterLast: true) as IMediaCue;
+                                if (media == null || media is not CueViewModel cue)
+                                    break;
+                                media.Path = file;
                                 cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                                vm.MoveCue(cue, dstIndex++);
-                            }*/
+                                vm.MoveCue(cue, dstPos);
+                                dstPos += 1;
+                            }
                             break;
                         case ".qproj":
                             {

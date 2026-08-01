@@ -80,7 +80,7 @@
                     <Image x:Name="IconImg" Source="{Binding CueIcon, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
                            MaxHeight="20" MaxWidth="20" VerticalAlignment="Center">
                         <Image.ToolTip>
-                            <ToolTip Content="{Binding TypeName, Mode=OneWay}"/>
+                            <ToolTip Content="{Binding TypeDisplayName, Mode=OneWay}"/>
                         </Image.ToolTip>
                     </Image>
                 </DataTemplate>

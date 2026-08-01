@@ -316,7 +316,7 @@ public partial class ReactiveObjectGenerator
 
                     sb.AppendIndent();
                     sb.Append($"case nameof({prop.PropName}): ");
-                        sb.Append($"{prop.PropName} = ___src.{prop.PropName}; ");
+                    sb.Append($"{prop.PropName} = ___src.{prop.PropName}; ");
                     sb.Append("break;");
                     sb.AppendLine();
                 }
@@ -357,7 +357,7 @@ public partial class ReactiveObjectGenerator
             sb.AppendLine();
             foreach (var prop in model.ReactiveFields)
             {
-                if (prop.BindableParams.SkipBinding || prop.IsReadOnly)
+                if (prop.BindableParams.SkipBinding || (prop.IsReadOnly && !prop.IsBindableVM))
                     continue;
 
                 if (prop.BindableParams.BindingVM2M is string vm2m)
@@ -394,7 +394,7 @@ public partial class ReactiveObjectGenerator
             sb.AppendLine();
             foreach (var prop in model.ReactiveFields)
             {
-                if (prop.BindableParams.SkipBinding || prop.IsReadOnly)
+                if (prop.BindableParams.SkipBinding || (prop.IsReadOnly && !prop.IsBindableVM))
                     continue;
 
                 if (prop.BindableParams.BindingM2VM is string m2vm)

@@ -87,7 +87,7 @@ public partial class MainViewModel
     /// <returns>false if the user decided to cancel the current operation.</returns>
     public bool UnsavedChangedCheck(bool canCancel = true)
     {
-        bool changes = UndoManager.CanUndo || UndoManager.CanRedo;
+        bool changes = UndoManager.UnsavedChanges;
 
         if (!changes)
             return true;
@@ -192,6 +192,7 @@ public partial class MainViewModel
         oscManager.ConnectOSC();
         mscManager.ConnectMSC();
         OpenAudioDevice();
+        UndoManager.OnSave();
     }
 
     /// <summary>
@@ -305,10 +306,7 @@ public partial class MainViewModel
             // make a difference.
             if (syncModel)
             {
-                await dispatcher.InvokeAsync(() =>
-                {
-                    EnsureShowfileModelSync();
-                });
+                await dispatcher.InvokeAsync(EnsureShowfileModelSync);
             }
 
             await dispatcher.InvokeAsync(() =>

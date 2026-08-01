@@ -385,7 +385,52 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
     /// <param name="positions"></param>
     private void SortPositions(Span<CuePosition> positions)
     {
-        Dictionary<GroupCueViewModel, CuePosition> groupPositions = [];
+        if (positions.Length < 2)
+            return;
+
+        if (positions.Length < totalCount / 4)
+        {
+            // Sort by comparing positions
+            // O(n log n) where n is positions, the comparer is also O(n) worst case
+            var comparer = new CuePositionComparer(this);
+            positions.Sort(comparer);
+        }
+        else
+        {
+            // Check for trivially sorted inputs
+            var last = positions[0];
+            bool sorted = true;
+            for (int j = 1; j < positions.Length; j++)
+            {
+                var next = positions[j];
+                if (last.group != next.group || last.index > next.index)
+                {
+                    sorted = false;
+                    break;
+                }
+                last = next;
+            }
+            if (sorted)
+                return;
+
+            // Sort by enumerating and filtering the whole cue list.
+            // O(m) where m is cue list length
+            var positionsSet = new HashSet<CuePosition>(positions.Length);
+            foreach (var pos in positions)
+                positionsSet.Add(pos);
+            int i = 0;
+            foreach (var cand in EnumerateAllPositions())
+            {
+                if (positionsSet.Contains(cand))
+                    positions[i++] = cand;
+                if (i == positions.Length) 
+                    break;
+            }
+            for (; i < positions.Length; i++)
+                positions[i] = CuePosition.Invalid;
+        }
+
+        /*Dictionary<GroupCueViewModel, CuePosition> groupPositions = [];
 
         // https://en.wikipedia.org/wiki/Heapsort#Standard_implementation
         int start = positions.Length / 2;
@@ -418,7 +463,7 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
             }
         }
 
-        static int LeftChild(int i) => (i >> 1) + 1;
+        //static int LeftChild(int i) => (i >> 1) + 1;
         //int RightChild(int i) => (i >> 1) + 2;
         //int Parent(int i) => (i - 1) << 1;
         bool LessThan(CuePosition a, CuePosition b)
@@ -455,6 +500,63 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
             if (groupPositions.TryGetValue(cue, out var pos))
                 return pos;
             if (Find(cue, out pos))
+            {
+                groupPositions.Add(cue, pos);
+                return pos;
+            }
+            return CuePosition.Invalid;
+        }
+
+        static int CountParents(CueViewModel? cue)
+        {
+            int count = 0;
+            while (cue != null)
+            {
+                count++;
+                cue = cue.Parent;
+            }
+            return count;
+        }*/
+    }
+
+    private readonly struct CuePositionComparer(CueList cueList) : IComparer<CuePosition>
+    {
+        private readonly Dictionary<GroupCueViewModel, CuePosition> groupPositions = [];
+
+        public int Compare(CuePosition x, CuePosition y)
+        {
+            // Trivial case
+            if (x.group == y.group)
+                return x.index.CompareTo(y.index);
+
+            int aParentCount = CountParents(x.group);
+            int bParentCount = CountParents(y.group);
+            // Move to the same parent depth
+            while (aParentCount > bParentCount)
+            {
+                x = GetParentPos(x.group!); // a must have at least one parent in this path
+                aParentCount--;
+            }
+            while (bParentCount > aParentCount)
+            {
+                y = GetParentPos(y.group!); // b must have at least one parent in this path
+                bParentCount--;
+            }
+            while (x.group != y.group)
+            {
+                x = GetParentPos(x.group!); // this is safe, since they should reach null (the root) at the same
+                                            // time, hence the while loop would exit before this is dereferenced
+                y = GetParentPos(y.group!);
+            }
+
+            return x.index.CompareTo(y.index);
+        }
+
+        CuePosition GetParentPos(GroupCueViewModel cue)
+        {
+            if (groupPositions.TryGetValue(cue, out var pos))
+                return pos;
+            if (cueList.Find(cue, out pos))
             {
                 groupPositions.Add(cue, pos);
                 return pos;
@@ -816,6 +918,25 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
             if (cue is GroupCueViewModel group && !group.IsCollapsed)
             {
                 var children = group.Cues.EnumerateVisiblePositions();
+                foreach (var child in children)
+                    yield return child;
+            }
+        }
+    }
+
+    /// <summary>
+    /// Enumerates every existing cue position in this cue list and it's sub lists.
+    /// </summary>
+    /// <returns></returns>
+    protected internal IEnumerable<CuePosition> EnumerateAllPositions()
+    {
+        var parent = OwnerGroup;
+        for (int i = 0; i < rootCueList.Count; i++)
+        {
+            yield return new(i, parent);
+            if (rootCueList[i] is GroupCueViewModel subgroup)
+            {
+                var children = subgroup.Cues.EnumerateAllPositions();
                 foreach (var child in children)
                     yield return child;
             }
@@ -1320,7 +1441,7 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
             {
                 removedVisualsRev.Add(cue);
                 visPosesRev.Add(visPos);
-                if (lastVisPos != -2 && visPos - 1 != lastVisPos)
+                if (lastVisPos != -2 && visPos + 1 != lastVisPos)
                     isContiguous = false;
                 lastVisPos = visPos;
             }
@@ -1511,7 +1632,7 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
             return FindVisualIndex(cue);
 
         int res;
-        if (reverse)
+        if (!reverse)
         {
             res = visualCues.IndexOf(cue, lastVisPos);
             if (res == -1)
@@ -1545,8 +1666,19 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
             && pos.group == lastPos.group && lastPos.index == pos.index - 1)
             return lastVisPos + 1;
 
+        // Early out for positions in collapsed groups
+        {
+            var parent = pos.group;
+            while (parent != null)
+            {
+                if (parent.IsCollapsed)
+                    return visPos;
+                parent = parent.Parent as GroupCueViewModel;
+            }
+        }
+
         var list = (pos.group?.Cues) ?? cues;
-        if (list.Count > 1 && pos.index < list.Count - 1)
+        if (list.Count > 1 && pos.index < list.Count - 1) // TODO: This -1 here is only correct if only 1 cue has been added to the list.
         {
             // Search the visual list for the matching position
             int localPos = 0;
@@ -1570,6 +1702,8 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
                 }
                 localPos++;
             }
+            if (visPos == -1)
+                visPos = visualCues.Count; // Default to the end of the list, it's probably right...
         }
         else if (pos.index > 0)
         {
@@ -1580,7 +1714,17 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
             {
                 var groupPos = FindVisualIndex(pos.group);
                 if (groupPos != -1)
-                    visPos = groupPos + pos.group.Cues.EnumerateVisible().Count() + 1; // Grrr, slow
+                {
+                    // Scan till the end of this group
+                    visPos = groupPos + 1 + pos.group.Cues.Count; // Start as far into the group as we can
+                    for (; visPos < visualCues.Count; visPos++)
+                    {
+                        var visCue = visualCues[visPos];
+                        if (!visCue.HasParent(pos.group))
+                            break;
+                    }
+                    visPos--;
+                }
             }
         }
         else if (pos.index == 0)

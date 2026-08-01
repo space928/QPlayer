@@ -38,7 +38,9 @@
         <KeyBinding Gesture="CTRL+Shift+S" Command="{Binding SaveProjectAsCommand}"/>
         <KeyBinding Gesture="CTRL+E" Command="{Binding PackProjectCommand}"/>
         <KeyBinding Gesture="CTRL+Up" Command="{Binding MoveCueUpCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+Up" Command="{Binding MoveCueIntoUpCommand}"/>
         <KeyBinding Gesture="CTRL+Down" Command="{Binding MoveCueDownCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+Down" Command="{Binding MoveCueIntoDownCommand}"/>
         <KeyBinding Gesture="CTRL+D" Command="{Binding DuplicateCueCommand}"/>
         <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueMenuCommand}"/>
         <KeyBinding Gesture="CTRL+G" Command="{Binding GroupCuesCommand}"/>
