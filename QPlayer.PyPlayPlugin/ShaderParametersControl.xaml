@@ -1,4 +1,4 @@
-﻿<UserControl x:Class="QPlayer.PyPlayPlugin.ShaderParametersControl" x:Name="ShaderParametersControl"
+﻿<UserControl x:Class="QPlayer.PyPlayPlugin.ShaderParametersControl" x:Name="ShaderParametersControlInst"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
              xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
@@ -32,7 +32,7 @@
                                 </Grid.ColumnDefinitions>
                                 <v:TextField Text="{Binding Name}"/>
                                 <v:TextField Grid.Column="1" ShowSpinner="True" SpinnerType="Double" SpinRate="0.01" Text="{Binding Value}"/>
-                                <Button Grid.Column="2" DockPanel.Dock="Right" Content="X" Command="{Binding DataContext.DeleteShaderParameterCommand, ElementName=ShaderParametersControl}" CommandParameter="{Binding}"/>
+                                <Button Grid.Column="2" DockPanel.Dock="Right" Content="X" Command="{Binding DataContext.DeleteShaderParameterCommand, ElementName=ShaderParametersControlInst}" CommandParameter="{Binding}"/>
                             </Grid>
                         </ItemContainerTemplate>
                     </ItemsControl.ItemTemplate>

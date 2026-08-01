@@ -11,16 +11,15 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QPlayer.PyPlayPlugin
+namespace QPlayer.PyPlayPlugin;
+
+/// <summary>
+/// Interaction logic for ShaderParametersControl.xaml
+/// </summary>
+public partial class ShaderParametersControl : UserControl
 {
-    /// <summary>
-    /// Interaction logic for ShaderParametersControl.xaml
-    /// </summary>
-    public partial class ShaderParametersControl : UserControl
+    public ShaderParametersControl()
     {
-        public ShaderParametersControl()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

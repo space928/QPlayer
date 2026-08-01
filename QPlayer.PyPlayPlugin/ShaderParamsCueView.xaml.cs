@@ -11,24 +11,23 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QPlayer.PyPlayPlugin
+namespace QPlayer.PyPlayPlugin;
+
+/// <summary>
+/// Interaction logic for ShaderParamsCueView.xaml
+/// </summary>
+public partial class ShaderParamsCueView : UserControl
 {
-    /// <summary>
-    /// Interaction logic for ShaderParamsCueView.xaml
-    /// </summary>
-    public partial class ShaderParamsCueView : UserControl
+    public ShaderParamsCueView()
     {
-        public ShaderParamsCueView()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
+    }
 
-        private void CheckBox_Checked(object sender, RoutedEventArgs e)
-        {
-            if (sender is not CheckBox cb)
-                return;
+    private void CheckBox_Checked(object sender, RoutedEventArgs e)
+    {
+        if (sender is not CheckBox cb)
+            return;
 
-            TargetQIDField.IsEnabled = !(cb.IsChecked ?? false);
-        }
+        TargetQIDField.IsEnabled = !(cb.IsChecked ?? false);
     }
 }

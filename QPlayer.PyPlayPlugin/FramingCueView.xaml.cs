@@ -11,16 +11,15 @@ using System.Windows.Media.Imaging;
 using System.Windows.Navigation;
 using System.Windows.Shapes;
 
-namespace QPlayer.PyPlayPlugin
+namespace QPlayer.PyPlayPlugin;
+
+/// <summary>
+/// Interaction logic for FramingCueView.xaml
+/// </summary>
+public partial class FramingCueView : UserControl
 {
-    /// <summary>
-    /// Interaction logic for FramingCueView.xaml
-    /// </summary>
-    public partial class FramingCueView : UserControl
+    public FramingCueView()
     {
-        public FramingCueView()
-        {
-            InitializeComponent();
-        }
+        InitializeComponent();
     }
 }

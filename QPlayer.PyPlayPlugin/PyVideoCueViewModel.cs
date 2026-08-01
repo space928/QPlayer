@@ -114,7 +114,7 @@ public partial class PyVideoCueViewModel : CueViewModel, IMediaCue
             Title = "Open Media File",
             CheckFileExists = true,
             FileName = Path,
-            Filter = "Supported Media (*.mp4;*.mkv;*.wmv;*.webm;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp)|*.mp4;*.mkv;*.wmv;*.webm;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp|All files (*.*)|*.*"
+            Filter = "Supported Media (*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp)|*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp|All files (*.*)|*.*"
         };
         if (openFileDialog.ShowDialog() ?? false)
         {
