@@ -1,0 +1,39 @@
+﻿<UserControl x:Class="QPlayer.PyPlayPlugin.ShaderParamsCueView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:util="clr-namespace:QPlayer.Utilities;assembly=QPlayer"
+             xmlns:vm="clr-namespace:QPlayer.ViewModels;assembly=QPlayer"
+             xmlns:v="clr-namespace:QPlayer.Views;assembly=QPlayer"
+             xmlns:local="clr-namespace:QPlayer.PyPlayPlugin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=local:ShaderParamsCueViewModel}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/QPlayer;component/Views/SharedResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <DockPanel ToolTip="Whether this cue controls the global post processing shader.">
+            <Label Content="Post Processing"/>
+            <CheckBox IsChecked="{Binding PostProcessing}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="The QID of the video cue to control." x:Name="TargetQIDField">
+            <Label Content="Target QID"/>
+            <v:TextField Text="{Binding TargetQid}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <local:ShaderParametersControl/>
+        <DockPanel ToolTip="Fade in time in seconds.">
+            <Label Content="Fade Time"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="The type of curve to use when fading the volume.">
+            <Label Content="Fade Type"/>
+            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+    </StackPanel>
+</UserControl>

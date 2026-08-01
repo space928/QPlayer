@@ -1,0 +1,47 @@
+﻿<UserControl x:Class="QPlayer.PyPlayPlugin.FramingShutterControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:util="clr-namespace:QPlayer.Utilities;assembly=QPlayer"
+             xmlns:local="clr-namespace:QPlayer.PyPlayPlugin"
+             mc:Ignorable="d" 
+             d:DesignHeight="450" d:DesignWidth="800"
+             d:DataContext="{d:DesignInstance Type=local:FramingShutterViewModel}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/QPlayer;component/Views/SharedResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <Geometry x:Key="FramingShutterGeometry">F0 M50,-20 h-100 v20 A50,50 0 0 0 -35.3553,35.3553 A150,80 0 0 1 -15,75 v20 a5,5 0 0 0 5,5 h20 a5,5 0 0 0 5,-5 v-20 A150,80 0 0 1 35.3553,35.3553 A50,50 0 0 0 50,0 v-20z</Geometry>
+            <DrawingGroup x:Key="FramingShutterDrawingGroup" ClipGeometry="M-50,-100 v200 h100 v-200 h-100 Z">
+                <GeometryDrawing Brush="Wheat" Geometry="{StaticResource FramingShutterGeometry}"/>
+            </DrawingGroup>
+            <DrawingImage x:Key="FramingShutterDrawing" Drawing="{StaticResource FramingShutterDrawingGroup}" />
+            <util:MultiplyByFConverter x:Key="MultiplyByFConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid Width="200" Height="200" ClipToBounds="True" x:Name="ContainerGrid">
+        <Rectangle Width="180" Height="200" StrokeThickness="2" MouseDown="Rectangle_MouseDown" MouseUp="Rectangle_MouseUp" MouseMove="Rectangle_MouseMove" MouseEnter="Rectangle_MouseEnter" MouseLeave="Rectangle_MouseLeave">
+            <Rectangle.Fill>
+                <LinearGradientBrush StartPoint="0,0" EndPoint="0,0.5">
+                    <GradientStop Color="{DynamicResource AREghZyColour.Deep.1.Background.Static}" Offset="0.0" />
+                    <GradientStop Color="{DynamicResource AREghZyColour.Foreground.Deeper}" Offset="{Binding Softness}" />
+                </LinearGradientBrush>
+            </Rectangle.Fill>
+            <Rectangle.Stroke>
+                <SolidColorBrush Color="{DynamicResource AREghZyColour.Deep.3.Border.Static}"/>
+            </Rectangle.Stroke>
+            <Rectangle.OpacityMask>
+                <DrawingBrush Drawing="{DynamicResource FramingShutterDrawingGroup}"/>
+            </Rectangle.OpacityMask>
+            <Rectangle.RenderTransform>
+                <TransformGroup>
+                    <TranslateTransform Y="180"/>
+                    <TranslateTransform Y="{Binding MaskStart, Mode=OneWay, Converter={StaticResource MultiplyByFConverter}, ConverterParameter=-100}"/>
+                    <RotateTransform Angle="{Binding Rotation, Mode=OneWay}" CenterX="100" CenterY="100"/>
+                </TransformGroup>
+            </Rectangle.RenderTransform>
+        </Rectangle>
+    </Grid>
+</UserControl>

@@ -26,6 +26,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarlightDocNet", "Starligh
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.Tests", "QPlayer.Tests\QPlayer.Tests.csproj", "{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "QPlayer.PyPlayPlugin", "QPlayer.PyPlayPlugin\QPlayer.PyPlayPlugin.csproj", "{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -190,6 +192,26 @@ Global
 		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x64.Build.0 = Release|Any CPU
 		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x86.ActiveCfg = Release|Any CPU
 		{5B65372E-6A62-1134-BAC6-CBF4A7E3160A}.Release|x86.Build.0 = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|ARM.ActiveCfg = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|ARM.Build.0 = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|ARM64.ActiveCfg = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|ARM64.Build.0 = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|x64.Build.0 = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Debug|x86.Build.0 = Debug|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|Any CPU.Build.0 = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|ARM.ActiveCfg = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|ARM.Build.0 = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|ARM64.ActiveCfg = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|ARM64.Build.0 = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|x64.ActiveCfg = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|x64.Build.0 = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|x86.ActiveCfg = Release|Any CPU
+		{CDE74ED8-3082-4DB4-B5EE-7EDA13848319}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
