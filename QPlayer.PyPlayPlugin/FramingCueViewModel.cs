@@ -15,18 +15,12 @@ namespace QPlayer.PyPlayPlugin;
 [View(typeof(FramingCueView))]
 [DisplayName("Video Framing Cue")]
 [Icon("IconPyFramingCue", typeof(Icons))]
-public partial class FramingCueViewModel : CueViewModel
+public partial class FramingCueViewModel(MainViewModel mainViewModel) : CueViewModel(mainViewModel)
 {
     [Reactive] private UndoableObservableCollection<Vector2> corners = [..Enumerable.Repeat<Vector2>(default, 4)];
-    [Reactive] private UndoableObservableCollection<FramingShutterViewModel, FramingShutter> framing = [];
+    [Reactive] private UndoableObservableCollection<FramingShutterViewModel, FramingShutter> framing = [.. Enumerable.Range(0, 4).Select(x => new FramingShutterViewModel())];
     [Reactive] private float fadeTime = 0;
     [Reactive] private FadeType fadeType = FadeType.SCurve;
-
-    public FramingCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-    {
-        for (int i = 0; i < 4; i++)
-            framing.Add(new());
-    }
 }
 
 public partial class FramingShutterViewModel : BindableViewModel<FramingShutter>

@@ -17,7 +17,7 @@ namespace QPlayer.ViewModels;
 /// <summary>
 /// The base class for a hierarchical list of cues.
 /// </summary>
-public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueViewModel>
+public class CueList : BindableViewModel<List<Cue>>, IReadOnlyList<CueViewModel>
 {
     private readonly List<CueViewModel> rootCueList = [];
     private readonly HashSet<GroupCueViewModel> groups = [];
@@ -236,8 +236,8 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
     /// <returns>The cues which were deleted.</returns>
     public CueViewModel[] Delete(IEnumerable<CueViewModel> cues, bool collapseChildren = false)
     {
-        using var positions = GetPositionsSorted(cues);
-        var results = Delete(positions, false, collapseChildren);
+        using var positions = GetPositionsSorted(cues, collapseChildren);
+        var results = Delete(positions, false, false);
 
         return results;
     }
@@ -277,13 +277,7 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
             if (cuesList.Count == 0)
                 cuesList.AddRange(positions);
 
-            int i = 0;
-            using var collapseEnum = CollapseCuesOrdered(positions).GetEnumerator();
-            while (collapseEnum.MoveNext())
-            {
-                cuesList[i] = collapseEnum.Current;
-                i++;
-            }
+            cuesList.Replace(CollapseCuePositions(positions));
 
             positions = cuesList;
         }
@@ -314,65 +308,49 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
     #endregion
 
     #region Internal Insert/Delete
-
-    private IEnumerable<CuePosition> CollapseCuesOrdered(IEnumerable<CuePosition> positions)
+    /// <summary>
+    /// Enumerates a collection of cue positions, skipping any positions which are children of other positions in the collection.
+    /// </summary>
+    /// <param name="positions"></param>
+    /// <returns></returns>
+    internal IEnumerable<CuePosition> CollapseCuePositions(IEnumerable<CuePosition> positions)
     {
         HashSet<GroupCueViewModel> skip = [];
-        HashSet<GroupCueViewModel> keep = [];
         foreach (var pos in positions)
-        {
             if (this[pos] is GroupCueViewModel group)
                 skip.Add(group);
-
+        foreach (var pos in positions)
+        {
             // Top-level cues are always returned
             if (pos.group == null)
             {
                 yield return pos;
                 continue;
             }
-            // Groups in the keep set are always returned
-            if (keep.Contains(pos.group))
+
+            var parent = pos.group;
+            GroupCueViewModel? lastParent = null;
+            bool skipCurrent = false;
+            while (parent != null)
             {
-                yield return pos;
-                continue;
+                // Check if any of this position's parents are in the skip list
+                if (skip.Contains(parent))
+                {
+                    skipCurrent = true;
+                    // Add the lalst parent to the skip list if it exists to save time next time
+                    if (lastParent != null)
+                        skip.Add(lastParent);
+                    break;
+                }
+                lastParent = parent;
+                parent = parent.Parent as GroupCueViewModel;
             }
-            // Groups in the skip set are skipped
-            if (skip.Contains(pos.group))
+
+            if (skipCurrent)
                 continue;
 
-            if (pos.group.Parent != null)
-            {
-                bool skipped = false;
-                foreach (var parent in EnumerateParents(pos.group.Parent))
-                {
-                    if (skip.Contains(parent))
-                    {
-                        skipped = true;
-                        break;
-                    }
-                }
-                if (!skipped)
-                {
-                    keep.Add(pos.group);
-                    yield return pos;
-                }
-                else
-                    skip.Add(pos.group);
-                continue;
-            }
-            else
-            {
-                keep.Add(pos.group);
-                yield return pos;
-            }
+            yield return pos;
         }
-    }
-
-    private static IEnumerable<CueViewModel> EnumerateParents(CueViewModel cue)
-    {
-        var parent = cue;
-        while ((parent = parent.Parent) != null)
-            yield return parent;
     }
 
     private CueList GetList(CuePosition pos) => pos.group != null ? pos.group.Cues : this; // TODO: This should assert that the group is part of this cue list's hierarchy
@@ -816,21 +794,68 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyCollection<CueView
 
     #region Enumerators
     /// <summary>
-    /// Gets a list of sorted cue positions for the given enumerable of cue instances.
+    /// Gets a list of sorted cue positions for the given enumerable of cue instances. Optionally, collapses 
+    /// the cue list to skip cues who's parents are also in the list (<see cref="CollapseCuePositions(IEnumerable{CuePosition})"/>).
     /// </summary>
     /// <param name="cues"></param>
+    /// <param name="collapse"></param>
     /// <returns></returns>
-    internal TemporaryList<CuePosition> GetPositionsSorted(IEnumerable<CueViewModel> cues)
+    internal TemporaryList<CuePosition> GetPositionsSorted(IEnumerable<CueViewModel> cues, bool collapse)
     {
         var positions = new TemporaryList<CuePosition>();
+        HashSet<GroupCueViewModel> skip = [];
         foreach (var cue in cues)
         {
             if (!Find(cue, out var pos))
                 continue;
             positions.Add(pos);
+            if (collapse && cue is GroupCueViewModel group)
+                skip.Add(group);
         }
+
+        CollapseCues();
+
         SortPositions(positions.AsSpan());
         return positions;
+
+        void CollapseCues()
+        {
+            int dstInd = 0;
+            for (int srcInd = 0; srcInd < positions.Count; srcInd++)
+            {
+                CuePosition pos = positions[srcInd];
+                // Top-level cues are always returned
+                if (pos.group == null)
+                {
+                    positions[dstInd++] = pos;
+                    continue;
+                }
+
+                var parent = pos.group;
+                GroupCueViewModel? lastParent = null;
+                bool skipCurrent = false;
+                while (parent != null)
+                {
+                    // Check if any of this position's parents are in the skip list
+                    if (skip.Contains(parent))
+                    {
+                        skipCurrent = true;
+                        // Add the lalst parent to the skip list if it exists to save time next time
+                        if (lastParent != null)
+                            skip.Add(lastParent);
+                        break;
+                    }
+                    lastParent = parent;
+                    parent = parent.Parent as GroupCueViewModel;
+                }
+
+                if (skipCurrent)
+                    continue;
+
+                positions[dstInd++] = pos;
+            }
+            positions.SetCount(dstInd);
+        }
     }
 
     /// <summary>
@@ -1539,7 +1564,7 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
     /// </summary>
     /// <param name="cues">The enumerable of cues to sort.</param>
     /// <returns></returns>
-    public (int[] visualIndices, CueViewModel[] sortedCues) SortCues(IEnumerable<CueViewModel> cues)
+    /*public (int[] visualIndices, CueViewModel[] sortedCues) SortCues(IEnumerable<CueViewModel> cues)
     {
         using TemporaryList<CueViewModel> cuesList = [];
         using TemporaryList<int> inds = [];
@@ -1565,7 +1590,7 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
             cuesList.Add(visualCues[inds[i]]);
 
         return (inds.ToArray(), cuesList.ToArray());
-    }
+    }*/
 
     public IEnumerable<CueViewModel> EnumerateAll() => cues.EnumerateAll();
 
@@ -1702,10 +1727,12 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
                 }
                 localPos++;
             }
-            if (visPos == -1)
-                visPos = visualCues.Count; // Default to the end of the list, it's probably right...
         }
-        else if (pos.index > 0)
+
+        if (visPos >= 0)
+            return visPos;
+
+        if (pos.index > 0)
         {
             // Otherwise pick the end of the current sublist
             if (pos.group == null)
@@ -1716,14 +1743,14 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
                 if (groupPos != -1)
                 {
                     // Scan till the end of this group
-                    visPos = groupPos + 1 + pos.group.Cues.Count; // Start as far into the group as we can
+                    visPos = groupPos + 1;
                     for (; visPos < visualCues.Count; visPos++)
                     {
                         var visCue = visualCues[visPos];
                         if (!visCue.HasParent(pos.group))
                             break;
                     }
-                    visPos--;
+                    //visPos--;
                 }
             }
         }

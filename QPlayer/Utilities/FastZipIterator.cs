@@ -36,6 +36,7 @@ internal readonly struct FastZipEnumerable<TA, TB>(IEnumerable<TA> first, IEnume
             second.Dispose();
         }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public readonly bool MoveNext() => first.MoveNext() && second.MoveNext();
 
         public readonly void Reset()
@@ -102,12 +103,11 @@ internal readonly struct FastZipList<TA, TB>(IReadOnlyList<TA> first, IReadOnlyL
 
         public readonly void Dispose() { }
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public bool MoveNext()
         {
-            if (pos >= count)
-                return false;
             pos++;
-            return true;
+            return pos < count;
         }
 
         public void Reset()

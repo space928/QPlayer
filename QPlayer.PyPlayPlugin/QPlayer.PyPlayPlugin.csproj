@@ -7,7 +7,7 @@
 		<UseWPF>true</UseWPF>
 
 		<Title>QPlayer PyPlay Plugin</Title>
-		<Version>0.1.1</Version>
+		<Version>0.1.2</Version>
 		<Authors>Thomas Mathieson</Authors>
 		<Company>Thomas Mathieson</Company>
 		<Copyright>©️ Thomas Mathieson 2026</Copyright>

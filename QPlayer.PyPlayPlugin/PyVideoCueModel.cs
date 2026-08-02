@@ -6,6 +6,7 @@ using System.Numerics;
 using System.Collections.ObjectModel;
 using System.Text;
 using System.Diagnostics.CodeAnalysis;
+using System.Linq;
 
 namespace QPlayer.PyPlayPlugin;
 
@@ -46,8 +47,8 @@ public record PyVideoCue : Cue
 [Serializable]
 public record VideoFramingCue : Cue
 {
-    public List<Vector2> corners = [];
-    public List<FramingShutter> framing = [];
+    public List<Vector2> corners = [.. Enumerable.Repeat<Vector2>(default, 4)];
+    public List<FramingShutter> framing = [.. Enumerable.Range(0, 4).Select(x => new FramingShutter())];
     public float fadeTime = 0;
     public FadeType fadeType = FadeType.SCurve;
 

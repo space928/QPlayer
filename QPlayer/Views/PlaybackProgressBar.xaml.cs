@@ -36,7 +36,7 @@ public partial class PlaybackProgressBar : UserControl, INotifyPropertyChanged, 
             var pt = cueVM.PlaybackTime;
             if (pt == TimeSpan.Zero)
                 return 0;
-            return Math.Min(pt.Ticks / (double)cueVM.Duration.Ticks * 100, 1.1);
+            return Math.Min(pt.Ticks / (double)cueVM.Duration.Ticks * 100, 101);
         }
     }
 

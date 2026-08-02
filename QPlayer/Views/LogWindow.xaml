@@ -20,6 +20,7 @@
             <Button Content="Save To Disk" Padding="10, 2" Margin="4,0,0,0" Click="SaveToDiskButton_Click"/>
             <CheckBox Content="Scroll To Bottom" IsChecked="True" Margin="4,0,0,0" x:Name="ScrollToBottomCheckbox" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
             <CheckBox Content="Audio Buffering Debug" IsChecked="False" x:Name="AudioBufferDbgCheckbox" Checked="AudioBufferDbgCheckbox_Checked" Unchecked="AudioBufferDbgCheckbox_Checked"/>
+            <CheckBox Content="Log Undoable Actions" IsChecked="False" x:Name="LogUndoCheckbox" Checked="LogUndoCheckbox_Checked" Unchecked="LogUndoCheckbox_Checked"/>
         </StackPanel>
         <ListBox ItemsSource="{Binding LogList}" VirtualizingPanel.VirtualizationMode="Recycling" FontSize="11" FontFamily="{StaticResource CascadiaMono}" x:Name="LogListBox" Grid.Row="1" ScrollViewer.ScrollChanged="ScrollViewer_OnScrollChanged">
             <ListBox.ItemTemplate>

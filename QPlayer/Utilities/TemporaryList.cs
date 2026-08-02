@@ -148,6 +148,11 @@ public struct TemporaryList<T> : ITempList<T>
 #endif
     }
 
+    /// <summary>
+    /// Sets the number of elements in this list. If the count is increased, new elements will be added at the end 
+    /// of the list, these elements may be uninitialised.
+    /// </summary>
+    /// <param name="newCount"></param>
     public void SetCount(int newCount)
     {
         EnsureCapacity(newCount);
@@ -313,10 +318,24 @@ public struct TemporaryList<T> : ITempList<T>
         return res;
     }
 
-    [Obsolete("Prefer using the typed variant of this method instead.")]
+    /// <summary>
+    /// Replaces the contents of this list using the given filter enumerable. The filtering is done in place, hence the filter function 
+    /// must not reference items which have already been filtered.
+    /// </summary>
+    /// <param name="newValues">An enumerable such as the result of <c>myTempList.Where(x => x == 1)</c></param>
+    public void Replace(IEnumerable<T> newValues)
+    {
+        int i = 0;
+        foreach (var srcPos in newValues)
+            this[i++] = srcPos;
+        count = i;
+        version++;
+    }
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
 
-    [Obsolete("Prefer using the typed variant of this method instead.")]
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     public int Add(object? value)
     {
         if (value is T item)
@@ -328,20 +347,20 @@ public struct TemporaryList<T> : ITempList<T>
         return -1;
     }
 
-    [Obsolete("Prefer using the typed variant of this method instead.")]
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     public readonly bool Contains(object? value) => value is T item && Contains(item);
 
-    [Obsolete("Prefer using the typed variant of this method instead.")]
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     public readonly int IndexOf(object? value) => value is T item ? IndexOf(item) : -1;
 
-    [Obsolete("Prefer using the typed variant of this method instead.")]
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     public void Insert(int index, object? value)
     {
         if (value is T item)
             Insert(index, item);
     }
 
-    [Obsolete("Prefer using the typed variant of this method instead.")]
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     public void Remove(object? value)
     {
         if (value is T item)

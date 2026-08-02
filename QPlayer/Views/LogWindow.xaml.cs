@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
@@ -23,6 +24,7 @@ public partial class LogWindow : Window
         this.ViewModel = viewModel;
         this.DataContext = viewModel;
         InitializeComponent();
+        LogUndoCheckbox.IsChecked = UndoManager.LogUndoActions;
     }
 
     //https://stackoverflow.com/a/46548292
@@ -78,6 +80,12 @@ public partial class LogWindow : Window
         LogListBox.Visibility = active ? Visibility.Collapsed : Visibility.Visible;
     }
 
+    private void LogUndoCheckbox_Checked(object sender, RoutedEventArgs e)
+    {
+        bool active = (LogUndoCheckbox.IsChecked ?? false);
+        UndoManager.LogUndoActions = active;
+    }
+
     private void LogItemText_Loaded(object sender, RoutedEventArgs e)
     {
         if (sender is not TextBlock text)
@@ -87,5 +95,40 @@ public partial class LogWindow : Window
             text.Foreground = errorBrush;
         else if (text.Text.Contains("[Warning]"))
             text.Foreground = warningBrush;
+    }
+
+    private void SaveUndoButton_Click(object sender, RoutedEventArgs e)
+    {
+        SaveFileDialog saveFileDialog = new()
+        {
+            AddExtension = true,
+            DereferenceLinks = true,
+            Filter = "Text Files (*.txt)|*.txt|All files (*.*)|*.*",
+            OverwritePrompt = true,
+            Title = "Save Undo Log File"
+        };
+        if (saveFileDialog.ShowDialog() ?? false)
+        {
+            try
+            {
+                StringBuilder sb = new();
+                sb.AppendLine("# Undo Stack");
+                sb.AppendLine("* Most recent first *");
+                foreach (var item in UndoManager.GetUndoLog())
+                    sb.AppendLine($" - {item}");
+                sb.AppendLine();
+                sb.AppendLine("# Redo Stack");
+                sb.AppendLine("* Most recent first *");
+                foreach (var item in UndoManager.GetRedoLog())
+                    sb.AppendLine($" - {item}");
+                sb.AppendLine();
+
+                File.WriteAllTextAsync(saveFileDialog.FileName, sb.ToString()).ContinueWith(_ =>
+                {
+                    MainViewModel.Log($"Undo log file exported to: {saveFileDialog.FileName}");
+                });
+            }
+            catch { }
+        }
     }
 }

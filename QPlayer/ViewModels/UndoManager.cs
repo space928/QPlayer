@@ -1,5 +1,7 @@
 ﻿using QPlayer.Utilities;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -61,6 +63,7 @@ public static class UndoManager
     public static bool IsInGroupedRecording => groupRecordingCounter > 0;
 
     public static bool UnsavedChanges => lastSavedAction != currentActionNumber;
+    public static bool LogUndoActions { get; set; }
 
     internal static void RegisterMainVM(MainViewModel vm)
     {
@@ -71,6 +74,18 @@ public static class UndoManager
     {
         lastSavedAction = currentActionNumber;
         //Debug.WriteLine($"Saved till action {lastSavedAction}");
+    }
+
+    public static IEnumerable<string> GetUndoLog()
+    {
+        foreach (var action in undoStack.FastReverse())
+            yield return action.ToString();
+    }
+
+    public static IEnumerable<string> GetRedoLog()
+    {
+        foreach (var action in redoStack.FastReverse())
+            yield return action.ToString();
     }
 
     /*
@@ -106,18 +121,26 @@ public static class UndoManager
             {
                 top.newValue = newValue;
                 top.actionNumber = GetNextActionNumber();
+                if (LogUndoActions)
+                    MainViewModel.Log($"[Action] {top} (act {top.actionNumber})");
                 return;
             }
         }
 
         if (IsInGroupedRecording)
         {
-            groupedUndoStack.PushEnd(new(path, target, oldValue, newValue, GetNextActionNumber()));
+            UndoAction item = new(path, target, oldValue, newValue, GetNextActionNumber());
+            groupedUndoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] [G] {item} (act {item.actionNumber})");
         }
         else
         {
             redoStack.Clear();
-            undoStack.PushEnd(new(path, target, oldValue, newValue, GetNextActionNumber()));
+            UndoAction item = new(path, target, oldValue, newValue, GetNextActionNumber());
+            undoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] {item} (act {item.actionNumber})");
             if (undoStack.Count > MAX_HISTORY)
                 undoStack.PopStart();
 
@@ -140,12 +163,18 @@ public static class UndoManager
 
         if (IsInGroupedRecording)
         {
-            groupedUndoStack.PushEnd((new(actionDesc, undoFunc, redoFunc, GetNextActionNumber())));
+            UndoAction item = new(actionDesc, undoFunc, redoFunc, GetNextActionNumber());
+            groupedUndoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] [G] {item} (act {item.actionNumber})");
         }
         else
         {
             redoStack.Clear();
-            undoStack.PushEnd((new(actionDesc, undoFunc, redoFunc, GetNextActionNumber())));
+            UndoAction item = new(actionDesc, undoFunc, redoFunc, GetNextActionNumber());
+            undoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] {item} (act {item.actionNumber})");
             if (undoStack.Count > MAX_HISTORY)
                 undoStack.PopStart();
 
@@ -195,7 +224,10 @@ public static class UndoManager
         }
 
         redoStack.Clear();
-        undoStack.PushEnd((new(actionDesc, actions, GetNextActionNumber())));
+        UndoAction item = new(actionDesc, actions, GetNextActionNumber());
+        undoStack.PushEnd(item);
+        if (LogUndoActions)
+            MainViewModel.Log($"[Action] {item} (act {item.actionNumber})");
         if (undoStack.Count > MAX_HISTORY)
             undoStack.PopStart();
 
@@ -253,6 +285,9 @@ public static class UndoManager
         if (redoStack.Count > MAX_HISTORY)
             redoStack.PopStart();
         UndoStackChanged?.Invoke();
+
+        if (LogUndoActions)   //[Action]
+            MainViewModel.Log($"[Undo  ] {action} (act {action.actionNumber})");
 
         Undo(action);
     }
@@ -328,6 +363,8 @@ public static class UndoManager
             undoStack.PopStart();
         UndoStackChanged?.Invoke();
 
+        if (LogUndoActions)   //[Action]
+            MainViewModel.Log($"[Redo  ] {action} (act {action.actionNumber})");
         Redo(action);
     }
 
@@ -404,6 +441,8 @@ public static class UndoManager
         groupRecordingCounter = 0;
         GetNextActionNumber();
         UndoStackChanged?.Invoke();
+        if (LogUndoActions)   //[Action]
+            MainViewModel.Log($"[Undo  ] Cleared undo stack (act {currentActionNumber})");
     }
 
     /// <summary>
