@@ -188,7 +188,8 @@ public partial class MainViewModel
             return null;
         });
 
-        SelectedCueInd = 0;
+        SelectedCue = null;
+        RefreshSelection(true);
         oscManager.ConnectOSC();
         mscManager.ConnectMSC();
         OpenAudioDevice();

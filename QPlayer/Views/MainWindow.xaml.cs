@@ -7,6 +7,7 @@ using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -186,9 +187,22 @@ public partial class MainWindow : Window
     private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         keyBindings.Clear();
+        var gestureConverter = new KeyGestureConverter();
         foreach (object binding in InputBindings)
-            if (binding is KeyBinding keyBinding)
-                keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
+        {
+            if (binding is not KeyBinding keyBinding)
+                continue;
+
+            keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
+
+            // Create automation button
+            var btn = new Button();
+            btn.Content = "Automation " + gestureConverter.ConvertToInvariantString(keyBinding.Gesture) ?? keyBinding.Key.ToString();
+            btn.Command = keyBinding.Command;
+            btn.CommandParameter = keyBinding.CommandParameter;
+            btn.Visibility = Visibility.Collapsed;
+            MainGrid.Children.Add(btn);
+        }
 
         var vm = (MainViewModel)DataContext;
         vm.OnScrollCueList += delta =>

@@ -43,6 +43,7 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
             base.PlaybackTime = value;
         }
     }
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Sound: {fileNameShort}" : Name;
     public TimeSpan SamplePlaybackTime => IsAudioFileValid ? loopingAudioStream.SrcCurrentTime : TimeSpan.Zero;
     public TimeSpan SampleDuration => (loopingAudioStream?.SrcTotalTime ?? TimeSpan.Zero);
     [Reactive] private float volume;
@@ -57,6 +58,7 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
 
     private bool shouldSendRemoteStatus;
     private string? thisNodeName;
+    private string fileNameShort = "NO MEDIA";
     private QAudioFileReader? audioFile;
     private LoopingSampleProvider? loopingAudioStream;
     private PanFadeInOutProvider? fadeInOutProvider;
@@ -77,6 +79,15 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
             {
                 case nameof(Path):
                     var loaded = LoadMediaFiles();
+                    try
+                    {
+                        fileNameShort = System.IO.Path.GetFileNameWithoutExtension(path);
+                    }
+                    finally
+                    {
+                        fileNameShort ??= "NO MEDIA";
+                    }
+                    OnPropertyChanged(nameof(NamePreview));
                     break;
                 case nameof(Volume):
                     volumeFadeProvider?.Volume = MathF.Pow(10, Volume / 20f);
@@ -133,7 +144,27 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
         UnloadMediaFiles();
     }
 
-    internal override void OnFocussed()
+    public override bool InitResources()
+    {
+        if (!base.InitResources())
+            return false;
+
+        _ = LoadMediaFiles();
+
+        return true;
+    }
+
+    public override bool FreeResources()
+    {
+        if (!base.FreeResources())
+            return false;
+
+        UnloadMediaFiles();
+
+        return true;
+    }
+
+    public override void OnFocussed()
     {
         base.OnFocussed();
 
@@ -408,6 +439,8 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
             {
                 await dispatcher.InvokeAsync(() =>
                 {
+                    if (audioFile == null) // It's possible that the audio file has already been unloaded by now
+                        return;
                     waveFormRenderer.PeakFile = pk;
                     audioFile.PeakFile = pk;
                     // A peak file contains the measured length of the audio file, which for compressed files will differ from the estimated length.

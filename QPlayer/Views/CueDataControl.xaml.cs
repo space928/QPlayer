@@ -9,6 +9,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
@@ -79,6 +82,8 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
         //this.DataContext = this;
     }
 
+    protected override AutomationPeer OnCreateAutomationPeer() => new CueDataControlAutomationPeer(this);
+
     internal void NotifyGroupMarkerChange(int visualIndex)
     {
         if (vm == null)
@@ -144,6 +149,7 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
     private void UserControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
     {
+        // Debug.WriteLine($"[DC] Datacontext changed: {(e.OldValue as CueViewModel)?.FullQID} --> {(e.NewValue as CueViewModel)?.FullQID}");
         Init();
     }
 
@@ -167,12 +173,17 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
         if ((vm.Parent != null || group != null)
             && vm.MainViewModel.Cues.FindVisualIndex(vm, out var ind))
             NotifyGroupMarkerChange(ind);
+
+        ComputeSelOutline();
     }
 
     private void OnCuePropertyChanged(object? sender, PropertyChangedEventArgs e)
     {
         if (vm == null)
             return;
+
+        //if (e.PropertyName == nameof(CueViewModel.IsSelected))
+        //    Debug.WriteLine($"[SelProp] cdc = {vm.FullQID} sender = {(sender as CueViewModel)?.FullQID}");
 
         switch (e.PropertyName)
         {
@@ -212,7 +223,7 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
         if (vm.IsSelected)
         {
-            // Debug.WriteLine($"Selected: {vm.FullQID}");
+            // Debug.WriteLine($"[SelProp] CDControl selected: {vm.FullQID}");
             // Primary selection just gets a simple full outline
             SelOutline.BorderThickness = new(1);
             SelOutline.CornerRadius = defaultCornerRadius;
@@ -349,4 +360,67 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
         var height = ActualHeight;
         return pos.Y > height * 0.5;
     }
+}
+
+public class CueDataControlAutomationPeer : FrameworkElementAutomationPeer, IInvokeProvider, IExpandCollapseProvider, ISelectionItemProvider
+{
+    // public bool IsReadOnly => true;
+    // public string Value => ((CueDataControl)Owner).DataContext;
+    public ExpandCollapseState ExpandCollapseState => (DataContext is GroupCueViewModel group) ? (group.IsCollapsed ? ExpandCollapseState.Collapsed : ExpandCollapseState.Expanded) : ExpandCollapseState.LeafNode;
+    public bool IsSelected => DataContext?.IsSelected ?? false;
+    public IRawElementProviderSimple SelectionContainer => null!;
+
+    public CueDataControlAutomationPeer(FrameworkElement owner) : base(owner)
+    {
+    }
+
+    protected override string GetNameCore()
+    {
+        var name = base.GetNameCore();
+        if (string.IsNullOrEmpty(name))
+            name = DataContext?.NamePreview ?? string.Empty;
+        return name;
+    }
+
+    protected override string GetClassNameCore() => "CueDataControl";
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.TreeItem;
+
+    public override object GetPattern(PatternInterface patternInterface)
+    {
+        return patternInterface switch
+        {
+            PatternInterface.ExpandCollapse => this,
+            PatternInterface.SelectionItem => this,
+            //PatternInterface.Value => this,
+            PatternInterface.Invoke => this,
+            _ => base.GetPattern(patternInterface),
+        };
+    }
+
+    private CueViewModel? DataContext => ((CueDataControl)Owner).DataContext as CueViewModel;
+
+    public void Invoke() => Select();
+
+    public void Collapse() => (DataContext as GroupCueViewModel)?.IsCollapsed = true;
+
+    public void Expand() => (DataContext as GroupCueViewModel)?.IsCollapsed = false;
+
+    public void AddToSelection()
+    {
+        var cue = DataContext;
+        if (cue == null)
+            return;
+        cue.MainViewModel.MultiSelect(cue, ViewModels.SelectionMode.Add);
+    }
+
+    public void RemoveFromSelection()
+    {
+        var cue = DataContext;
+        if (cue == null)
+            return;
+        cue.MainViewModel.MultiSelect(cue, ViewModels.SelectionMode.Subtract);
+    }
+
+    public void Select() => DataContext?.SelectExecute();
 }

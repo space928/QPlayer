@@ -58,7 +58,7 @@ public partial class PyVideoCueViewModel : CueViewModel, IMediaCue
     [Reactive, Readonly, ModelSkip] private RelayCommand openAlphaFileCommand;
     [Reactive, ModelSkip] private readonly ObservableArray<AlphaMode> alphaModeVals;
 
-    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Video {fileNameShort}" : Name;
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Video: {fileNameShort}" : Name;
 
     private string fileNameShort = "NO MEDIA";
 

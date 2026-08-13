@@ -15,7 +15,7 @@ public partial class TimeCodeCueViewModel : CueViewModel
     [Reactive] private TimeSpan startTime;
     [Reactive("TCDuration"), ChangesProp(nameof(Duration))] private TimeSpan duration;
 
-    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"TC {startTime}" : Name;
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"TC: {startTime}" : Name;
 
     public override TimeSpan Duration => TCDuration;
 

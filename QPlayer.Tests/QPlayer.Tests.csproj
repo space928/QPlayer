@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="InputSimulatorPlus" Version="1.0.7" />
     <PackageReference Include="TUnit" Version="1.5*" />
     <PackageReference Include="TUnit.Assertions.Should" Version="1.62.0-beta" />
   </ItemGroup>

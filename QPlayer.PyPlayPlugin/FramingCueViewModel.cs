@@ -21,6 +21,8 @@ public partial class FramingCueViewModel(MainViewModel mainViewModel) : CueViewM
     [Reactive] private UndoableObservableCollection<FramingShutterViewModel, FramingShutter> framing = [.. Enumerable.Range(0, 4).Select(x => new FramingShutterViewModel())];
     [Reactive] private float fadeTime = 0;
     [Reactive] private FadeType fadeType = FadeType.SCurve;
+
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? "Framing Cue" : Name;
 }
 
 public partial class FramingShutterViewModel : BindableViewModel<FramingShutter>

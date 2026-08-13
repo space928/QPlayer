@@ -361,7 +361,7 @@ public class CueList : BindableViewModel<List<Cue>>, IReadOnlyList<CueViewModel>
     /// in this cue list.
     /// </summary>
     /// <param name="positions"></param>
-    private void SortPositions(Span<CuePosition> positions)
+    internal void SortPositions(Span<CuePosition> positions)
     {
         if (positions.Length < 2)
             return;
@@ -1321,11 +1321,12 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
     internal void NotifyVisualInsert(IEnumerable<CueViewModel> cues, IEnumerable<CuePosition> positions)
     {
         using var addedCues = new TemporaryList<CueViewModel>();
-        using var addedInds = new TemporaryList<int>();
+        //using var addedInds = new TemporaryList<int>();
         bool isContiguous = true;
         var lastVisPos = -2;
         var lastPos = default(CuePosition);
         using var _ = UndoManager.ScopedSuppress();
+        int firstVisInd = -1;
 
         foreach (var (cue, pos) in cues.FastZip(positions))
         {
@@ -1343,26 +1344,25 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
             AddCueToDict(cue);
 
             // Update the visual list
-            addedInds.Add(visPos);
+            if (firstVisInd < 0)
+                firstVisInd = visPos;
             addedCues.Add(cue);
+            visualCues.Insert(visPos, cue); // The visual list must be updated as we go, else we can't corrrectly compute the visual position
 
             if (cue is GroupCueViewModel group)
                 InsertGroupCueContents(visPos + 1, group);
         }
 
-        if (addedInds.Count > 0)
+        if (addedCues.Count > 0)
         {
             // Update the visual list
             if (isContiguous)
             {
-                visualCues.InsertRange(addedInds[0], addedCues);
-                OnCollectionChanged(NotifyCollectionChangedAction.Add, addedCues, addedInds[0]);
+                //visualCues.InsertRange(addedInds[0], addedCues);
+                OnCollectionChanged(NotifyCollectionChangedAction.Add, addedCues, firstVisInd);
             }
             else
             {
-                for (int i = 0; i < addedInds.Count; i++)
-                    visualCues.Insert(addedInds[i], addedCues[i]);
-
                 OnCollectionChanged();
             }
         }
@@ -1389,7 +1389,8 @@ public class VisualCueList : IReadOnlyList<CueViewModel>, INotifyCollectionChang
                 }
 
                 // Update the visual list
-                addedInds.Add(visualIndex++);
+                //addedInds.Add(visualIndex++);
+                visualCues.Insert(visualIndex++, cue);
                 addedCues.Add(cue);
 
                 AddCueToDict(cue);

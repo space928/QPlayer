@@ -7,6 +7,9 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Documents;
@@ -32,6 +35,8 @@ public partial class TextField : UserControl
     {
         InitializeComponent();
     }
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new TextFieldAutomationPeer(this);
 
     public string Text
     {
@@ -110,18 +115,23 @@ public partial class TextField : UserControl
 
     private void TextBox_KeyUp(object? sender, KeyEventArgs e)
     {
-        if (sender is not TextBox tb || !ReturnValidates)
+        if (sender is not TextBox _ || !ReturnValidates)
             return;
 
         if (e.Key == Key.Enter)
         {
-            var binding = BindingOperations.GetBindingExpression(tb, TextBox.TextProperty);
-            binding?.UpdateSource();
-            binding = BindingOperations.GetBindingExpression(this, TextProperty);
-            binding?.UpdateSource();
-            Keyboard.ClearFocus();
+            PushValue();
             //tb.MoveFocus(new TraversalRequest(FocusNavigationDirection.Down));
         }
+    }
+
+    internal void PushValue()
+    {
+        var binding = BindingOperations.GetBindingExpression(TextBox, TextBox.TextProperty);
+        binding?.UpdateSource();
+        binding = BindingOperations.GetBindingExpression(this, TextProperty);
+        binding?.UpdateSource();
+        Keyboard.ClearFocus();
     }
 
     private void OnSpinnerVisibilityChanged()
@@ -274,4 +284,67 @@ public enum SpinnerType
     Double,
     Int,
     TimeSpan,
+}
+
+public class TextFieldAutomationPeer : FrameworkElementAutomationPeer, IRangeValueProvider, IValueProvider
+{
+    public TextFieldAutomationPeer(FrameworkElement owner) : base(owner)
+    {
+    }
+
+    private TextField DataContext => (TextField)Owner;
+
+    public bool IsReadOnly => false;
+
+    public double LargeChange => (DataContext.MaxValue - DataContext.MinValue) / 10;
+
+    public double Maximum => DataContext.MaxValue;
+
+    public double Minimum => DataContext.MinValue;
+
+    public double SmallChange => (DataContext.MaxValue - DataContext.MinValue) / 100;
+
+    public double Value
+    {
+        get
+        {
+            if (double.TryParse(DataContext.Text, out var res))
+                return res;
+            return double.NaN;
+        }
+    }
+    string IValueProvider.Value => DataContext.Text;
+
+    protected override string GetClassNameCore() => "Knob";
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Edit;
+
+    public override object GetPattern(PatternInterface patternInterface)
+    {
+        return patternInterface switch
+        {
+            //PatternInterface.ExpandCollapse => this,
+            //PatternInterface.SelectionItem => this,
+            PatternInterface.Value => this,
+            PatternInterface.RangeValue => this,
+            //PatternInterface.Invoke => this,
+            _ => base.GetPattern(patternInterface),
+        };
+    }
+
+    protected override string GetNameCore()
+    {
+        var name = base.GetNameCore();
+        if (string.IsNullOrEmpty(name))
+            name = DataContext.Text;
+        return name;
+    }
+
+    public void SetValue(double value) => SetValue(value.ToString());
+
+    public void SetValue(string value)
+    {
+        DataContext.Text = value;
+        DataContext.PushValue();
+    }
 }

@@ -1,4 +1,6 @@
 ﻿using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
@@ -54,6 +56,8 @@ public partial class HiddenTextbox : UserControl
         DependencyProperty.Register(nameof(CanEdit), typeof(bool), typeof(HiddenTextbox), new PropertyMetadata(true));
 
 
+    protected override AutomationPeer OnCreateAutomationPeer() => new HiddenTextBoxAutomationPeer(this);
+
     private void Edit()
     {
         if (!CanEdit || editing)
@@ -102,4 +106,43 @@ public partial class HiddenTextbox : UserControl
         defaultPreviewTextBinding.Source = this;
         BindingOperations.SetBinding(this, PreviewTextProperty, defaultPreviewTextBinding);
     }
+}
+
+public class HiddenTextBoxAutomationPeer : FrameworkElementAutomationPeer, IValueProvider
+{
+    public HiddenTextBoxAutomationPeer(FrameworkElement owner) : base(owner)
+    {
+    }
+
+    private HiddenTextbox DataContext => (HiddenTextbox)Owner;
+
+    public bool IsReadOnly => DataContext.CanEdit;
+
+    public string Value => DataContext.PreviewText ?? DataContext.Text;
+
+    protected override string GetClassNameCore() => "HiddenTextbox";
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Edit;
+
+    public override object GetPattern(PatternInterface patternInterface)
+    {
+        return patternInterface switch
+        {
+            //PatternInterface.ExpandCollapse => this,
+            //PatternInterface.SelectionItem => this,
+            PatternInterface.Value => this,
+            //PatternInterface.Invoke => this,
+            _ => base.GetPattern(patternInterface),
+        };
+    }
+
+    protected override string GetNameCore()
+    {
+        var name = base.GetNameCore();
+        if (string.IsNullOrEmpty(name))
+            name = Value;
+        return name;
+    }
+
+    public void SetValue(string value) => DataContext.Text = value;
 }

@@ -81,6 +81,7 @@ public partial class StopCueViewModel : CueViewModel
         }
         else
         {
+            MainViewModel.Log($"Stop cue (Q{FullQID}) couldn't find a cue with QID: {stopTarget} to stop!", MainViewModel.LogLevel.Warning);
             Stop();
         }
     }

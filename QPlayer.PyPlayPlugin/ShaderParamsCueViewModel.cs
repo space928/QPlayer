@@ -23,6 +23,8 @@ public partial class ShaderParamsCueViewModel : CueViewModel
     [Reactive] private FadeType fadeType = FadeType.SCurve;
     [Reactive] private bool postProcessing = false;
 
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? (postProcessing ? "Change Post Processing Parameters" : $"Change Shader Parameters of Q{targetQid}") : Name;
+
     [Reactive, Readonly, ModelSkip] private RelayCommand addShaderParameterCommand;
     [Reactive, Readonly, ModelSkip] private RelayCommand<ShaderParameterViewModel> deleteShaderParameterCommand;
 
@@ -35,6 +37,17 @@ public partial class ShaderParamsCueViewModel : CueViewModel
                 return;
             shaderParameters.Remove(item);
         });
+
+        PropertyChanged += (o, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(TargetQid):
+                case nameof(PostProcessing):
+                    OnPropertyChanged(nameof(NamePreview));
+                    break;
+            }
+        };
     }
 
     private static void M2VM_TargetQID(ShaderParamsCueViewModel vm, ShaderParamsCue m) 

@@ -69,12 +69,12 @@
                 Background="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}" IsHitTestVisible="False"/>
         <Border x:Name="GroupInsertMarker" Visibility="Collapsed" Panel.ZIndex="999" Grid.ColumnSpan="99" BorderThickness="1" IsHitTestVisible="False"
                 CornerRadius="{StaticResource AREghZy.CornerRadius}" BorderBrush="{StaticResource AREghZyBrush.ColourfulGlyph.Selected}"/>
-        <Border x:Name="ColourSwatch" Grid.Column="0" Background="{Binding ColourBrush}"/>
+        <Border x:Name="ColourSwatch" Grid.Column="0" Background="{Binding ColourBrush}" AutomationProperties.Name="Colour"/>
         <local:ExpanderKnob Grid.Column="0" IsCollapsed="{Binding IsCollapsed, RelativeSource={RelativeSource AncestorType=local:CueDataControl}, Mode=TwoWay}" 
                             Visibility="{Binding ExpanderVisibility, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
-                            ToolTip="{Binding Parent.Name}"/>
-        <local:HiddenTextbox Text="{Binding QID}" PreviewText="{Binding FullQID}" CanEdit="{Binding MainViewModel.EditMode}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0"/>
-        <Label Content="{Binding}" VerticalContentAlignment="Center" Grid.Column="2">
+                            ToolTip="{Binding Parent.Name}" AutomationProperties.Name="Expand Group"/>
+        <local:HiddenTextbox Text="{Binding QID}" PreviewText="{Binding FullQID}" CanEdit="{Binding MainViewModel.EditMode}" Grid.Column="1" VerticalContentAlignment="Center" Focusable="True" TabIndex="0" AutomationProperties.Name="QID"/>
+        <Label Content="{Binding}" VerticalContentAlignment="Center" Grid.Column="2" AutomationProperties.Name="Icon">
             <Label.ContentTemplate>
                 <DataTemplate>
                     <Image x:Name="IconImg" Source="{Binding CueIcon, RelativeSource={RelativeSource AncestorType=local:CueDataControl}}" 
@@ -87,24 +87,24 @@
             </Label.ContentTemplate>
         </Label>
         <!--<ContentControl Padding="5" Content="{Binding}" ContentTemplate="{StaticResource PlaybackIndicatorTemplate}" Grid.Column="3" Focusable="False"/>-->
-        <local:PlaybackProgressBar Grid.Column="3" Focusable="False"/>
+        <local:PlaybackProgressBar Grid.Column="3" Focusable="False" AutomationProperties.Name="Playback Progress"/>
         <local:HiddenTextbox x:Name="NameTextBox" Text="{Binding Name}" PreviewText="{Binding NamePreview}" CanEdit="{Binding MainViewModel.EditMode}" ToolTip="{Binding NamePreview}" Grid.Column="4" VerticalContentAlignment="Center" 
-                             Focusable="True" KeyboardNavigation.TabIndex="100"/>
-        <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5"/>
+                             Focusable="True" KeyboardNavigation.TabIndex="100" AutomationProperties.Name="Name"/>
+        <CheckBox IsChecked="{Binding Enabled}" IsEnabled="{Binding IsSelected}" Grid.Column="5" AutomationProperties.Name="Enabled"/>
         <!--<CheckBox IsChecked="{Binding Halt}" IsEnabled="{Binding IsSelected}" Grid.Column="6"/>-->
         <local:HiddenComboBox SelectedIndex="{Binding Trigger, Mode=TwoWay, Converter={StaticResource TriggerModeConverter}}" ItemsSource="{Binding TriggerModeVals}" 
                               InactiveContent="{Binding Trigger}" CanEdit="{Binding MainViewModel.EditMode}" InactiveContentTemplate="{StaticResource TriggerModeTemplate}" 
-                              VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="6" IsTabStop="False"/>
+                              VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="6" IsTabStop="False" AutomationProperties.Name="Trigger Mode"/>
         <local:HiddenTextbox Text="{Binding Delay, 
-            Converter={StaticResource TimeSpanStringConverter}, 
-            ConverterParameter=False}" CanEdit="{Binding MainViewModel.EditMode}"
-               Grid.Column="7" VerticalContentAlignment="Center" Focusable="True" TabIndex="300"/>
+                                    Converter={StaticResource TimeSpanStringConverter}, 
+                                    ConverterParameter=False}" CanEdit="{Binding MainViewModel.EditMode}"
+                             Grid.Column="7" VerticalContentAlignment="Center" Focusable="True" TabIndex="300" AutomationProperties.Name="Delay"/>
         <Label Content="{Binding Duration, 
-            Converter={StaticResource TimeSpanStringConverter}, 
-            ConverterParameter=False}" 
-               Grid.Column="8" VerticalContentAlignment="Center"/>
+                         Converter={StaticResource TimeSpanStringConverter}, 
+                        ConverterParameter=False}" 
+               Grid.Column="8" VerticalContentAlignment="Center" AutomationProperties.Name="Duration"/>
         <local:HiddenComboBox SelectedIndex="{Binding LoopMode, Mode=TwoWay, Converter={StaticResource LoopModeConverter}}" ItemsSource="{Binding LoopModeVals}" 
                       InactiveContent="{Binding LoopMode}" InactiveContentTemplate="{StaticResource LoopModeTemplate}" CanEdit="{Binding MainViewModel.EditMode}"
-                      VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="9" IsTabStop="False"/>
+                      VerticalAlignment="Stretch" IsEnabled="{Binding IsSelected}" Grid.Column="9" IsTabStop="False" AutomationProperties.Name="Loop Mode"/>
     </Grid>
 </UserControl>

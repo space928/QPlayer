@@ -48,7 +48,11 @@ public static class CueFactory
     public static CueViewModel? CreateViewModel(string typeName, MainViewModel mainViewModel)
     {
         if (registeredCueTypes.TryGetValue(typeName, out var registered))
-            return registered.viewModelCtor.Invoke([mainViewModel]) as CueViewModel;
+        {
+            var vm = registered.viewModelCtor.Invoke([mainViewModel]) as CueViewModel;
+            vm?.InitResources();
+            return vm;
+        }
         return null;
     }
 
@@ -71,7 +75,7 @@ public static class CueFactory
     }
 
     /// <summary>
-    /// Creates a new instance of a cue for a given cue view modeland copies all of it's properties.
+    /// Creates a new instance of a cue for a given cue view model and copies all of it's properties.
     /// </summary>
     /// <param name="vm">The view model to create a model for.</param>
     /// <param name="copy"><see langword="false"/> to bind the <paramref name="vm"/> to the newly created 

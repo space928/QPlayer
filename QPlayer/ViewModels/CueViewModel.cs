@@ -189,17 +189,24 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// The duration of this cue, as received from a remote node.
     /// </summary>
     public virtual TimeSpan RemoteDuration { set { } }
+
+    /// <summary>
+    /// Whether this cue's internal resources have been initialised or not. Should always 
+    /// be <see langword="true"/> if the cue is in the cue stack.
+    /// </summary>
+    public bool IsInitialised => isInitialised;
     #endregion
 
     public delegate void OnCueCompletedDelegate(CueViewModel cue);
     public event OnCueCompletedDelegate? OnCompleted;
 
     protected Dispatcher? dispatcher;
-    protected DispatcherDelay goDelay;
+    protected DispatcherDelay? goDelay;
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
     private readonly string typeName;
     private readonly string typeDisplayName;
+    private bool isInitialised;
 
     public CueViewModel(MainViewModel mainViewModel)
     {
@@ -218,8 +225,6 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             typeDisplayName = typeName;
         }
 
-        goDelay = new(Go);
-
         goCommand = new(Go);
         pauseCommand = new(Pause);
         stopCommand = new(Stop);
@@ -235,7 +240,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// <summary>
     /// This method is invoked by QPlayer when this cue is selected in the inspector.
     /// </summary>
-    internal virtual void OnFocussed()
+    public virtual void OnFocussed()
     {
 
     }
@@ -245,6 +250,71 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         OnPropertyChanged(nameof(IsSelected));
         OnPropertyChanged(nameof(IsMultiSelected));
         // Debug.WriteLine($"Sel changed: {QID} ==> {new StackTrace()}");
+    }
+
+    /// <summary>
+    /// Initialises any large resources owned by this cue. Called automatically after the object is 
+    /// constructed (after the derived class's constructor) and any time this cue is recreated by 
+    /// the undo system.
+    /// <para/>
+    /// Any resource initialisation you would have done in the constructor that's likely to allocate 
+    /// a lot of memory, should be done here instead if possible. Any resources allocated by this method
+    /// should be freed by <see cref="FreeResources"/>. This allows the undo manager to maintain 
+    /// references to deleted cues without needing to keep all their memory allocated.
+    /// </summary>
+    /// <remarks>
+    /// Implementers should skip initialisation if already initialised:
+    /// <code>
+    /// public override bool InitResources()
+    /// {
+    ///     if (!base.InitResources())
+    ///         return false;
+    ///         
+    ///     // [...]
+    ///     return true;
+    /// }
+    /// </code>
+    /// </remarks>
+    /// <returns><see langword="true"/> if this cue's resources need initialising.</returns>
+    public virtual bool InitResources()
+    {
+        if (isInitialised)
+            return false;
+
+        goDelay = new(Go);
+
+        isInitialised = true;
+        return true;
+    }
+
+    /// <summary>
+    /// The counterpart of <see cref="InitResources"/>. Called automatically when this cue is deleted 
+    /// but being retained by the undo manager.
+    /// </summary>
+    /// <remarks>
+    /// Implementers should skip freeing if already freed:
+    /// <code>
+    /// public override bool FreeResources()
+    /// {
+    ///     if (!base.FreeResources())
+    ///         return false;
+    ///         
+    ///     // [...]
+    ///     return true;
+    /// }
+    /// </code>
+    /// </remarks>
+    /// <returns><see langword="true"/> if this cue's resources need freeing.</returns>
+    public virtual bool FreeResources()
+    {
+        if (!isInitialised)
+            return false;
+
+        goDelay?.Dispose();
+        goDelay = null;
+
+        isInitialised = false;
+        return true;
     }
 
     #region Command Handlers
@@ -274,7 +344,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         }
 
         State = CueState.Delay;
-        goDelay.Start(Delay);
+        goDelay?.Start(Delay);
 
         if (!mainViewModel.ActiveCues.Contains(this))
             mainViewModel.ActiveCues.Add(this);
@@ -301,6 +371,8 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             StopInternal();
             return;
         }
+        if (!IsInitialised)
+            MainViewModel.Log($"Tried to start an uninitialised cue (Q{FullQID} {Name})! This is a bug in QPlayer, please submit a bug report with the steps to reproduce this message.", MainViewModel.LogLevel.Warning);
         State = CueState.Playing;
         if (!mainViewModel.ActiveCues.Contains(this))
             mainViewModel.ActiveCues.Add(this);
@@ -313,7 +385,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// </summary>
     public virtual void Pause()
     {
-        goDelay.Cancel();
+        goDelay?.Cancel();
         State = CueState.Paused;
 
         if (IsRemoteControlling)
@@ -365,7 +437,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         // This cue has been stopped/cancelled, stop waiting for the wait cue.
         waitCue?.OnCompleted -= WaitCueOnCompleteHandler;
         waitCue = null;
-        goDelay.Cancel();
+        goDelay?.Cancel();
         State = CueState.Ready;
         mainViewModel.ActiveCues.Remove(this);
         OnCompleted?.Invoke(this);

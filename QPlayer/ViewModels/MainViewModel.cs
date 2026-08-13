@@ -31,22 +31,24 @@ namespace QPlayer.ViewModels;
 public partial class MainViewModel : ObservableObject
 {
     #region Bindable Properties
-    [Reactive, TemplateProp(nameof(SelectedCueInd_Template)), SkipEqualityCheck]
+    // The selected cue properties are all reactive, but their property change notifications are handled manually.
     private int selectedCueInd;
-    private int SelectedCueInd_Template
+    public int SelectedCueInd
     {
         get => selectedCueInd;
-        set => MultiSelect(value, SelectionMode.Normal);
+        set
+        {
+            OnPropertyChanging(nameof(SelectedCueInd));
+            MultiSelect(value, SelectionMode.Normal);
+        }
     }
-    [Reactive("SelectedCue")]
-    private CueViewModel? SelectedCue_Template
+    public CueViewModel? SelectedCue
     {
         get => SelectedCueInd >= 0 && SelectedCueInd < Cues.Count ? Cues[SelectedCueInd] : null;
         set => SelectedCueInd = FindCueIndex(value);
     }
-    [Reactive, TemplateProp(nameof(SelectedCuePos_Template)), SkipEqualityCheck]
     private CuePosition selectedCuePos;
-    private CuePosition SelectedCuePos_Template
+    public CuePosition SelectedCuePos
     {
         get => selectedCuePos;
         set
@@ -349,6 +351,18 @@ public partial class MainViewModel : ObservableObject
 
         audioPlaybackManager.OnMixerMeter += MainAudioMeter.ProcessSample;
         audioPlaybackManager.DeviceStateChanged += (val) => OnPropertyChanged(nameof(IsAudioActive));
+
+        /*PropertyChanged += (o, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(SelectedCue):
+                case nameof(SelectedCueInd):
+                case nameof(SelectedCuePos):
+                    Debug.WriteLine($"[SelProp] {e.PropertyName} changed (sel = {SelectedCue?.Name} ({SelectedCue?.FullQID}))");
+                    break;
+            }
+        };*/
 
         showFile = new();
         LoadShowfileModel(showFile, true).Wait();

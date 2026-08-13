@@ -8,6 +8,8 @@ using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation.Peers;
+using System.Windows.Automation.Provider;
 using System.Windows.Controls;
 using System.Windows.Input;
 using System.Windows.Media.Animation;
@@ -33,6 +35,8 @@ public partial class Knob : UserControl, INotifyPropertyChanged, INotifyProperty
     {
         InitializeComponent();
     }
+
+    protected override AutomationPeer OnCreateAutomationPeer() => new KnobAutomationPeer(this);
 
     #region Dependency Properties
 
@@ -302,5 +306,61 @@ public partial class Knob : UserControl, INotifyPropertyChanged, INotifyProperty
             x = 1 - (x - min) / (max - min);
             return (1 - Math.Pow(x, 1 / Power)) * (max - min) + min;
         }
+    }
+}
+
+public class KnobAutomationPeer : FrameworkElementAutomationPeer, IRangeValueProvider, IValueProvider
+{
+    public KnobAutomationPeer(FrameworkElement owner) : base(owner)
+    {
+    }
+
+    private Knob DataContext => (Knob)Owner;
+
+    public bool IsReadOnly => false;
+
+    public double LargeChange => (DataContext.MaxValue - DataContext.MinValue) / 10;
+
+    public double Maximum => DataContext.MaxValue;
+
+    public double Minimum => DataContext.MinValue;
+
+    public double SmallChange => (DataContext.MaxValue - DataContext.MinValue) / 100;
+
+    public double Value => DataContext.Value;
+
+    string IValueProvider.Value => DataContext.Value.ToString();
+
+    protected override string GetClassNameCore() => "Knob";
+
+    protected override AutomationControlType GetAutomationControlTypeCore() => AutomationControlType.Slider;
+
+    public override object GetPattern(PatternInterface patternInterface)
+    {
+        return patternInterface switch
+        {
+            //PatternInterface.ExpandCollapse => this,
+            //PatternInterface.SelectionItem => this,
+            PatternInterface.RangeValue => this,
+            PatternInterface.Value => this,
+            //PatternInterface.Invoke => this,
+            _ => base.GetPattern(patternInterface),
+        };
+    }
+
+    protected override string GetNameCore()
+    {
+        var name = base.GetNameCore();
+        if (string.IsNullOrEmpty(name))
+            name = DataContext.Label;
+        return name;
+    }
+
+    public void SetValue(double value) => DataContext.Value = value;
+
+    public void SetValue(string value)
+    {
+        if (double.TryParse(value, out var res))
+            DataContext.Value = res;
     }
 }

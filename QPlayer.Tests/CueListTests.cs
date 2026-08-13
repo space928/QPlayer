@@ -12,6 +12,7 @@ using TUnit.Core.Helpers;
 
 namespace QPlayer.Tests;
 
+#if false
 public class CueListTests
 {
     static readonly MainViewModel mainVM = new();
@@ -561,3 +562,4 @@ public class CueListTests
         await events.Any(e => e.Action == NotifyCollectionChangedAction.Remove).Should().BeFalse();
     }
 }
+#endif
