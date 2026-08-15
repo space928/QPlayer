@@ -38,7 +38,7 @@ public class OSCManager
         discoveryTimer.Elapsed += DiscoveryTimer_Elapsed;
         discoveryTimer.Start();
 
-        //SubscribeOSC();
+        SubscribeOSC();
 
         oscDriver.OnRXFailure += OscDriver_OnRXFailure;
     }

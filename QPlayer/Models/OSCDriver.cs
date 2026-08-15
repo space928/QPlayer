@@ -255,32 +255,37 @@ public static class OSCMessageParser
     /// <summary>
     /// Parses a string representing an OSC message into an address and a list of arguments.<br/>
     /// Arguments must be separated by spaces and are parsed automatically
-    /// Supports:
-    ///  - strings -> Surrounded by double quotes
-    ///  - ints
-    ///  - floats
-    ///  - bools
-    ///  - blobs -> Surrounded by backticks
+    /// Supports: <br/>
+    ///  - strings -> To escape ' ' and ',', surround the string with double quotes '"' <br/>
+    ///  - ints <br/>
+    ///  - floats <br/>
+    ///  - bools <br/>
+    ///  - blobs -> Surrounded by backticks <br/>
+    ///  <para/>
+    /// The parser is reasonably tolerant of different OSC formats, addresses may start with a 
+    /// forward slash, arguments may be separated by ',' or ' ' (or '=' to separate arguments 
+    /// from the address).
     /// </summary>
     /// <param name="message"></param>
     /// <returns></returns>
     public static (string address, object[] args) ParseOSCMessage(string message)
     {
         ReadOnlySpan<char> msg = message.AsSpan();
-        int argsStart = msg.IndexOf(' ');
+        int argsStart = msg.IndexOfAny(' ', ',', '='); // Support common OSC message formats: MA3, ETC, MagicQ, QLab
         using var args = new TemporaryList<object>();
         string address = message;
 
         if (argsStart != -1)
         {
             address = message[..argsStart];
+            var argsPart = msg[(argsStart + 1)..];
             Span<Range> splits = stackalloc Range[256];
-            int nSplits = msg[(argsStart + 1)..].Split(splits, ' ');
+            int nSplits = argsPart.SplitAny(splits, [' ', ','], StringSplitOptions.RemoveEmptyEntries);
 
             for (int i = 0; i < nSplits; i++)
             {
                 var split = splits[i];
-                var strArg = msg[split];
+                var strArg = argsPart[split];
                 if (bool.TryParse(strArg, out var bVal))
                     args.Add(bVal);
                 else if (int.TryParse(strArg, CultureInfo.InvariantCulture.NumberFormat, out var iVal))
@@ -303,14 +308,14 @@ public static class OSCMessageParser
                         {
                             i++;
                             split = splits[i];
-                            strArg = msg[split];
+                            strArg = argsPart[split];
                             end = split.End;
                         } while (i < nSplits && strArg[^1] != '\"');
 
                         if (strArg[^1] != '\"')
-                            throw new ArgumentException($"Unparsable OSC argument, string is not closed: {msg[start..end].ToString()}");
+                            throw new ArgumentException($"Unparsable OSC argument, string is not closed: {argsPart[start..end]}");
 
-                        string s = msg[(start.Value + 1)..(end.Value - 1)].ToString();
+                        string s = argsPart[(start.Value + 1)..(end.Value - 1)].ToString();
                         args.Add(s);
                     }
                 }
@@ -320,10 +325,16 @@ public static class OSCMessageParser
                 }
                 else
                 {
-                    throw new ArgumentException($"Unparsable OSC argument encountered: {strArg}");
+                    // Falllback, treat it as a string...
+                    args.Add(strArg.ToString());
+                    //throw new ArgumentException($"Unparsable OSC argument encountered: {strArg}");
                 }
             }
         }
+
+        // Prepend a slash if needed
+        if (address.Length > 0 && address[0] != '/')
+            address = '/' + address;
 
         return (address, args.ToArray());
     }
