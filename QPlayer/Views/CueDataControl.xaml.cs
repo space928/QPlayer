@@ -75,6 +75,7 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
 
     public event PropertyChangedEventHandler? PropertyChanged;
     public event PropertyChangingEventHandler? PropertyChanging;
+    public event Action? CueListStructureChanged;
 
     public CueDataControl()
     {
@@ -117,6 +118,8 @@ public partial class CueDataControl : UserControl, INotifyPropertyChanged, INoti
             NameTextBox.Margin = default;
             ColourSwatch.Margin = default;
         }
+
+        CueListStructureChanged?.Invoke();
     }
 
     private void SetGroupMarkerBGBinding()
@@ -372,6 +375,29 @@ public class CueDataControlAutomationPeer : FrameworkElementAutomationPeer, IInv
 
     public CueDataControlAutomationPeer(FrameworkElement owner) : base(owner)
     {
+        ((CueDataControl)Owner).DataContextChanged += CueDataControlAutomationPeer_DataContextChanged;
+        DataContext?.PropertyChanged += DataContext_PropertyChanged;
+        ((CueDataControl)Owner).CueListStructureChanged += InvalidatePeer;
+    }
+
+    private void CueDataControlAutomationPeer_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        (e.OldValue as CueViewModel)?.PropertyChanged -= DataContext_PropertyChanged;
+        (e.NewValue as CueViewModel)?.PropertyChanged += DataContext_PropertyChanged;
+        RaisePropertyChangedEvent(AutomationElementIdentifiers.NameProperty, null, GetNameCore());
+    }
+
+    private void DataContext_PropertyChanged(object? sender, PropertyChangedEventArgs e)
+    {
+        switch (e.PropertyName)
+        {
+            case nameof(CueViewModel.NamePreview):
+            case nameof(CueViewModel.IsSelected):
+            case nameof(GroupCueViewModel.IsCollapsed):
+                InvalidatePeer();
+                RaisePropertyChangedEvent(AutomationElementIdentifiers.NameProperty, null, GetNameCore());
+                break;
+        }
     }
 
     protected override string GetNameCore()

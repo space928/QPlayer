@@ -78,6 +78,26 @@ public static partial class ExtensionMethods
         list[index] = value;
     }
 
+    /// <summary>
+    /// Adds a key value pair to a dictionary or replaces an existing one if the key already exists.
+    /// </summary>
+    /// <typeparam name="TKey"></typeparam>
+    /// <typeparam name="TValue"></typeparam>
+    /// <param name="dict"></param>
+    /// <param name="key"></param>
+    /// <param name="value"></param>
+    /// <returns>The old value at the given key or <see langword="default"/>.</returns>
+    public static TValue? AddOrUpdate<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue value)
+    {
+        if (dict.TryAdd(key, value))
+            return default;
+
+        var old = dict[key];
+        dict[key] = value;
+
+        return old;
+    }
+
     public static int IndexOf<TList, TItem>(this IList<TList> list, Func<TList, TItem> selector, TItem value)
     {
         for (int i = 0; i < list.Count; i++)

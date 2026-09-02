@@ -1,4 +1,5 @@
-﻿using System;
+﻿using QPlayer.Utilities;
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -10,7 +11,7 @@ using System.Windows.Input;
 using TUnit.Assertions;
 using TUnit.Assertions.Should;
 using TUnit.Assertions.Should.Extensions;
-using WindowsInput;
+//using WindowsInput;
 
 namespace QPlayer.Tests;
 
@@ -20,8 +21,8 @@ internal class CueListUITests
     private static Process? process;
     private static AutomationElement? rootElement;
     private static readonly Dictionary<CachedElementKey, AutomationElement> cachedElements = [];
-    private static InputSimulator? input;
-    private static KeyboardSimulator? kb;
+    //private static InputSimulator? input;
+    //private static KeyboardSimulator? kb;
 
     public record struct CachedElementKey(string? Name = null, string? Id = null, string? Type = null, AutomationElement? Parent = null);
 
@@ -55,8 +56,8 @@ internal class CueListUITests
         if (rootElement == null)
             Assert.Fail("Couldn't find QPlayerWindow after 10 seconds!");
 
-        input = new InputSimulator();
-        kb = input.Keyboard as KeyboardSimulator;
+        //input = new InputSimulator();
+        //kb = input.Keyboard as KeyboardSimulator;
     }
 
     [After(Class)]
@@ -83,17 +84,23 @@ internal class CueListUITests
             cond = new AndCondition(cond, new PropertyCondition(AutomationElement.ClassNameProperty, type));
         parent ??= rootElement;
 
-        if (findHidden)
+        uint start = (uint)Environment.TickCount;
+        do
         {
-            var walker = new TreeWalker(cond);
-            res = walker.GetFirstChild(parent);
+            if (findHidden)
+            {
+                var walker = new TreeWalker(cond);
+                res = walker.GetFirstChild(parent);
+            }
+            else
+            {
+                res = parent?.FindFirst(TreeScope.Descendants, cond);
+            }
         }
-        else
-        {
-            res = parent?.FindFirst(TreeScope.Descendants, cond);
-        }
+        while (res == null && Environment.TickCount - start < 1000);
+
         if (res != null)
-            cachedElements.TryAdd(new(name, Type: type, Parent: parent), res);
+            cachedElements.AddOrUpdate(new(name, Type: type, Parent: parent), res);
 
         return res;
     }
@@ -108,9 +115,15 @@ internal class CueListUITests
             cond = new AndCondition(cond, new PropertyCondition(AutomationElement.ClassNameProperty, type));
         parent ??= rootElement;
 
-        res = parent?.FindFirst(TreeScope.Descendants, cond);
+        uint start = (uint)Environment.TickCount;
+        do
+        {
+            res = parent?.FindFirst(TreeScope.Descendants, cond);
+        }
+        while (res == null && Environment.TickCount - start < 1000);
+
         if (res != null)
-            cachedElements.TryAdd(new(Id: id, Type: type, Parent: parent), res);
+            cachedElements.AddOrUpdate(new(Id: id, Type: type, Parent: parent), res);
 
         return res;
     }
@@ -130,6 +143,7 @@ internal class CueListUITests
 
         var invoke = pattern as InvokePattern;
         invoke?.Invoke();
+        Thread.Yield();
         return invoke != null;
     }
 
@@ -140,6 +154,7 @@ internal class CueListUITests
 
         var invoke = pattern as ExpandCollapsePattern;
         invoke?.Expand();
+        Thread.Yield();
         //Thread.Sleep(50);
         return invoke != null;
     }
@@ -161,6 +176,7 @@ internal class CueListUITests
             else
                 invoke.AddToSelection();
         }
+        Thread.Yield();
 
         return true;
     }
@@ -172,6 +188,7 @@ internal class CueListUITests
 
         var invoke = pattern as ValuePattern;
         invoke?.SetValue(value);
+        Thread.Yield();
         //Thread.Sleep(50);
         return invoke != null;
     }
@@ -279,13 +296,33 @@ internal class CueListUITests
 
     private static bool CheckCueNames(ICollection<string> names)
     {
-        var cueList = GetById("CueListControl");
+        var cueList = GetById("CueListControl", useCache: false);
         Assert.NotNull(cueList);
         var cond = new PropertyCondition(AutomationElement.NameProperty, "Name");
-        var fields = cueList.FindAll(TreeScope.Descendants, cond);
+        //var fields = cueList.FindAll(TreeScope.Descendants, cond);
 
-        if (names.Count != fields.Count) return false;
+        var walker = TreeWalker.ControlViewWalker;
+        var child = walker.GetFirstChild(cueList);
+        List<AutomationElement> fields = [];
+        while (child != null)
+        {
+            Invoke(walker.GetFirstChild(child));
+            //Invoke(child);
+            //Thread.Sleep(100);
+            var field = child.FindFirst(TreeScope.Descendants, cond);
+            if (field != null)
+                fields.Add(field);
+            child = walker.GetNextSibling(child);
+        }
 
+        if (names.Count != fields.Count)
+        {
+            var targetNames = string.Join(',', fields.Cast<AutomationElement>().Select(GetValue));
+            Assert.Fail($"Cue count does not match expected cue count. Found: {fields.Count} expected: {names.Count} ({targetNames})");
+            return false;
+        }
+
+        int ind = 0;
         using var namesEnum = names.GetEnumerator();
         foreach (var field in fields)
         {
@@ -294,8 +331,13 @@ internal class CueListUITests
             var name = namesEnum.Current;
             var element = (AutomationElement)field;
 
-            if (GetValue(element) != name)
+            var elemName = GetValue(element);
+            if (elemName != name)
+            {
+                Assert.Fail($"Cue with name {elemName} does not match the expected name {name} (@ index {ind})");
                 return false;
+            }
+            ind++;
         }
         return true;
     }
@@ -318,7 +360,7 @@ internal class CueListUITests
         SelectCue("G", true, false);
 
         InvokeKeybind("Ctrl+G");
-        
+
         SetCueTextField("Cue Name", "D");
 
         SelectCue("H", true);
