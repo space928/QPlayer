@@ -372,6 +372,7 @@ public class CueDataControlAutomationPeer : FrameworkElementAutomationPeer, IInv
     public ExpandCollapseState ExpandCollapseState => (DataContext is GroupCueViewModel group) ? (group.IsCollapsed ? ExpandCollapseState.Collapsed : ExpandCollapseState.Expanded) : ExpandCollapseState.LeafNode;
     public bool IsSelected => DataContext?.IsSelected ?? false;
     public IRawElementProviderSimple SelectionContainer => null!;
+    protected override string GetItemStatusCore() => (DataContext?.IsMultiSelected ?? false) ? "MultiSelected" : "";
 
     public CueDataControlAutomationPeer(FrameworkElement owner) : base(owner)
     {
@@ -393,6 +394,7 @@ public class CueDataControlAutomationPeer : FrameworkElementAutomationPeer, IInv
         {
             case nameof(CueViewModel.NamePreview):
             case nameof(CueViewModel.IsSelected):
+            case nameof(CueViewModel.IsMultiSelected):
             case nameof(GroupCueViewModel.IsCollapsed):
                 InvalidatePeer();
                 RaisePropertyChangedEvent(AutomationElementIdentifiers.NameProperty, null, GetNameCore());

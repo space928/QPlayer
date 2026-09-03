@@ -55,21 +55,21 @@
             <RowDefinition Height="*"/>
             <RowDefinition Height="22"/>
         </Grid.RowDefinitions>
-        <ItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
+        <local:CueListItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
                       Background="{DynamicResource AREghZyBrush.Deep.1.Background.Static}" BorderBrush="{DynamicResource AREghZyBrush.Deep.1.Border.Static}" BorderThickness="1"
                       Panel.ZIndex="999" Width="400" MaxHeight="250" Grid.ColumnSpan="99" Grid.RowSpan="99" HorizontalAlignment="Left" VerticalAlignment="Top" 
                       Visibility="Visible" IsTabStop="False" Focusable="False" IsHitTestVisible="False"
                       VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.CacheLength="16" 
                       VirtualizingPanel.CacheLengthUnit="Item">
-            <ItemsControl.ItemTemplate>
+            <local:CueListItemsControl.ItemTemplate>
                 <DataTemplate>
                     <local:CueDataControl/>
                 </DataTemplate>
-            </ItemsControl.ItemTemplate>
-            <ItemsControl.Effect>
+            </local:CueListItemsControl.ItemTemplate>
+            <local:CueListItemsControl.Effect>
                 <DropShadowEffect BlurRadius="20" Color="{DynamicResource AREghZyColour.Primary.4.Border.Static}"/>
-            </ItemsControl.Effect>
-        </ItemsControl>
+            </local:CueListItemsControl.Effect>
+        </local:CueListItemsControl>
         <!--#region Title Bar-->
         <Grid x:Name="TitleBar" Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
             <Grid.ColumnDefinitions>
@@ -245,13 +245,13 @@
                         </ContextMenu>
                     </ScrollViewer.ContextMenu>
                     <StackPanel>
-                        <ItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}" d:Height="1000" KeyboardNavigation.TabNavigation="Cycle">
-                            <ItemsControl.ItemTemplate>
+                        <local:CueListItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}" d:Height="1000" KeyboardNavigation.TabNavigation="Cycle">
+                            <local:CueListItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <local:CueDataControl/>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </local:CueListItemsControl.ItemTemplate>
+                        </local:CueListItemsControl>
                         <Grid MaxWidth="200" Margin="80" Height="{Binding 
                             RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
                             Path=ActualHeight,

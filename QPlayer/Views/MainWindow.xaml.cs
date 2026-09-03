@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
 using System.Windows.Controls.Primitives;
 using System.Windows.Data;
@@ -81,7 +82,7 @@ public partial class MainWindow : Window
         }
 
         ItemsControl menu = MainMenu;
-        foreach (var part in parts) 
+        foreach (var part in parts)
         {
             var item = menu.Items
                 .OfType<MenuItem>()
@@ -104,7 +105,7 @@ public partial class MainWindow : Window
                 menu = newItem;
             }
         }
-   
+
         menu.Items.Add(menuItem);
     }
 
@@ -233,7 +234,8 @@ public partial class MainWindow : Window
         {
             if (e.NewStartingIndex != -1)
             {
-                for (int i = Math.Max(0, e.NewStartingIndex - 1); i < Math.Min(e.NewStartingIndex + 2, count); i++)
+                int newCount = e.NewItems?.Count ?? 0;
+                for (int i = Math.Max(0, e.NewStartingIndex - 1); i < Math.Min(e.NewStartingIndex + newCount + 1, count); i++)
                 {
                     if (!GetCueDataControl(i, out var item))
                         continue;
@@ -243,7 +245,8 @@ public partial class MainWindow : Window
             }
             if (e.OldStartingIndex != -1)
             {
-                for (int i = Math.Max(0, e.OldStartingIndex - 1); i < Math.Min(e.OldStartingIndex + 2, count); i++)
+                int oldCount = e.OldItems?.Count ?? 0;
+                for (int i = Math.Max(0, e.OldStartingIndex - 1); i < Math.Min(e.OldStartingIndex + oldCount + 1, count); i++)
                 {
                     if (!GetCueDataControl(i, out var item))
                         continue;
@@ -252,6 +255,9 @@ public partial class MainWindow : Window
                 }
             }
         }
+
+        //var peer = UIElementAutomationPeer.FromElement(CueListControl) ?? UIElementAutomationPeer.CreatePeerForElement(CueListControl);
+        //peer?.RaiseAutomationEvent(AutomationEvents.StructureChanged);
 
         bool GetCueDataControl(int ind, [NotNullWhen(true)] out CueDataControl? control)
         {

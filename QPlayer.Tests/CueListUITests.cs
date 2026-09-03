@@ -16,16 +16,8 @@ using TUnit.Assertions.Should.Extensions;
 namespace QPlayer.Tests;
 
 [NotInParallel]
-internal class CueListUITests
+internal partial class CueListUITests
 {
-    private static Process? process;
-    private static AutomationElement? rootElement;
-    private static readonly Dictionary<CachedElementKey, AutomationElement> cachedElements = [];
-    //private static InputSimulator? input;
-    //private static KeyboardSimulator? kb;
-
-    public record struct CachedElementKey(string? Name = null, string? Id = null, string? Type = null, AutomationElement? Parent = null);
-
     [Before(Class)]
     public static void SetupTests()
     {
@@ -66,313 +58,6 @@ internal class CueListUITests
         process?.Kill(true);
     }
 
-    /// <summary>
-    /// Gets a UI element by name.
-    /// </summary>
-    /// <param name="name"></param>
-    /// <param name="type"></param>
-    /// <param name="parent"></param>
-    /// <param name="useCache"></param>
-    /// <returns></returns>
-    private static AutomationElement? GetByName(string name, string? type = null, AutomationElement? parent = null, bool useCache = true, bool findHidden = false)
-    {
-        if (useCache && cachedElements.TryGetValue(new(name, Type: type, Parent: parent), out var res))
-            return res;
-
-        Condition cond = new PropertyCondition(AutomationElement.NameProperty, name);
-        if (type != null)
-            cond = new AndCondition(cond, new PropertyCondition(AutomationElement.ClassNameProperty, type));
-        parent ??= rootElement;
-
-        uint start = (uint)Environment.TickCount;
-        do
-        {
-            if (findHidden)
-            {
-                var walker = new TreeWalker(cond);
-                res = walker.GetFirstChild(parent);
-            }
-            else
-            {
-                res = parent?.FindFirst(TreeScope.Descendants, cond);
-            }
-        }
-        while (res == null && Environment.TickCount - start < 1000);
-
-        if (res != null)
-            cachedElements.AddOrUpdate(new(name, Type: type, Parent: parent), res);
-
-        return res;
-    }
-
-    private static AutomationElement? GetById(string id, string? type = null, AutomationElement? parent = null, bool useCache = true)
-    {
-        if (useCache && cachedElements.TryGetValue(new(Id: id, Type: type, Parent: parent), out var res))
-            return res;
-
-        Condition cond = new PropertyCondition(AutomationElement.AutomationIdProperty, id);
-        if (type != null)
-            cond = new AndCondition(cond, new PropertyCondition(AutomationElement.ClassNameProperty, type));
-        parent ??= rootElement;
-
-        uint start = (uint)Environment.TickCount;
-        do
-        {
-            res = parent?.FindFirst(TreeScope.Descendants, cond);
-        }
-        while (res == null && Environment.TickCount - start < 1000);
-
-        if (res != null)
-            cachedElements.AddOrUpdate(new(Id: id, Type: type, Parent: parent), res);
-
-        return res;
-    }
-
-    private static AutomationElement? GetLabeledControl(string label, AutomationElement? parent = null)
-    {
-        parent ??= rootElement;
-        var labelElem = GetByName(label, parent: parent);
-        Assert.NotNull(labelElem);
-        return TreeWalker.ControlViewWalker.GetNextSibling(labelElem);
-    }
-
-    private static bool Invoke(AutomationElement element)
-    {
-        if (!element.TryGetCachedPattern(InvokePattern.Pattern, out var pattern))
-            element.TryGetCurrentPattern(InvokePattern.Pattern, out pattern);
-
-        var invoke = pattern as InvokePattern;
-        invoke?.Invoke();
-        Thread.Yield();
-        return invoke != null;
-    }
-
-    private static bool Expand(AutomationElement element)
-    {
-        if (!element.TryGetCachedPattern(ExpandCollapsePattern.Pattern, out var pattern))
-            element.TryGetCurrentPattern(ExpandCollapsePattern.Pattern, out pattern);
-
-        var invoke = pattern as ExpandCollapsePattern;
-        invoke?.Expand();
-        Thread.Yield();
-        //Thread.Sleep(50);
-        return invoke != null;
-    }
-
-    private static bool SelectItem(AutomationElement element, bool replace = true)
-    {
-        if (!element.TryGetCachedPattern(SelectionItemPattern.Pattern, out var pattern))
-            element.TryGetCurrentPattern(SelectionItemPattern.Pattern, out pattern);
-
-        if (pattern is not SelectionItemPattern invoke)
-            return false;
-
-        if (replace)
-            invoke.Select();
-        else
-        {
-            if (invoke.Current.IsSelected)
-                invoke.RemoveFromSelection();
-            else
-                invoke.AddToSelection();
-        }
-        Thread.Yield();
-
-        return true;
-    }
-
-    private static bool SetValue(AutomationElement element, string value)
-    {
-        if (!element.TryGetCachedPattern(ValuePattern.Pattern, out var pattern))
-            element.TryGetCurrentPattern(ValuePattern.Pattern, out pattern);
-
-        var invoke = pattern as ValuePattern;
-        invoke?.SetValue(value);
-        Thread.Yield();
-        //Thread.Sleep(50);
-        return invoke != null;
-    }
-
-    private static string? GetValue(AutomationElement element)
-    {
-        if (!element.TryGetCachedPattern(ValuePattern.Pattern, out var pattern))
-            element.TryGetCurrentPattern(ValuePattern.Pattern, out pattern);
-
-        if (pattern is not ValuePattern value)
-            return null;
-
-        return value.Current.Value;
-    }
-
-    private static bool InvokeKeybind(string keybind)
-    {
-        var groupBtn = GetByName($"Automation {keybind}", findHidden: true);
-        if (groupBtn == null)
-            return false;
-        return Invoke(groupBtn);
-    }
-
-    private static void SetCueTextField(string property, string value)
-    {
-        var editor = GetByName("Selected Cue", "TabItem");
-        Assert.NotNull(editor);
-        SelectItem(editor);
-        var textField = GetLabeledControl(property, editor);
-        Assert.NotNull(textField);
-        //var tb = GetById("TextBox", parent: nameControl);
-        //Assert.NotNull(tb);
-        SetValue(textField, value);
-    }
-
-    private static string? GetCueTextField(string property)
-    {
-        var editor = GetByName("Selected Cue", "TabItem");
-        Assert.NotNull(editor);
-        SelectItem(editor);
-        var textField = GetLabeledControl(property, editor);
-        Assert.NotNull(textField);
-        //var tb = GetById("TextBox", parent: nameControl);
-        // Assert.NotNull(tb);
-        return GetValue(textField);
-    }
-
-    private static void NewProject()
-    {
-        var menu = GetByName("File");
-        Assert.NotNull(menu);
-        Expand(menu);
-        menu = GetByName("New", "MenuItem");
-        Assert.NotNull(menu);
-        Invoke(menu);
-    }
-
-    private static void CreateCue(string? name = null, string type = "Sound Cue")
-    {
-        if (type == "Sound Cue")
-        {
-            var btn = GetByName("Automation Add Sound Cue", findHidden: true);
-            Assert.NotNull(btn);
-            Invoke(btn);
-        }
-        else
-        {
-            var menu = GetByName("Edit");
-            Assert.NotNull(menu);
-            Expand(menu);
-            menu = GetByName("Create Cue", "MenuItem");
-            Assert.NotNull(menu);
-            Expand(menu);
-            menu = GetByName($"Add {type}", "MenuItem");
-            Assert.NotNull(menu);
-            Invoke(menu);
-        }
-
-        if (name != null)
-            SetCueTextField("Cue Name", name);
-    }
-
-    /// <summary>
-    /// Selects a cue in the visual cue stack by name or by QID.
-    /// </summary>
-    /// <param name="identifier">The name/qid to search for.</param>
-    /// <param name="byName">Whether the <paramref name="identifier"/> is a name or a qid.</param>
-    /// <param name="replace">Whether the current selection should be replaced.</param>
-    /// <returns></returns>
-    private static bool SelectCue(string identifier, bool byName = false, bool replace = true)
-    {
-        var cueList = GetById("CueListControl");
-        Assert.NotNull(cueList);
-        var cond = new AndCondition(
-            new PropertyCondition(AutomationElement.NameProperty, byName ? "Name" : "QID"),
-            new PropertyCondition(ValuePattern.ValueProperty, identifier));
-        var cueID = cueList.FindFirst(TreeScope.Descendants, cond);
-        if (cueID == null)
-            return false;
-        var cue = TreeWalker.ContentViewWalker.GetParent(cueID);
-        if (cue == null)
-            return false;
-        return SelectItem(cue, replace);
-    }
-
-    private static bool CheckCueNames(ICollection<string> names)
-    {
-        var cueList = GetById("CueListControl", useCache: false);
-        Assert.NotNull(cueList);
-        var cond = new PropertyCondition(AutomationElement.NameProperty, "Name");
-        //var fields = cueList.FindAll(TreeScope.Descendants, cond);
-
-        var walker = TreeWalker.ControlViewWalker;
-        var child = walker.GetFirstChild(cueList);
-        List<AutomationElement> fields = [];
-        while (child != null)
-        {
-            Invoke(walker.GetFirstChild(child));
-            //Invoke(child);
-            //Thread.Sleep(100);
-            var field = child.FindFirst(TreeScope.Descendants, cond);
-            if (field != null)
-                fields.Add(field);
-            child = walker.GetNextSibling(child);
-        }
-
-        if (names.Count != fields.Count)
-        {
-            var targetNames = string.Join(',', fields.Cast<AutomationElement>().Select(GetValue));
-            Assert.Fail($"Cue count does not match expected cue count. Found: {fields.Count} expected: {names.Count} ({targetNames})");
-            return false;
-        }
-
-        int ind = 0;
-        using var namesEnum = names.GetEnumerator();
-        foreach (var field in fields)
-        {
-            if (!namesEnum.MoveNext())
-                break;
-            var name = namesEnum.Current;
-            var element = (AutomationElement)field;
-
-            var elemName = GetValue(element);
-            if (elemName != name)
-            {
-                Assert.Fail($"Cue with name {elemName} does not match the expected name {name} (@ index {ind})");
-                return false;
-            }
-            ind++;
-        }
-        return true;
-    }
-
-    private static bool CreateTestFile()
-    {
-        NewProject();
-        CreateCue("A"); // 1
-        CreateCue("B"); // 2
-        CreateCue("C"); // 3
-        CreateCue("E"); // 4-1
-        CreateCue("F"); // 4-2
-        CreateCue("G"); // 4-3
-        CreateCue("H"); // 5
-        CreateCue("I"); // 6
-        CreateCue("J"); // 7
-
-        SelectCue("E", true, true);
-        SelectCue("F", true, false);
-        SelectCue("G", true, false);
-
-        InvokeKeybind("Ctrl+G");
-
-        SetCueTextField("Cue Name", "D");
-
-        SelectCue("H", true);
-        SetCueTextField("Cue ID", "5");
-        SelectCue("I", true);
-        SetCueTextField("Cue ID", "6");
-        SelectCue("J", true);
-        SetCueTextField("Cue ID", "7");
-
-        return CheckCueNames(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]);
-    }
-
     [Test]
     public async Task TestCreateTestCues()
     {
@@ -404,5 +89,189 @@ internal class CueListUITests
         CreateCue("J1");
         await CheckCueNames(["A", "A1", "B", "C", "D", "E", "F", "G", "G1", "D1", "H", "I", "J", "J1"]).Should().BeTrue();
         await GetCueTextField("Cue ID").Should().BeEqualTo("8");
+    }
+
+    [Test]
+    public async Task TestMoves()
+    {
+        CreateTestFile();
+
+        string[] startNames = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+        string[] startIds = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5", "6", "7"];
+
+        // Move none
+        SelectCue("A", true);
+        InvokeKeybind("Ctrl+Up");
+        await CheckCueNames(startNames).Should().BeTrue();
+        await CheckQIDs(startIds).Should().BeTrue();
+
+        SelectCue("J", true);
+        InvokeKeybind("Ctrl+Down");
+        await CheckCueNames(startNames).Should().BeTrue();
+        await CheckQIDs(startIds).Should().BeTrue();
+
+        SelectCue("A", true);
+        SelectCue("B", true, false);
+        InvokeKeybind("Ctrl+Up");
+        await CheckCueNames(startNames).Should().BeTrue();
+        await CheckQIDs(startIds).Should().BeTrue();
+
+        SelectCue("J", true);
+        SelectCue("I", true, false);
+        InvokeKeybind("Ctrl+Down");
+        await CheckCueNames(startNames).Should().BeTrue();
+        await CheckQIDs(startIds).Should().BeTrue();
+
+        // Normal moves
+        SelectCue("B", true);
+        InvokeKeybind("Ctrl+Up");
+        await GetCueTextField("Cue ID").Should().BeEqualTo("0.1");
+        await GetCueTextField("Cue Name").Should().BeEqualTo("B");
+
+        SelectCue("I", true);
+        InvokeKeybind("Ctrl+Down");
+        await GetCueTextField("Cue ID").Should().BeEqualTo("8");
+        await GetCueTextField("Cue Name").Should().BeEqualTo("I");
+
+        SelectCue("B", true);
+        SelectCue("C", true, false);
+        InvokeKeybind("Ctrl+Up");
+        await SelectCue("B", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("0.1");
+        await SelectCue("C", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("0.2");
+
+        SelectCue("H", true);
+        SelectCue("I", true, false);
+        InvokeKeybind("Ctrl+Down");
+        await SelectCue("H", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("8");
+        await SelectCue("I", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("9");
+
+        // Check undo/redo
+        await CheckUndoRedo(4, startNames, startIds);
+    }
+
+    [Test]
+    public async Task TestMovesInGroups()
+    {
+        CreateTestFile();
+
+        string[] startNames = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+        string[] startIds = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5", "6", "7"];
+
+        // For testing, duplicate the group
+        SelectCues(["H", "I", "J"], true);
+        SetQIDs(["6", "7", "8"]);
+        SetNames(["E1", "F1", "G1"]);
+        SelectCue("D", true);
+        InvokeKeybind("Ctrl+D");
+
+        startNames = ["A", "B", "C", "D", "E", "F", "G", "D", "E", "F", "G", "H", "I", "J"];
+        startIds = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5-1", "5-2", "5-3", "6", "7", "8"];
+        await CheckCueNames(startNames).Should().BeTrue();
+        await CheckQIDs(startIds).Should().BeTrue();
+
+        // Move out of one group
+        SelectCue("4-1");
+        SelectCue("4-3", replace: true);
+        InvokeKeybind("Ctrl+Up");
+        await SelectCue("E", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("3.1");
+        await SelectCue("G", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("3.2");
+
+        SelectCue("F", true);
+        InvokeKeybind("Ctrl+Down");
+        await GetCueTextField("Cue ID").Should().BeEqualTo("4.1");
+
+        // Undo redo
+        await CheckUndoRedo(2, startNames, startIds);
+        InvokeKeybind("Ctrl+Z");
+        InvokeKeybind("Ctrl+Z");
+
+        // Move out of two groups
+        SelectCues(["F", "F1"]);
+        InvokeKeybind("Ctrl+Up");
+        await SelectCue("F", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("3.1");
+        await SelectCue("F1", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("3.2");
+        await CheckUndoRedo(1, startNames, startIds);
+
+        // Move into group
+        SelectCues(["H", "J"]);
+        InvokeKeybind("Ctrl+Shift+Up");
+        await SelectCue("H", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("5-4");
+        await SelectCue("J", true).Should().BeTrue();
+        await GetCueTextField("Cue ID").Should().BeEqualTo("5-5");
+        await CheckUndoRedo(1, startNames, startIds);
+    }
+
+    [Test]
+    public async Task TestGroupUngroup()
+    {
+        CreateTestFile();
+
+        string[] startNames = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+        string[] startIds = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5", "6", "7"];
+        string[] groupedNames = ["A", "Group (3 cues)", "B", "E", "I", "C", "D", "F", "G", "H", "J"];
+        string[] groupedIds = ["1", "2", "2-1", "2-2", "2-3", "3", "4", "4-2", "4-3", "5", "7"];
+
+        // Group some non-contiguous cues
+        SelectCue("B", true);
+        SelectCue("E", true, false);
+        SelectCue("I", true, false);
+        InvokeKeybind("Ctrl+G");
+        await CheckCueNames(groupedNames).Should().BeTrue();
+        await CheckQIDs(groupedIds).Should().BeTrue();
+
+        // Check undo/redo
+        InvokeKeybind("Ctrl+Z");
+        await CheckCueNames(startNames).Should().BeTrue();
+        await CheckQIDs(startIds).Should().BeTrue();
+
+        InvokeKeybind("Ctrl+Shift+Z");
+        await CheckCueNames(groupedNames).Should().BeTrue();
+        await CheckQIDs(groupedIds).Should().BeTrue();
+
+        // Test ungroup contiguous, this should also delete the empty group at qid 2
+        string[] ungroupedNames = ["A", "B", "E", "I", "C", "D", "F", "G", "H", "J"];
+        string[] ungroupedIds = ["1", "2", "2.1", "2.2", "3", "4", "4-2", "4-3", "5", "7"];
+
+        SelectCue("B", true);
+        SelectCue("E", true, false);
+        SelectCue("I", true, false);
+        InvokeKeybind("Ctrl+Shift+G");
+        await CheckCueNames(ungroupedNames).Should().BeTrue();
+        await CheckQIDs(ungroupedIds).Should().BeTrue();
+
+        InvokeKeybind("Ctrl+Z");
+        await CheckCueNames(groupedNames).Should().BeTrue();
+        await CheckQIDs(groupedIds).Should().BeTrue();
+
+        InvokeKeybind("Ctrl+Shift+Z");
+        await CheckCueNames(ungroupedNames).Should().BeTrue();
+        await CheckQIDs(ungroupedIds).Should().BeTrue();
+
+        // Test ungroup non-contiguous
+        ungroupedNames = ["A", "B", "F", "Group (2 cues)", "E", "I", "C", "D", "G", "H", "J"];
+        ungroupedIds = ["1", "1.1", "1.2", "2", "2-2", "3", "4", "4-3", "5", "7"];
+
+        SelectCue("B", true);
+        SelectCue("F", true, false);
+        InvokeKeybind("Ctrl+Shift+G");
+        await CheckCueNames(ungroupedNames).Should().BeTrue();
+        await CheckQIDs(ungroupedIds).Should().BeTrue();
+
+        InvokeKeybind("Ctrl+Z");
+        await CheckCueNames(groupedNames).Should().BeTrue();
+        await CheckQIDs(groupedIds).Should().BeTrue();
+
+        InvokeKeybind("Ctrl+Shift+Z");
+        await CheckCueNames(ungroupedNames).Should().BeTrue();
+        await CheckQIDs(ungroupedIds).Should().BeTrue();
     }
 }
