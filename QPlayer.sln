@@ -11,7 +11,11 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 		.github\workflows\deploy-docs.yml = .github\workflows\deploy-docs.yml
 		docfx.json = docfx.json
 		.github\workflows\dotnet-desktop.yml = .github\workflows\dotnet-desktop.yml
+		global.json = global.json
 		README.md = README.md
+	EndProjectSection
+	ProjectSection(FolderGlobals) = preProject
+		D_5_4Thoma_4Documents_4OneDrive_4Computer Sync_4visual studio 2015_4Projects_4QPlayer_4global_1json__JsonSchema = 
 	EndProjectSection
 EndProject
 Project("{54A90642-561A-4BB1-A94E-469ADEE60C69}") = "QPlayerDocs", "docs\QPlayerDocs.esproj", "{1FFE1363-C8AC-4EE3-B83F-260ADB517F49}"

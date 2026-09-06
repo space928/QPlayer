@@ -33,6 +33,14 @@ internal partial class CueListUITests
             Assert.Fail("Couldn't find QPlayer executable!");
         path = Path.Combine(path!, @"QPlayer\bin\Debug\net10.0-windows\qplayer.exe");
 
+        // Kill any exisiting processes
+        var existing = Process.GetProcessesByName("qplayer");
+        if (existing.Length > 0)
+        {
+            foreach (var proc in existing)
+                proc.Kill(true);
+        }
+
         // Start an instance of QPlayer
         process = Process.Start(path);
 
@@ -163,19 +171,20 @@ internal partial class CueListUITests
 
         // For testing, duplicate the group
         SelectCues(["H", "I", "J"], true);
-        SetQIDs(["6", "7", "8"]);
-        SetNames(["E1", "F1", "G1"]);
-        SelectCue("D", true);
-        InvokeKeybind("Ctrl+D");
+        SetQIDs(["6", "7", "8"]); // Renumber the last three cues to make space for the duplicated group
+        SelectCue("D", true); // Select the group
+        InvokeKeybind("Ctrl+D"); // Duplicate
+        SelectCues(["5", "5-1", "5-2", "5-3"]); // Select the duplicated cues
+        SetNames(["D1", "E1", "F1", "G1"]); // Give them unique names
 
-        startNames = ["A", "B", "C", "D", "E", "F", "G", "D", "E", "F", "G", "H", "I", "J"];
-        startIds = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5-1", "5-2", "5-3", "6", "7", "8"];
+        startNames = ["A", "B", "C", "D", "E", "F", "G", "D1", "E1", "F1", "G1", "H", "I", "J"];
+        startIds = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5", "5-1", "5-2", "5-3", "6", "7", "8"];
         await CheckCueNames(startNames).Should().BeTrue();
         await CheckQIDs(startIds).Should().BeTrue();
 
         // Move out of one group
         SelectCue("4-1");
-        SelectCue("4-3", replace: true);
+        SelectCue("4-3", replace: false);
         InvokeKeybind("Ctrl+Up");
         await SelectCue("E", true).Should().BeTrue();
         await GetCueTextField("Cue ID").Should().BeEqualTo("3.1");
@@ -192,7 +201,7 @@ internal partial class CueListUITests
         InvokeKeybind("Ctrl+Z");
 
         // Move out of two groups
-        SelectCues(["F", "F1"]);
+        SelectCues(["F", "F1"], true);
         InvokeKeybind("Ctrl+Up");
         await SelectCue("F", true).Should().BeTrue();
         await GetCueTextField("Cue ID").Should().BeEqualTo("3.1");
@@ -201,7 +210,7 @@ internal partial class CueListUITests
         await CheckUndoRedo(1, startNames, startIds);
 
         // Move into group
-        SelectCues(["H", "J"]);
+        SelectCues(["H", "J"], true);
         InvokeKeybind("Ctrl+Shift+Up");
         await SelectCue("H", true).Should().BeTrue();
         await GetCueTextField("Cue ID").Should().BeEqualTo("5-4");

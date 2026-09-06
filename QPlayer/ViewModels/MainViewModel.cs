@@ -712,7 +712,8 @@ public partial class MainViewModel : ObservableObject
 
     public void PreloadExecute()
     {
-        SelectedCue?.Preload(PreloadTime);
+        foreach (var cue in MultiSelection)
+            cue.Preload(PreloadTime);
     }
 
     /// <inheritdoc cref="MoveCueUpExecute(bool)"/>

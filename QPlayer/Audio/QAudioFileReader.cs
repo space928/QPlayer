@@ -746,17 +746,48 @@ public class QAudioFileReader : WaveStream, ISampleProvider
         throw new ArgumentException("Unsupported source encoding");
     }
 
+    /// <summary>
+    /// Disposes of this reader's resources. When using a <see cref="AudioBufferingDispatcher"/> 
+    /// the resources are disposed of asynchronously.
+    /// </summary>
+    /// <param name="disposing"></param>
     protected override void Dispose(bool disposing)
     {
         if (disposing && readerStream != null)
         {
-            dispatcher?.UnregisterAudioFile(this);
-            readerStream.Dispose();
-            readerStream = null;
-            ReleaseBuffers();
+            if (dispatcher != null)
+            {
+                dispatcher.UnregisterAudioFile(this);
+            }
+            else
+            {
+                ReleaseResources();
+            }
         }
 
         base.Dispose(disposing);
+    }
+
+    /// <summary>
+    /// Releases the reader stream and buffers owned by this audio file. This method is intended to be called by 
+    /// the <see cref="AudioBufferingDispatcher"/> or by <see cref="Dispose(bool)"/>.
+    /// </summary>
+    internal void ReleaseResources()
+    {
+        if (readerStream != null)
+        {
+            try
+            {
+                readerSem.Wait();
+                readerStream?.Dispose();
+                readerStream = null;
+            }
+            finally
+            {
+                readerSem.Release();
+            }
+        }
+        ReleaseBuffers();
     }
 
     /// <summary>

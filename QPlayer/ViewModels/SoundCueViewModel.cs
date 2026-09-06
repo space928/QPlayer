@@ -71,7 +71,7 @@ public partial class SoundCueViewModel : CueViewModel, IMediaCue
         OpenMediaFileCommand = new(OpenMediaFileExecute);
         /*audioProgressUpdater = new Timer(50);
         audioProgressUpdater.Elapsed += AudioProgressUpdater_Elapsed;*/
-        EQ = new();
+        EQ = new(this);
 
         PropertyChanged += (o, e) =>
         {

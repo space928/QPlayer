@@ -27,8 +27,9 @@ public partial class GroupCueViewModel : CueViewModel
     [Reactive, Readonly, NoUndo] private CueList cues;
 
     [Reactive] private GroupTriggerMode groupTrigger;
+    private bool normallyCollapsed;
     private bool isCollapsed;
-    [Reactive("IsCollapsed"), ModelBindsTo("isCollapsed"), NoUndo]
+    [Reactive("IsCollapsed"), ModelCustomBinding(nameof(VM2M_IsCollapsed), nameof(M2VM_IsCollapsed)), NoUndo]
     private bool IsCollapsed_Template
     {
         get => isCollapsed;
@@ -146,7 +147,10 @@ public partial class GroupCueViewModel : CueViewModel
             return; // Unpause logic is handled by the individual cues, no need for the group cue to do anything
 
         if (IsCollapsed && groupTrigger != GroupTriggerMode.All)
+        {
+            normallyCollapsed = IsCollapsed;
             IsCollapsed = false;
+        }
 
         // This action should happen after any group delay (or wait cue)
         switch (groupTrigger)
@@ -174,6 +178,22 @@ public partial class GroupCueViewModel : CueViewModel
     {
         base.Stop();
         PlaybackTime = playbackTime = TimeSpan.Zero;
+        if (normallyCollapsed == true)
+        {
+            IsCollapsed = true;
+            // Re-assert the current selection
+            if (mainViewModel.SelectedCue?.HasParent(this) ?? false)
+            {
+                int groupInd = mainViewModel.FindCueIndex(this);
+                if (groupInd != -1)
+                    mainViewModel.SelectedCueInd = groupInd + 1;
+            }
+            else
+            {
+                // HACK: Collapsing/expanding a group doesn't update the selected cue index.
+                mainViewModel.SelectedCue = mainViewModel.SelectedCue;
+            }
+        }
     }
 
     public override void Stop()
@@ -262,4 +282,11 @@ public partial class GroupCueViewModel : CueViewModel
         computedDuration = TimeSpan.FromTicks(maxDur);
         OnPropertyChanged(nameof(Duration));
     }
+
+    private static void M2VM_IsCollapsed(GroupCueViewModel vm, GroupCue m)
+    {
+        vm.IsCollapsed = m.isCollapsed;
+        vm.normallyCollapsed = m.isCollapsed;
+    }
+    private static void VM2M_IsCollapsed(GroupCueViewModel vm, GroupCue m) => m.isCollapsed = vm.State == CueState.Playing ? vm.normallyCollapsed : vm.isCollapsed;
 }

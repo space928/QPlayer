@@ -14,6 +14,7 @@ internal partial class CueListUITests
     private static Process? process;
     private static AutomationElement? rootElement;
     private static readonly Dictionary<CachedElementKey, AutomationElement> cachedElements = [];
+    private static bool multipleSelected = false;
 
     public record struct CachedElementKey(string? Name = null, string? Id = null, string? Type = null, AutomationElement? Parent = null);
 
@@ -262,7 +263,15 @@ internal partial class CueListUITests
     private static bool SelectCue(string identifier, bool byName = false, bool replace = true)
     {
         if (replace)
-            InvokeKeybind("Esc");
+        {
+            if (multipleSelected)
+                InvokeKeybind("Esc");
+            multipleSelected = false;
+        }
+        else
+        {
+            multipleSelected = true;
+        }
 
         var cueList = GetById("CueListControl");
         Assert.NotNull(cueList);
@@ -280,8 +289,9 @@ internal partial class CueListUITests
 
     private static void SelectCues(IEnumerable<string> identifiers, bool byName = false, bool replace = true)
     {
-        if (replace)
+        if (replace && multipleSelected)
             InvokeKeybind("Esc");
+        multipleSelected = true;
 
         var cueList = GetById("CueListControl");
         Assert.NotNull(cueList);
@@ -314,12 +324,19 @@ internal partial class CueListUITests
         //var cond = new PropertyCondition(AutomationElement.IsSelectionItemPatternAvailableProperty, "Name");
         var cdcs = cueList.FindAll(TreeScope.Children, Condition.TrueCondition);
 
+        multipleSelected = false;
+        int i = 0;
         foreach (var cdc in cdcs)
         {
             var element = (AutomationElement)cdc;
 
             if (IsMultiSelected(element))
+            {
                 yield return element;
+                i++;
+                if (i > 1)
+                    multipleSelected = true;
+            }
         }
     }
 
@@ -488,9 +505,15 @@ internal partial class CueListUITests
     /// <c>["1", "2", "3", "4", "4-1", "4-2", "4-3", "5", "6", "7"]</c><br/>
     /// Cue 4 is a group cue, all others are sound cues.
     /// </summary>
+    /// <param name="allowRetry">Sometimes unpredictable UI automation behaviours can result in tests 
+    /// failling. This option allows this method to retry creating the test file once if it wasn't 
+    /// correctly created the first time.</param>
     /// <returns></returns>
-    private static bool CreateTestFile()
+    private static bool CreateTestFile(bool allowRetry = true)
     {
+        string[] expectedNames = ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"];
+        string[] expectedQIDs = ["1", "2", "3", "4", "4-1", "4-2", "4-3", "5", "6", "7"];
+
         NewProject();
         CreateCue("A"); // 1
         CreateCue("B"); // 2
@@ -517,6 +540,9 @@ internal partial class CueListUITests
         SelectCue("J", true);
         SetCueTextField("Cue ID", "7");
 
-        return CheckCueNames(["A", "B", "C", "D", "E", "F", "G", "H", "I", "J"]);
+        bool res = CheckCueNames(expectedNames) && CheckQIDs(expectedQIDs);
+        if (!res && allowRetry)
+            return CreateTestFile(false);
+        return res;
     }
 }

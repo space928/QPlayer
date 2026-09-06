@@ -241,6 +241,7 @@ public partial class Knob : UserControl, INotifyPropertyChanged, INotifyProperty
     private void Grid_Loaded(object sender, RoutedEventArgs e)
     {
         UpdateKnobMarker();
+        OnPropertyChanged(nameof(ValueText));
     }
 
     private void UpdateKnobMarker()

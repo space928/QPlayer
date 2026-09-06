@@ -329,6 +329,12 @@ public partial class MainViewModel
                 ms.Position = 0;
                 try
                 {
+                    await dispatcher.InvokeAsync(() =>
+                    {
+                        ProgressBoxViewModel.Message = "Syncing project to remote clients...";
+                        ProgressBoxViewModel.Progress = 0.9f;
+                        ProgressBoxViewModel.Visible = Visibility.Visible;
+                    });
                     await oscManager.SendRemoteUpdateShowFileAsync(ProjectSettings.RemoteNodes.Select(x => x.Name), ms.ToArray());
                 }
                 catch (Exception ex)

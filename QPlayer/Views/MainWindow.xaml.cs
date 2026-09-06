@@ -343,63 +343,78 @@ public partial class MainWindow : Window
             if (e.Data.GetData(DataFormats.FileDrop, true) is string[] files)
             {
                 foreach (var file in files)
-                {
-                    switch (System.IO.Path.GetExtension(file).ToLowerInvariant())
-                    {
-                        case ".mp3":
-                        case ".wav":
-                        case ".aif":
-                        case ".aiff":
-                        case ".flac":
-                        case ".ogg":
-                        case ".wma":
-                            {
-                                if (vm.CreateCue(nameof(SoundCue)) is not SoundCueViewModel cue)
-                                    break;
-                                cue.Path = file;
-                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                                vm.MoveCue(cue, dstPos);
-                                dstPos += 1;
-                            }
-                            break;
-                        //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp
-                        case ".mp4":
-                        case ".mkv":
-                        case ".avi":
-                        case ".webm":
-                        case ".flv":
-                        case ".wmv":
-                        case ".mov":
-                        case ".png":
-                        case ".jpg":
-                        case ".jpeg":
-                        case ".bmp":
-                        case ".exr":
-                        case ".hdr":
-                        case ".webp":
-                            {
-                                var media = vm.CreateCue("VideoCue", afterLast: true) as IMediaCue;
-                                media ??= vm.CreateCue("PyVideoCue", afterLast: true) as IMediaCue;
-                                if (media == null || media is not CueViewModel cue)
-                                    break;
-                                media.Path = file;
-                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                                vm.MoveCue(cue, dstPos);
-                                dstPos += 1;
-                            }
-                            break;
-                        case ".qproj":
-                            {
-                                vm.OpenSpecificProjectExecute(file);
-                                break;
-                            }
-                        default:
-                            break;
-                    }
-                }
+                    CreateCueForFile(file, vm, ref dstPos);
             }
         }
         e.Handled = true;
+    }
+
+    private static void CreateCueForFile(string file, MainViewModel vm, ref CuePosition dstPos)
+    {
+        switch (System.IO.Path.GetExtension(file).ToLowerInvariant())
+        {
+            case ".mp3":
+            case ".wav":
+            case ".aif":
+            case ".aiff":
+            case ".flac":
+            case ".ogg":
+            case ".wma":
+                {
+                    if (vm.CreateCue(nameof(SoundCue)) is not SoundCueViewModel cue)
+                        break;
+                    cue.Path = file;
+                    cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                    vm.MoveCue(cue, dstPos);
+                    dstPos += 1;
+                }
+                break;
+            //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp
+            case ".mp4":
+            case ".mkv":
+            case ".avi":
+            case ".webm":
+            case ".flv":
+            case ".wmv":
+            case ".mov":
+            case ".png":
+            case ".jpg":
+            case ".jpeg":
+            case ".bmp":
+            case ".exr":
+            case ".hdr":
+            case ".webp":
+                {
+                    var media = vm.CreateCue("VideoCue", afterLast: true) as IMediaCue;
+                    media ??= vm.CreateCue("PyVideoCue", afterLast: true) as IMediaCue;
+                    if (media == null || media is not CueViewModel cue)
+                        break;
+                    media.Path = file;
+                    cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                    vm.MoveCue(cue, dstPos);
+                    dstPos += 1;
+                }
+                break;
+            case ".qproj":
+                {
+                    vm.OpenSpecificProjectExecute(file);
+                    break;
+                }
+            default:
+                if (Directory.Exists(file))
+                {
+                    if (vm.CreateCue(nameof(GroupCue), afterLast: true) is not GroupCueViewModel group)
+                        break;
+                    group.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                    vm.MoveCue(group, dstPos);
+                    dstPos += 1;
+
+                    var subPos = group.Cues.CreateCuePosition(0);
+                    foreach (var subpath in Directory.EnumerateFileSystemEntries(file))
+                        CreateCueForFile(subpath, vm, ref subPos);
+                }
+                break;
+        }
     }
 
     private void CueList_Drop(object sender, DragEventArgs e)
