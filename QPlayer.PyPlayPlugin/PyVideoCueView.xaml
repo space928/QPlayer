@@ -1,0 +1,124 @@
+﻿<UserControl x:Class="QPlayer.PyPlayPlugin.PyVideoCueView" x:Name="PyVideoCueViewControl"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:util="clr-namespace:QPlayer.Utilities;assembly=QPlayer"
+             xmlns:vm="clr-namespace:QPlayer.ViewModels;assembly=QPlayer"
+             xmlns:v="clr-namespace:QPlayer.Views;assembly=QPlayer"
+             xmlns:local="clr-namespace:QPlayer.PyPlayPlugin"
+             mc:Ignorable="d"
+             d:DataContext="{d:DesignInstance Type=local:PyVideoCueViewModel}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/QPlayer;component/Views/SharedResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <DockPanel ToolTip="The video file this cue should play.">
+            <Label Content="Media File"/>
+            <Button Content="..." Width="30" Command="{Binding OpenMediaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+            <v:TextField Text="{Binding Path}" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="The shader used to render this cue, leave blank to use the default shader.">
+            <Label Content="Shader"/>
+            <Button Content="..." Width="30" Command="{Binding OpenShaderFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+            <v:TextField Text="{Binding Shader}" Margin="8,2,2,2"/>
+        </DockPanel>
+        <v:FileThumbnail FilePath="{Binding Path}" MaxHeight="100"/>
+
+        <Label Content="Timing" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <DockPanel ToolTip="The time in the media file to start playing from.">
+            <Label Content="Start Time"/>
+            <v:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding StartTime, 
+                         Converter={StaticResource TimeSpanStringConverter}, 
+                         ConverterParameter=False,
+                         UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Limits the playback duration of the media. Set to 00:00 to play the full file.">
+            <Label Content="Duration"/>
+            <v:TextField ShowSpinner="True" SpinnerType="TimeSpan" SpinRate="0.2" Text="{Binding PlaybackDuration, 
+                         Converter={StaticResource TimeSpanStringConverter}, 
+                         ConverterParameter=False,
+                         UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="When ticked, this cue automatically stops (stomps) other running cues which it fully covers.">
+            <Label Content="Stomp Others"/>
+            <CheckBox IsChecked="{Binding StompsOthers}" HorizontalAlignment="Right" Width="20" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Fade in time in seconds.">
+            <Label Content="Fade In Time"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeIn, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Fade out time in seconds.">
+            <Label Content="Fade Out Time"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeOut, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="The type of curve to use when fading the volume.">
+            <Label Content="Fade Type"/>
+            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+
+        <Label Content="Placement" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <DockPanel ToolTip="A uniform scaling factor applied to the video.">
+            <Label Content="Scale"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.01" ClampValue="True" MinValue="0" MaxValue="100" Text="{Binding Scale, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Rotates the video around it's centre.">
+            <Label Content="Rotation"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.2" ClampValue="False" Text="{Binding Rotation, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Applies an offset in the pixels to the position of the video.">
+            <Label Content="Position"/>
+            <v:Vec2Field ShowSpinner="True" SpinRate="0.005" ClampValue="False" MinValue="0" MaxValue="1" Value="{Binding Offset, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+
+        <Label Content="Blending" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <DockPanel ToolTip="The overall intensity of this cue.">
+            <Label Content="Dimmer"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.01" ClampValue="True" MinValue="0" MaxValue="1" Text="{Binding Dimmer, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <!--<DockPanel ToolTip="The overall intensity of this cue.">
+            <Label Content="Volume"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.05" ClampValue="False" MinValue="0" MaxValue="1" Text="{Binding Dimmer, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>-->
+        <DockPanel ToolTip="Adjusts the display order of this video in the output stack. Smaller values will show up behind other cues and larger values in front.">
+            <Label Content="Z Index"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.5" ClampValue="False" Text="{Binding ZIndex, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="Optionally, a separate file containing the alpha channel (transparency) of the video.">
+            <Label Content="Alpha File"/>
+            <Button Content="..." Width="30" Command="{Binding OpenAlphaFileCommand}" HorizontalAlignment="Right" DockPanel.Dock="Right"/>
+            <v:TextField Text="{Binding AlphaPath}" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="How this cue should be blended with the cues behind it.">
+            <Label Content="Alpha Type"/>
+            <ComboBox SelectedItem="{Binding AlphaMode, UpdateSourceTrigger=Default}" ItemsSource="{Binding AlphaModeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+
+        <Label Content="Image" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+                <ColumnDefinition/>
+            </Grid.ColumnDefinitions>
+            <v:Knob Grid.Column="0" MaxHeight="70" Value="{Binding Brightness}" Label="Brightness" ValueFormat="{}{0:F2}" MinValue="0" MaxValue="5" Power="2"
+                    ToolTip="A brightness multiplier applied to this cue. A value of 1 represents no change to the brightness."/>
+            <v:Knob Grid.Column="1" MaxHeight="70" Value="{Binding Contrast}" Label="Contrast" ValueFormat="{}{0:F2}" MinValue="0" MaxValue="5" Power="2"
+                    ToolTip="A contrast adjustment applied to this cue. A value of 1 represents no change to the contrast."/>
+            <v:Knob Grid.Column="2" MaxHeight="70" Value="{Binding Gamma}" Label="Gamma" ValueFormat="{}{0:F2}" MinValue="0" MaxValue="5" Power="2"
+                    ToolTip="A gamma adjustment applied to this cue. A value of 1 represents no change to the gamma."/>
+        </Grid>
+
+        <Label Content="Control" Background="{DynamicResource AREghZyBrush.Primary.3.Background.Static}" FontWeight="Bold" Margin="8,8,0,0"/>
+        <local:ShaderParametersControl/>
+        <DockPanel ToolTip="The DMX address which controls the parameters of this cue when using DMX control. Specify a value of 0 to disable DMX control for this cue.">
+            <Label Content="DMX Address"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Int" SpinRate="0.5" ClampValue="True" MinValue="0" MaxValue="508" Text="{Binding DmxAddress, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+    </StackPanel>
+</UserControl>

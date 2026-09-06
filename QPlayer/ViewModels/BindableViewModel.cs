@@ -24,12 +24,17 @@ namespace QPlayer.ViewModels;
 /// on the Model.
 /// </remarks>
 /// <typeparam name="Model">The type of the model to bind to.</typeparam>
-public abstract class BindableViewModel<Model> : ObservableObject
+public abstract class BindableViewModel<Model> : ObservableObject, IBindableViewModel
     where Model : class
 {
     protected Model? boundModel;
 
     internal Model? BoundModel => boundModel;
+
+    [Obsolete("Prefer the BoundModel property.")]
+    public object? GetBoundModel() => boundModel;
+    [Obsolete("Prefer the typed Bind(Model? model) method.")]
+    public virtual void Bind(object? model) => Bind(model as Model);
 
     /// <summary>
     /// Binds this <see cref="ObservableObject"/> to the specified model instance. Automatically propagates proeprties 
@@ -97,6 +102,50 @@ public abstract class BindableViewModel<Model> : ObservableObject
     /// When using a source generator, this method is automatically implemented and should be called in <see cref="SyncToModel"/>.
     /// </summary>
     protected virtual void OnSyncToModel() { }
+}
+
+/*public interface IMainViewModelConstructor
+{
+    public abstract static IMainViewModelConstructor Create(MainViewModel mainViewModel);
+}*/
+
+/// <summary>
+/// Base interface for all <see cref="BindableViewModel{Model}"/>
+/// </summary>
+public interface IBindableViewModel
+{
+    /// <summary>
+    /// Gets the currently bound model or <see langword="null"/> if one isn't bound.
+    /// See the <see cref="BindableViewModel{Model}.BoundModel"/> for a typed version 
+    /// of this method.
+    /// </summary>
+    /// <returns></returns>
+    public abstract object? GetBoundModel();
+    /// <summary>
+    /// Binds this <see cref="ObservableObject"/> to the specified model instance. Automatically propagates proeprties 
+    /// changes from this object to the model, but not the other way around.
+    /// <br/>
+    /// When using the source generator, this method is automatically implemented so long as the deriving 
+    /// class defines at least one reactive property (see <see cref="ReactiveAttribute"/>).
+    /// </summary>
+    /// <param name="model">The model to bind to, or <see langword="null"/> to unbind.</param>
+    public abstract void Bind(object? model);
+
+    /// <summary>
+    /// Copies all bound property values on this instance from the bound model.
+    /// <br/>
+    /// When using the source generator, this method is automatically implemented so long as the deriving 
+    /// class defines at least one reactive property (see <see cref="ReactiveAttribute"/>).
+    /// </summary>
+    public abstract void SyncFromModel();
+
+    /// <summary>
+    /// Copies all bound property values on this instance to the bound model.
+    /// <br/>
+    /// When using the source generator, this method is automatically implemented so long as the deriving 
+    /// class defines at least one reactive property (see <see cref="ReactiveAttribute"/>).
+    /// </summary>
+    public abstract void SyncToModel();
 }
 
 public interface ITypedConverter<TFrom, TTo>

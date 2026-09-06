@@ -61,7 +61,10 @@ public class MagicQCTRLPlugin : QPlayerPlugin
                 driver?.OnMessageReceived -= Driver_OnMessageReceived;
                 MainViewModel.Log($"MagicQCTRL disconnected due to an error: {ex.Message}", MainViewModel.LogLevel.Warning);
             }
-            driver?.Dispose();
+            finally
+            {
+                driver?.Dispose();
+            }
         }
     }
 

@@ -3,15 +3,20 @@ using QPlayer.ViewModels;
 using QPlayer.Views;
 using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
+using System.Windows.Automation.Peers;
 using System.Windows.Controls;
+using System.Windows.Controls.Primitives;
 using System.Windows.Data;
 using System.Windows.Documents;
 using System.Windows.Input;
@@ -59,16 +64,52 @@ public partial class MainWindow : Window
             RegisterCueType(t);
     }
 
-    public void AddMenuItem(string menu, string? subMenu, MenuItem menuItem)
+    internal void AddMenuItem(string path, ICommand command, string text)
     {
-        // TOOD: Check that x.Header is actually a string and not a label.
-        if (MainMenu.Items.OfType<MenuItem>().FirstOrDefault(x => x.Header is string text && text == menu) is MenuItem parentMenu)
-            parentMenu.Items.Add(menuItem);
-        else
-            MainMenu.Items.Add(menuItem);
+        MenuItem item = new();
+        item.Header = text;
+        item.Command = command;
+        AddMenuItem(path, item);
     }
 
-    public void RegisterCueType(CueFactory.RegisteredCueType cue)
+    internal void AddMenuItem(string path, MenuItem menuItem)
+    {
+        var parts = path.Split('/');
+        if (path.Length == 0)
+        {
+            MainMenu.Items.Add(menuItem);
+            return;
+        }
+
+        ItemsControl menu = MainMenu;
+        foreach (var part in parts)
+        {
+            var item = menu.Items
+                .OfType<MenuItem>()
+                .FirstOrDefault(x => x.Header switch
+                    {
+                        string text => text == part,
+                        Label lab => lab.Content is string text && text == part,
+                        TextBlock block => block.Text == part,
+                        _ => false
+                    });
+            if (item is MenuItem parentMenu)
+            {
+                menu = parentMenu;
+            }
+            else
+            {
+                var newItem = new MenuItem();
+                newItem.Header = part;
+                menu.Items.Add(newItem);
+                menu = newItem;
+            }
+        }
+
+        menu.Items.Add(menuItem);
+    }
+
+    internal void RegisterCueType(CueFactory.RegisteredCueType cue)
     {
         // Create the cue icon
         if (cue.iconName != null && cue.iconResourceDict != null)
@@ -96,7 +137,12 @@ public partial class MainWindow : Window
         if (cue.viewType.GetMethod(nameof(ICueView.CreateDataTemplate), BindingFlags.Public | BindingFlags.Static) is MethodInfo genView)
             dataTemplate = (DataTemplate)genView.Invoke(null, null)!;
         else
-            dataTemplate = (DataTemplate)Activator.CreateInstance(cue.viewType)!;
+            dataTemplate = CreateDataTempate(cue.viewModelType, cue.viewType);
+        /*{
+            dataTemplate = new DataTemplate();
+            dataTemplate.DataType = cue.viewModelType;
+            dataTemplate.VisualTree = new FrameworkElementFactory(cue.viewType);
+        }*/
 
         CueEditorInst.CueEditorTemplates.Add(new DataTemplateKey(cue.viewModelType), dataTemplate);
 
@@ -119,12 +165,45 @@ public partial class MainWindow : Window
         CueListContextMenu.Items.Insert(insertInd, menuItem1);
     }
 
-    public void Window_Loaded(object sender, RoutedEventArgs e)
+    private static DataTemplate CreateDataTempate(Type vmType, Type viewType)
+    {
+        var xaml = System.Windows.Markup.XamlReader.Parse($$"""
+            <DataTemplate DataType='{x:Type vt:{{vmType.Name}}}'
+                          xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation'
+                          xmlns:x='http://schemas.microsoft.com/winfx/2006/xaml'
+                          xmlns:mc='http://schemas.openxmlformats.org/markup-compatibility/2006'
+                          xmlns:d='http://schemas.microsoft.com/expression/blend/2008'
+                          xmlns:local='clr-namespace:QPlayer.Views;assembly=QPlayer'
+                          xmlns:vm='clr-namespace:QPlayer.ViewModels;assembly=QPlayer'
+                          xmlns:util='clr-namespace:QPlayer.Utilities;assembly=QPlayer'
+                          xmlns:t='clr-namespace:{{viewType.Namespace}};assembly={{viewType.Assembly?.GetName()?.Name}}'
+                          xmlns:vt='clr-namespace:{{vmType.Namespace}};assembly={{viewType.Assembly?.GetName()?.Name}}'
+                          mc:Ignorable='d'>
+                <t:{{viewType.Name}}/>
+            </DataTemplate>
+            """);
+        return (DataTemplate)xaml;
+    }
+
+    private void Window_Loaded(object sender, RoutedEventArgs e)
     {
         keyBindings.Clear();
+        var gestureConverter = new KeyGestureConverter();
         foreach (object binding in InputBindings)
-            if (binding is KeyBinding keyBinding)
-                keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
+        {
+            if (binding is not KeyBinding keyBinding)
+                continue;
+
+            keyBindings.Add((keyBinding.Key, keyBinding.Modifiers), keyBinding);
+
+            // Create automation button
+            var btn = new Button();
+            btn.Content = "Automation " + gestureConverter.ConvertToInvariantString(keyBinding.Gesture) ?? keyBinding.Key.ToString();
+            btn.Command = keyBinding.Command;
+            btn.CommandParameter = keyBinding.CommandParameter;
+            btn.Visibility = Visibility.Collapsed;
+            MainGrid.Children.Add(btn);
+        }
 
         var vm = (MainViewModel)DataContext;
         vm.OnScrollCueList += delta =>
@@ -132,9 +211,71 @@ public partial class MainWindow : Window
             CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.ContentVerticalOffset + delta.Y);
             CueListScrollViewer.ScrollToHorizontalOffset(CueListScrollViewer.ContentHorizontalOffset + delta.X);
         };
+
+        if (CueListControl.ItemsSource is INotifyCollectionChanged notifyCollection)
+            notifyCollection.CollectionChanged += VisualCuesCollectionChanged;
     }
 
-    public void Window_Closing(object sender, CancelEventArgs e)
+    private void VisualCuesCollectionChanged(object? sender, NotifyCollectionChangedEventArgs e)
+    {
+        int count = CueListControl.Items.Count;
+        var generator = CueListControl.ItemContainerGenerator;
+        if (e.OldStartingIndex == -1 && e.NewStartingIndex == -1)
+        {
+            for (int i = 0; i < count; i++)
+            {
+                if (!GetCueDataControl(i, out var item))
+                    continue;
+
+                item.NotifyGroupMarkerChange(i);
+            }
+        }
+        else
+        {
+            if (e.NewStartingIndex != -1)
+            {
+                int newCount = e.NewItems?.Count ?? 0;
+                for (int i = Math.Max(0, e.NewStartingIndex - 1); i < Math.Min(e.NewStartingIndex + newCount + 1, count); i++)
+                {
+                    if (!GetCueDataControl(i, out var item))
+                        continue;
+
+                    item.NotifyGroupMarkerChange(i);
+                }
+            }
+            if (e.OldStartingIndex != -1)
+            {
+                int oldCount = e.OldItems?.Count ?? 0;
+                for (int i = Math.Max(0, e.OldStartingIndex - 1); i < Math.Min(e.OldStartingIndex + oldCount + 1, count); i++)
+                {
+                    if (!GetCueDataControl(i, out var item))
+                        continue;
+
+                    item.NotifyGroupMarkerChange(i);
+                }
+            }
+        }
+
+        //var peer = UIElementAutomationPeer.FromElement(CueListControl) ?? UIElementAutomationPeer.CreatePeerForElement(CueListControl);
+        //peer?.RaiseAutomationEvent(AutomationEvents.StructureChanged);
+
+        bool GetCueDataControl(int ind, [NotNullWhen(true)] out CueDataControl? control)
+        {
+            var container = generator.ContainerFromIndex(ind);
+            if (container != null
+                && VisualTreeHelper.GetChildrenCount(container) > 0
+                && VisualTreeHelper.GetChild(container, 0) is CueDataControl cdc)
+            {
+                control = cdc;
+                return true;
+            }
+
+            control = null;
+            return false;
+        }
+    }
+
+    private void Window_Closing(object sender, CancelEventArgs e)
     {
         e.Cancel = !((MainViewModel)DataContext).OnExit();
     }
@@ -159,55 +300,24 @@ public partial class MainWindow : Window
             case Key.Space:
             case Key.Up:
             case Key.Down:
+            case Key.Left:
+            case Key.Right:
                 e.Handled = true;
                 var mods = Keyboard.Modifiers;
-                if (keyBindings.TryGetValue((e.Key, mods), out var binding))
+                if (keyBindings.TryGetValue((e.Key, mods), out var binding) && binding.Command.CanExecute(null))
                     binding.Command.Execute(null);
                 break;
         }
     }
 
-    private void CueList_GiveFeedback(object sender, GiveFeedbackEventArgs e)
-    {
-        base.OnGiveFeedback(e);
-
-        var vm = (MainViewModel)DataContext;
-        if (e.Effects.HasFlag(DragDropEffects.Copy))
-            Mouse.SetCursor(Cursors.Cross);
-        else if (e.Effects.HasFlag(DragDropEffects.Move))
-            Mouse.SetCursor(Cursors.Hand);
-        else
-            Mouse.SetCursor(Cursors.No);
-
-        /*if (vm.DraggingCues.Count > 0)
-        {
-            if (DraggingItemsPanel.Visibility != Visibility.Visible)
-                DraggingItemsPanel.Visibility = Visibility.Visible;
-
-            //var mousePos = Mouse.GetPosition((Panel)DraggingItemsPanel.Parent);
-            var mousePos = Mouse.PrimaryDevice.GetPosition((Panel)DraggingItemsPanel.Parent);
-            Debug.WriteLine(mousePos);
-            DraggingItemsPanel.Margin = new(mousePos.X+2, mousePos.Y+2, 0, 0);
-        }*/
-
-        e.Handled = true;
-    }
-
-    private void CueList_Drop(object sender, DragEventArgs e)
-    {
-        base.OnDrop(e);
-
-        var vm = (MainViewModel)DataContext;
-        HandleCueListDrop(e, vm, null);
-    }
-
     internal static void HandleCueListDrop(DragEventArgs e, MainViewModel vm, CueViewModel? dropTargetVm)
     {
-        int dstIndex;
-        if (dropTargetVm == null)
-            dstIndex = vm.Cues.Count;
-        else
-            dstIndex = vm.Cues.IndexOf(dropTargetVm);
+        CuePosition dstPos = vm.CueList.CreateCuePosition(vm.CueList.Count);
+        if (vm.FindCuePosition(dropTargetVm, out var pos))
+            dstPos = pos;
+
+        if (!vm.IsEditMode())
+            return;
 
         if (e.Data.GetDataPresent("Cues"))
         {
@@ -215,11 +325,15 @@ public partial class MainWindow : Window
 
             if (e.Effects.HasFlag(DragDropEffects.Copy))
             {
-                vm.DuplicateCues(dataCues, dstIndex);
+                vm.DuplicateCues(dataCues, dstPos);
             }
             else if (e.Effects.HasFlag(DragDropEffects.Move))
             {
-                vm.MoveCues(dataCues, dstIndex);
+                vm.MoveCues(dataCues, dstPos);
+            }
+            else if (e.Effects.HasFlag(DragDropEffects.Link))
+            {
+                vm.GroupCues(dataCues, vm.Cues[dstPos]);
             }
 
             vm.DraggingCues.Clear();
@@ -229,82 +343,142 @@ public partial class MainWindow : Window
             if (e.Data.GetData(DataFormats.FileDrop, true) is string[] files)
             {
                 foreach (var file in files)
-                {
-                    switch (System.IO.Path.GetExtension(file).ToLowerInvariant())
-                    {
-                        case ".mp3":
-                        case ".wav":
-                        case ".aif":
-                        case ".aiff":
-                        case ".flac":
-                        case ".ogg":
-                        case ".wma":
-                            {
-                                if (vm.CreateCue(nameof(SoundCue), afterLast: true) is not SoundCueViewModel cue)
-                                    break;
-                                cue.Path = file;
-                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                                vm.MoveCue(cue, dstIndex++);
-                            }
-                            break;
-                        //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov
-                        case ".mp4":
-                        case ".mkv":
-                        case ".avi":
-                        case ".webm":
-                        case ".flv":
-                        case ".wmv":
-                        case ".mov":
-                            /*{
-                                var cue = (VideoCueViewModel)vm.CreateCue(Models.CueType.VideoCue, afterLast: true);
-                                cue.Path = file;
-                                cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
-                                vm.MoveCue(cue, dstIndex++);
-                            }*/
-                            break;
-                        case ".qproj":
-                            {
-                                vm.OpenSpecificProjectExecute(file);
-                                break;
-                            }
-                        default:
-                            break;
-                    }
-                }
+                    CreateCueForFile(file, vm, ref dstPos);
             }
         }
         e.Handled = true;
     }
 
-    private void QPlayerMainWindow_DragOver(object sender, DragEventArgs e)
+    private static void CreateCueForFile(string file, MainViewModel vm, ref CuePosition dstPos)
     {
-        var vm = (MainViewModel)DataContext;
-        if (vm.DraggingCues.Count > 0)
+        switch (System.IO.Path.GetExtension(file).ToLowerInvariant())
         {
-            if (DraggingItemsPanel.Visibility != Visibility.Visible)
-                DraggingItemsPanel.Visibility = Visibility.Visible;
+            case ".mp3":
+            case ".wav":
+            case ".aif":
+            case ".aiff":
+            case ".flac":
+            case ".ogg":
+            case ".wma":
+                {
+                    if (vm.CreateCue(nameof(SoundCue)) is not SoundCueViewModel cue)
+                        break;
+                    cue.Path = file;
+                    cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                    vm.MoveCue(cue, dstPos);
+                    dstPos += 1;
+                }
+                break;
+            //*.mp4;*.mkv;*.avi;*.webm;*.flv;*.wmv;*.mov;*.png;*.jpg;*.jpeg;*.bmp;*.exr;*.hdr;*.webp
+            case ".mp4":
+            case ".mkv":
+            case ".avi":
+            case ".webm":
+            case ".flv":
+            case ".wmv":
+            case ".mov":
+            case ".png":
+            case ".jpg":
+            case ".jpeg":
+            case ".bmp":
+            case ".exr":
+            case ".hdr":
+            case ".webp":
+                {
+                    var media = vm.CreateCue("VideoCue", afterLast: true) as IMediaCue;
+                    media ??= vm.CreateCue("PyVideoCue", afterLast: true) as IMediaCue;
+                    if (media == null || media is not CueViewModel cue)
+                        break;
+                    media.Path = file;
+                    cue.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                    vm.MoveCue(cue, dstPos);
+                    dstPos += 1;
+                }
+                break;
+            case ".qproj":
+                {
+                    vm.OpenSpecificProjectExecute(file);
+                    break;
+                }
+            default:
+                if (Directory.Exists(file))
+                {
+                    if (vm.CreateCue(nameof(GroupCue), afterLast: true) is not GroupCueViewModel group)
+                        break;
+                    group.Name = System.IO.Path.GetFileNameWithoutExtension(file);
+                    vm.MoveCue(group, dstPos);
+                    dstPos += 1;
 
+                    var subPos = group.Cues.CreateCuePosition(0);
+                    foreach (var subpath in Directory.EnumerateFileSystemEntries(file))
+                        CreateCueForFile(subpath, vm, ref subPos);
+                }
+                break;
+        }
+    }
+
+    private void CueList_Drop(object sender, DragEventArgs e)
+    {
+        ComputeDragEffects(e);
+        DraggingItemsPanel.Visibility = Visibility.Collapsed;
+        if (DataContext is MainViewModel vm)
+            HandleCueListDrop(e, vm, null);
+        e.Handled = true;
+    }
+
+    private void ComputeDragEffects(DragEventArgs e)
+    {
+        if (!e.Effects.HasFlag(DragDropEffects.Scroll))
+            e.Effects |= DragDropEffects.Scroll;
+        else
+        {
+            // Set the drag effects if the targeted CueDataControl? hasn't already
             if (e.KeyStates.HasFlag(DragDropKeyStates.ControlKey))
                 e.Effects = DragDropEffects.Copy | DragDropEffects.Scroll;
             else
                 e.Effects = DragDropEffects.Move | DragDropEffects.Scroll;
-
-            //var mousePos = Mouse.GetPosition((Panel)DraggingItemsPanel.Parent);
-            var mousePos = e.GetPosition((Panel)DraggingItemsPanel.Parent);
-            //Debug.WriteLine(mousePos);
-            DraggingItemsPanel.Margin = new(mousePos.X + 2, mousePos.Y + 2, 0, 0);
-
-            // Scrolling
-            mousePos = e.GetPosition(CueListScrollViewer);
-            if (mousePos.Y < 50)
-            {
-                CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset - 15);
-            }
-            else if (mousePos.Y > CueListScrollViewer.ActualHeight - 50)
-            {
-                CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset + 15);
-            }
         }
+    }
+
+    private void QPlayerMainWindow_DragOver(object sender, DragEventArgs e)
+    {
+        var vm = (MainViewModel)DataContext;
+        if (vm.DraggingCues.Count <= 0)
+            return;
+
+        if (DraggingItemsPanel.Visibility != Visibility.Visible)
+            DraggingItemsPanel.Visibility = Visibility.Visible;
+
+        //var oldFX = e.Effects;
+        ComputeDragEffects(e);
+
+        //Debug.WriteLine($"MainWindow DragOver handled={e.Handled} o={oldFX} e={e.Effects}");
+
+        var mousePos = e.GetPosition((Panel)DraggingItemsPanel.Parent);
+        DraggingItemsPanel.Margin = new(mousePos.X + 2, mousePos.Y + 2, 0, 0);
+
+        // Scrolling
+        mousePos = e.GetPosition(CueListScrollViewer);
+        if (mousePos.Y < 50)
+            CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset - 15);
+        else if (mousePos.Y > CueListScrollViewer.ActualHeight - 50)
+            CueListScrollViewer.ScrollToVerticalOffset(CueListScrollViewer.VerticalOffset + 15);
+
+        e.Handled = true;
+    }
+
+    private void CueList_GiveFeedback(object sender, GiveFeedbackEventArgs e)
+    {
+        //Debug.WriteLine($"MainWindow GiveFeedback handled={e.Handled} e={e.Effects}");
+
+        base.OnGiveFeedback(e);
+
+        if ((e.Effects & (DragDropEffects.Link | DragDropEffects.Move | DragDropEffects.Copy)) != 0)
+            Mouse.SetCursor(Cursors.Hand);
+        else
+            Mouse.SetCursor(Cursors.No);
+
+        e.Handled = true;
     }
 
     private void QPlayerMainWindow_MouseMove(object sender, MouseEventArgs e)
@@ -323,10 +497,9 @@ public partial class MainWindow : Window
     private void ExitMenuItem_Click(object sender, RoutedEventArgs e)
     {
         var vm = (MainViewModel)DataContext;
-        Dispatcher.Invoke(async () =>
+        Dispatcher.Invoke(() =>
         {
-            var canClose = await vm.UnsavedChangedCheck();
-            if (canClose)
+            if (vm.UnsavedChangedCheck())
                 Close();
         });
     }

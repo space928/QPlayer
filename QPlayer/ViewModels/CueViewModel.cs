@@ -8,10 +8,12 @@ using System;
 using System.Collections.ObjectModel;
 using System.ComponentModel;
 using System.Diagnostics;
+using System.Globalization;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Windows.Media;
+using System.Windows.Threading;
 using Cue = QPlayer.Models.Cue;
 
 namespace QPlayer.ViewModels;
@@ -44,6 +46,12 @@ public enum CueState
 public abstract partial class CueViewModel : BindableViewModel<Cue>
 {
     #region Bindable Properties
+    /// <summary>
+    /// A number uniquely identifying this cue. This number is used when referencing this cue in the UI or in OSC commands.
+    /// We don't strictly enforce QID order or uniqueness for convenience. Note that this property only stores the last 
+    /// part of the QID for cues belonging to a group. To get the full QID, use <see cref="FullQID"/> which prepends the 
+    /// QIDs of the parents of this cue.
+    /// </summary>
     [Reactive("QID"), TemplateProp(nameof(QID_Template))]
     protected decimal qid;
     private decimal QID_Template
@@ -51,40 +59,106 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         get => qid;
         set
         {
-            mainViewModel?.NotifyQIDChanged(qid, value, this);
             qid = value;
+            UpdateFullQID();
         }
     }
-    [Reactive, ModelBindsTo(nameof(Cue.parent))] private decimal? parentId;
-    public CueViewModel? Parent
+    /// <summary>
+    /// The QID of the direct ancestor of this cue (ie: the group cue this cue belongs to) or 
+    /// <see langword="null"/> if this cue is not part of a group.
+    /// </summary>
+    public string? ParentId => parent?.fullQID;
+    private CueViewModel? parent;
+    /// <summary>
+    /// The direct ancestor of this cue (ie: the group cue this cue belongs to) or 
+    /// <see langword="null"/> if this cue is not part of a group.
+    /// </summary>
+    [Reactive("Parent"), ChangesProp(nameof(ParentId)), ModelCustomBinding(nameof(VM2M_Parent), nameof(M2VM_Parent))] 
+    private CueViewModel? Parent_Template
     {
-        get
+        get => parent;
+        set
         {
-            if (parentId == null)
-                return null;
-            if (mainViewModel?.FindCue(parentId.Value, out var parent) ?? false)
-                return parent;
-            return null;
+            parent = value;
+            UpdateFullQID();
         }
     }
+    private string fullQID = string.Empty;
+    /// <summary>
+    /// The full hierarchical QID of this cue. This is a concatenation of the QIDs of this cue and 
+    /// it's ancestors (separated by <c>-</c>). This is used to uniquely identify this cue when 
+    /// referencing it in the UI. See <see cref="QID"/> to update this cue's QID.
+    /// </summary>
+    public string FullQID => fullQID;
+    /// <summary>
+    /// A colour used to identify this cue in the UI.
+    /// </summary>
     [Reactive, ModelCustomBinding(nameof(VM2M_Colour), nameof(M2VM_Colour)), ChangesProp(nameof(ColourBrush)), SkipEqualityCheck]
     private ColorState colour;
-    [Reactive] private string name = string.Empty;
+    /// <summary>
+    /// A short descriptive name for this cue. 
+    /// </summary>
+    [Reactive, ChangesProp(nameof(NamePreview))] private string name = string.Empty;
+    /// <summary>
+    /// The <see cref="Name"/> of this cue or some default name if one hasn't been specified yet.
+    /// </summary>
+    public virtual string NamePreview => name;
+    /// <summary>
+    /// A longer description of this cue.
+    /// </summary>
     [Reactive] private string description = string.Empty;
+    /// <summary>
+    /// The name of the remote node this cue should control.
+    /// </summary>
     [Reactive] private string remoteNode = string.Empty;
+    /// <summary>
+    /// How this cue should be triggered in the cue stack.
+    /// </summary>
     [Reactive] private TriggerMode trigger;
+    /// <summary>
+    /// Whether this cue is enabled in the cue stack. When disabled, it will be skipped when pressing GO.
+    /// </summary>
     [Reactive] private bool enabled = true;
+    /// <summary>
+    /// A time delay before actually running this cue when it's triggered.
+    /// </summary>
     [Reactive] private TimeSpan delay;
+    /// <summary>
+    /// The total length of this cue.
+    /// </summary>
     [Reactive, CustomAccessibility("public virtual"), ModelSkip, SkipEqualityCheck, NoUndo] private TimeSpan duration;
+    /// <summary>
+    /// Whether this cue should loop when triggered and how it should loop.
+    /// </summary>
     [Reactive, ChangesProp(nameof(UseLoopCount))] private LoopMode loopMode;
+    /// <summary>
+    /// The number of loops of this cue to play before stopping. Only effective 
+    /// if <see cref="LoopMode"/> is set to <see cref="LoopMode.Looped"/>.
+    /// </summary>
     [Reactive] public int loopCount;
 
-    [Reactive, Readonly, ModelSkip] protected MainViewModel? mainViewModel;
-    public bool IsSelected => mainViewModel?.SelectedCue == this;
-    public bool IsMultiSelected => mainViewModel?.MultiSelection?.Contains(this) ?? false;
-    [Reactive, ModelSkip, NoUndo] private CueState state;
-    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip, NoUndo]
+    [Reactive, Readonly, ModelSkip] protected readonly MainViewModel mainViewModel;
+    /// <summary>
+    /// Whether this cue is the primary selected cue. If this is <see langword="true"/> it implies <see cref="IsMultiSelected"/>.
+    /// </summary>
+    public bool IsSelected => mainViewModel.SelectedCue == this;
+    /// <summary>
+    /// Whether this cue is in the multi-selection.
+    /// </summary>
+    public bool IsMultiSelected => mainViewModel.MultiSelection.Contains(this);
+    /// <summary>
+    /// The current playback state of this cue.
+    /// </summary>
+    [Reactive, ModelSkip, NoUndo, CachedNotification] private CueState state;
+    /// <summary>
+    /// The current playback time of this cue. Note that for looping cues, this value continues to 
+    /// increase monotonically with each loop rather than resetting.
+    /// </summary>
+    [Reactive, CustomAccessibility("public virtual"), SkipEqualityCheck, ModelSkip, NoUndo, CachedNotification]
     private TimeSpan playbackTime;
+    /// <summary>
+    /// Whether the <see cref="LoopCount"/> property is enabled.
+    /// </summary>
     public bool UseLoopCount => LoopMode == LoopMode.Looped || LoopMode == LoopMode.LoopedInfinite;
 
     public SolidColorBrush ColourBrush
@@ -106,31 +180,39 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<StopMode>? stopModeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<FadeType>? fadeTypeVals;
     [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? triggerModeVals;
+    [Reactive, Readonly, ModelSkip] private static ObservableCollection<string>? groupTriggerModeVals;
 
-    public bool IsRemoteControlling => (mainViewModel?.ProjectSettings?.EnableRemoteControl ?? false)
+    public bool IsRemoteControlling => mainViewModel.ProjectSettings.EnableRemoteControl
         && !string.IsNullOrEmpty(RemoteNode) && RemoteNode != mainViewModel.ProjectSettings.NodeName;
 
     /// <summary>
     /// The duration of this cue, as received from a remote node.
     /// </summary>
     public virtual TimeSpan RemoteDuration { set { } }
+
+    /// <summary>
+    /// Whether this cue's internal resources have been initialised or not. Should always 
+    /// be <see langword="true"/> if the cue is in the cue stack.
+    /// </summary>
+    public bool IsInitialised => isInitialised;
     #endregion
 
-    public event EventHandler? OnCompleted;
+    public delegate void OnCueCompletedDelegate(CueViewModel cue);
+    public event OnCueCompletedDelegate? OnCompleted;
 
-    protected SynchronizationContext? synchronizationContext;
-    protected CueViewModel? parent;
-    protected DispatcherDelay goDelay;
+    protected Dispatcher? dispatcher;
+    protected DispatcherDelay? goDelay;
     private readonly SolidColorBrush colourBrush;
     private CueViewModel? waitCue;
     private readonly string typeName;
     private readonly string typeDisplayName;
+    private bool isInitialised;
 
     public CueViewModel(MainViewModel mainViewModel)
     {
         this.mainViewModel = mainViewModel;
         colourBrush = new(Colour.ToMediaColor(127));
-        synchronizationContext = SynchronizationContext.Current;
+        dispatcher = Dispatcher.CurrentDispatcher;
 
         if (CueFactory.ViewModelToCueType.TryGetValue(GetType(), out var registered))
         {
@@ -143,8 +225,6 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             typeDisplayName = typeName;
         }
 
-        goDelay = new(Go);
-
         goCommand = new(Go);
         pauseCommand = new(Pause);
         stopCommand = new(Stop);
@@ -154,12 +234,13 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         StopModeVals ??= new ObservableCollection<StopMode>(Enum.GetValues<StopMode>());
         FadeTypeVals ??= new ObservableCollection<FadeType>(Enum.GetValues<FadeType>());
         TriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<TriggerMode>().Select(x => EnumToString(x)));
+        GroupTriggerModeVals ??= new ObservableCollection<string>(Enum.GetValues<GroupTriggerMode>().Select(x => EnumToString(x)));
     }
 
     /// <summary>
     /// This method is invoked by QPlayer when this cue is selected in the inspector.
     /// </summary>
-    internal virtual void OnFocussed()
+    public virtual void OnFocussed()
     {
 
     }
@@ -168,6 +249,72 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     {
         OnPropertyChanged(nameof(IsSelected));
         OnPropertyChanged(nameof(IsMultiSelected));
+        // Debug.WriteLine($"Sel changed: {QID} ==> {new StackTrace()}");
+    }
+
+    /// <summary>
+    /// Initialises any large resources owned by this cue. Called automatically after the object is 
+    /// constructed (after the derived class's constructor) and any time this cue is recreated by 
+    /// the undo system.
+    /// <para/>
+    /// Any resource initialisation you would have done in the constructor that's likely to allocate 
+    /// a lot of memory, should be done here instead if possible. Any resources allocated by this method
+    /// should be freed by <see cref="FreeResources"/>. This allows the undo manager to maintain 
+    /// references to deleted cues without needing to keep all their memory allocated.
+    /// </summary>
+    /// <remarks>
+    /// Implementers should skip initialisation if already initialised:
+    /// <code>
+    /// public override bool InitResources()
+    /// {
+    ///     if (!base.InitResources())
+    ///         return false;
+    ///         
+    ///     // [...]
+    ///     return true;
+    /// }
+    /// </code>
+    /// </remarks>
+    /// <returns><see langword="true"/> if this cue's resources need initialising.</returns>
+    public virtual bool InitResources()
+    {
+        if (isInitialised)
+            return false;
+
+        goDelay = new(Go);
+
+        isInitialised = true;
+        return true;
+    }
+
+    /// <summary>
+    /// The counterpart of <see cref="InitResources"/>. Called automatically when this cue is deleted 
+    /// but being retained by the undo manager.
+    /// </summary>
+    /// <remarks>
+    /// Implementers should skip freeing if already freed:
+    /// <code>
+    /// public override bool FreeResources()
+    /// {
+    ///     if (!base.FreeResources())
+    ///         return false;
+    ///         
+    ///     // [...]
+    ///     return true;
+    /// }
+    /// </code>
+    /// </remarks>
+    /// <returns><see langword="true"/> if this cue's resources need freeing.</returns>
+    public virtual bool FreeResources()
+    {
+        if (!isInitialised)
+            return false;
+
+        goDelay?.Dispose();
+        goDelay = null;
+
+        isInitialised = false;
+        return true;
     }
 
     #region Command Handlers
@@ -197,17 +344,14 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         }
 
         State = CueState.Delay;
-        goDelay.Start(Delay);
+        goDelay?.Start(Delay);
 
-        if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
-            mainViewModel?.ActiveCues.Add(this);
+        if (!mainViewModel.ActiveCues.Contains(this))
+            mainViewModel.ActiveCues.Add(this);
     }
 
-    private void WaitCueOnCompleteHandler(object? sender, EventArgs args)
+    private void WaitCueOnCompleteHandler(CueViewModel waitCue)
     {
-        if (sender is not CueViewModel waitCue)
-            return; // Should never happen...
-
         waitCue.OnCompleted -= WaitCueOnCompleteHandler;
         this.waitCue = null;
 
@@ -220,16 +364,18 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     public virtual void Go()
     {
         if (IsRemoteControlling)
-            mainViewModel?.OSCManager.SendRemoteGo(RemoteNode, QID);
+            mainViewModel.OSCManager.SendRemoteGo(RemoteNode, FullQID);
 
         if (Duration == TimeSpan.Zero)
         {
-            OnCompleted?.Invoke(this, EventArgs.Empty);
+            StopInternal();
             return;
         }
+        if (!IsInitialised)
+            MainViewModel.Log($"Tried to start an uninitialised cue (Q{FullQID} {Name})! This is a bug in QPlayer, please submit a bug report with the steps to reproduce this message.", MainViewModel.LogLevel.Warning);
         State = CueState.Playing;
-        if (!mainViewModel?.ActiveCues?.Contains(this) ?? false)
-            mainViewModel?.ActiveCues.Add(this);
+        if (!mainViewModel.ActiveCues.Contains(this))
+            mainViewModel.ActiveCues.Add(this);
     }
 
     /// <summary>
@@ -239,11 +385,11 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// </summary>
     public virtual void Pause()
     {
-        goDelay.Cancel();
+        goDelay?.Cancel();
         State = CueState.Paused;
 
         if (IsRemoteControlling)
-            mainViewModel?.OSCManager.SendRemotePause(RemoteNode, qid);
+            mainViewModel.OSCManager.SendRemotePause(RemoteNode, FullQID);
     }
 
     /// <summary>
@@ -254,7 +400,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         StopInternal();
 
         if (IsRemoteControlling)
-            mainViewModel?.OSCManager.SendRemoteStop(RemoteNode, qid);
+            mainViewModel.OSCManager.SendRemoteStop(RemoteNode, FullQID);
     }
 
     /// <summary>
@@ -291,10 +437,10 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
         // This cue has been stopped/cancelled, stop waiting for the wait cue.
         waitCue?.OnCompleted -= WaitCueOnCompleteHandler;
         waitCue = null;
-        goDelay.Cancel();
+        goDelay?.Cancel();
         State = CueState.Ready;
-        mainViewModel?.ActiveCues.Remove(this);
-        OnCompleted?.Invoke(this, EventArgs.Empty);
+        mainViewModel.ActiveCues.Remove(this);
+        OnCompleted?.Invoke(this);
     }
 
     /// <summary>
@@ -309,7 +455,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
             State = CueState.Paused;
 
             if (IsRemoteControlling)
-                mainViewModel?.OSCManager.SendRemotePreload(RemoteNode, qid, (float)startTime.TotalSeconds);
+                mainViewModel.OSCManager.SendRemotePreload(RemoteNode, FullQID, (float)startTime.TotalSeconds);
         }
     }
 
@@ -318,7 +464,7 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     /// </summary>
     public void SelectExecute()
     {
-        mainViewModel?.MultiSelect(this);
+        mainViewModel.MultiSelect(this);
     }
 
     /// <summary>
@@ -330,8 +476,59 @@ public abstract partial class CueViewModel : BindableViewModel<Cue>
     }
     #endregion
 
+    /// <summary>
+    /// Checks whether this cue has any parent.
+    /// </summary>
+    /// <returns></returns>
+    public bool HasParent() => Parent != null;
+
+    /// <summary>
+    /// Checks whether this cue has the given cue as one of it's parents. If <paramref name="target"/> 
+    /// is <see langword="this"/> instance, returns <see langword="false"/>.
+    /// </summary>
+    /// <param name="target"></param>
+    /// <returns></returns>
+    public bool HasParent(CueViewModel? target)
+    {
+        var p = Parent;
+        if (target == null)
+            return p == null;
+
+        while (p != null)
+        {
+            if (p == target)
+                return true;
+            p = p.Parent;
+        }
+        return false;
+    }
+
+    private static readonly PropertyChangedEventArgs FullQIDChanged = new(nameof(FullQID));
+    protected internal virtual void UpdateFullQID()
+    {
+        if (dispatcher == null || !dispatcher.CheckAccess())
+            return;
+
+        var old = fullQID;
+        if (!HasParent())
+            fullQID = QID.ToString(MainViewModel.numberFormat);
+        else
+            fullQID = $"{Parent!.FullQID}-{QID.ToString(MainViewModel.numberFormat)}";
+
+        mainViewModel.Cues.NotifyQIDChanged(old, fullQID, this);
+        OnPropertyChanged(FullQIDChanged);
+    }
+
     private static void VM2M_Colour(CueViewModel vm, Cue m) => m.colour = (SerializedColour)vm.Colour;
     private static void M2VM_Colour(CueViewModel vm, Cue m) => vm.Colour = (ColorState)m.colour;
+    private static void VM2M_Parent(CueViewModel vm, Cue m) => m.parent = vm.ParentId;
+    private static void M2VM_Parent(CueViewModel vm, Cue m)
+    {
+        if (m.parent != null && vm.mainViewModel.FindCue(m.parent, out var parentCue))
+            vm.Parent = parentCue;
+        else
+            vm.Parent = null;
+    }
 
     public static string EnumToString<T>(T type) where T : Enum
     {

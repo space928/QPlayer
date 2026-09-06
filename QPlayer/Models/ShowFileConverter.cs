@@ -142,6 +142,8 @@ public class ShowFileConverter
             UpgradeV3ToV4(showFile, json);
         if (showFile.fileFormatVersion < 7)
             UpgradeV6ToV7(showFile, json);
+        if (showFile.fileFormatVersion < 8)
+            UpgradeV7ToV8(showFile, json);
     }
 
     private static void UpgradeV2ToV3(ShowFile showFile, JsonDocument json)
@@ -277,6 +279,70 @@ public class ShowFileConverter
             volCue.volume = 20 * MathF.Log10(volCue.volume);
     }
 
+    private static void UpgradeV7ToV8(ShowFile showFile, JsonDocument json)
+    {
+        MainViewModel.Log($"Upgrading show file from V7 to V8...", MainViewModel.LogLevel.Info);
+
+        if (json.RootElement.ValueKind != JsonValueKind.Object)
+            return;
+
+        foreach (var field in json.RootElement.EnumerateObject())
+        {
+            switch (field.Name)
+            {
+                case nameof(ShowFile.cues):
+                    if (field.Value.ValueKind == JsonValueKind.Array)
+                    {
+                        int i = 0;
+                        foreach (var cue in field.Value.EnumerateArray())
+                        {
+                            if (cue.ValueKind == JsonValueKind.Object)
+                            {
+                                var cueLoaded = showFile.cues[i];
+                                UpgradeCue(cueLoaded, cue);
+                                i++;
+                            }
+                        }
+                    }
+                    break;
+            }
+        }
+
+        static void UpgradeCue(Cue cue, JsonElement json)
+        {
+            foreach (var field in json.EnumerateObject())
+            {
+                if (field.Name == "parent" && field.Value.ValueKind == JsonValueKind.Number)
+                {
+                    cue.parent = field.Value.GetDecimal().ToString(MainViewModel.numberFormat);
+                    break;
+                }
+            }
+            if (cue is StopCue stop)
+            {
+                foreach (var field in json.EnumerateObject())
+                {
+                    if (field.Name == "stopQid" && field.Value.ValueKind == JsonValueKind.Number)
+                    {
+                        stop.stopQid = field.Value.GetDecimal().ToString(MainViewModel.numberFormat);
+                        break;
+                    }
+                }
+            }
+            else if (cue is VolumeCue vol)
+            {
+                foreach (var field in json.EnumerateObject())
+                {
+                    if (field.Name == "soundQid" && field.Value.ValueKind == JsonValueKind.Number)
+                    {
+                        vol.soundQid = field.Value.GetDecimal().ToString(MainViewModel.numberFormat);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+
     private static ShowSettings LoadShowSettingsSafe(JsonElement json)
     {
         ShowSettings settings = new();
@@ -302,7 +368,7 @@ public class ShowFileConverter
 
     private static Cue LoadCueSafe(JsonElement json)
     {
-        Cue cue = new();
+        Cue cue = CueFactory.CreateCue(nameof(DummyCue))!;
 
         // Determine the cue type
         foreach (var field in json.EnumerateObject())
@@ -312,16 +378,7 @@ public class ShowFileConverter
                 case "$type":
                     if (field.Value.ValueKind == JsonValueKind.String)
                     {
-                        cue = field.Value.GetString() switch
-                        {
-                            nameof(DummyCue) => new DummyCue(),
-                            nameof(GroupCue) => new GroupCue(),
-                            nameof(SoundCue) => new SoundCue(),
-                            nameof(StopCue) => new StopCue(),
-                            nameof(TimeCodeCue) => new TimeCodeCue(),
-                            nameof(VolumeCue) => new VolumeCue(),
-                            _ => cue,
-                        };
+                        cue = CueFactory.CreateCue(field.Value.GetString() ?? string.Empty) ?? cue;
                     }
                     goto CueCreated;
                     //case "type":

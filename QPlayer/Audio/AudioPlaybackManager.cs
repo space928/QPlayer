@@ -125,17 +125,26 @@ public class AudioPlaybackManager : IDisposable
         }
         catch { }
         // Wait for the device to finish playing...
-        deviceClosedEvent.Wait(200);
+        while (device != null && device.PlaybackState == PlaybackState.Playing)
+            deviceClosedEvent.Wait(10);
         device?.Dispose();
         device = null;
         if (synchronizationContext != null)
-            synchronizationContext.Post(_ => DeviceStateChanged?.Invoke(false), null);
+            synchronizationContext.Send(_ => DeviceStateChanged?.Invoke(false), null);
         else
             DeviceStateChanged?.Invoke(false);
     }
 
     private void DevicePlaybackStopped(object? sender, StoppedEventArgs e)
     {
+        // NAudio tries to be clever and dispatches this callback through the sync context for us.
+        // The issue with this is we may have already opened a new audio device by the time this 
+        // message arrives (it's tricky to wait for the callback as it all happens in the main
+        // thread). As such, if a new device has been set by the time we get this callback, then
+        // we just ignore the callback.
+        if (device != sender)
+            return;
+
         if (e.Exception != null)
         {
             MainViewModel.Log($"Audio device error! \n{e.Exception}", MainViewModel.LogLevel.Error);

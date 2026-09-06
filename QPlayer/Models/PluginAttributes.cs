@@ -37,7 +37,7 @@ public sealed class PluginDescriptionAttribute(string description) : Attribute
 /// <summary>
 /// Creates a main menu item which invokes this method when clicked.
 /// <para/>
-/// Only applicable to parameterless methods and <see langword="bool"/> properties on the class implementing <see cref="QPlayerPlugin"/>.
+/// Only applicable to parameterless methods and <see cref="System.Windows.Input.ICommand"/> properties on the class implementing <see cref="QPlayerPlugin"/>.
 /// </summary>
 /// <param name="path">The path to the menu item to be created, eg: 'File/Save'</param>
 [AttributeUsage(AttributeTargets.Method | AttributeTargets.Property, AllowMultiple = false, Inherited = false)]

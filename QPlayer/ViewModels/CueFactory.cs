@@ -34,7 +34,7 @@ public static class CueFactory
     public static Cue? CreateCue(string typeName)
     {
         if (registeredCueTypes.TryGetValue(typeName, out var registered))
-            return Activator.CreateInstance(registered.modelType) as Cue;
+            return Activator.CreateInstance(registered.modelType, true) as Cue;
         return null;
     }
 
@@ -48,7 +48,11 @@ public static class CueFactory
     public static CueViewModel? CreateViewModel(string typeName, MainViewModel mainViewModel)
     {
         if (registeredCueTypes.TryGetValue(typeName, out var registered))
-            return Activator.CreateInstance(registered.viewModelType, mainViewModel) as CueViewModel;
+        {
+            var vm = registered.viewModelCtor.Invoke([mainViewModel]) as CueViewModel;
+            vm?.InitResources();
+            return vm;
+        }
         return null;
     }
 
@@ -71,11 +75,11 @@ public static class CueFactory
     }
 
     /// <summary>
-    /// Creates a new instance of a cue for a given cue view modeland copies all of it's properties.
+    /// Creates a new instance of a cue for a given cue view model and copies all of it's properties.
     /// </summary>
     /// <param name="vm">The view model to create a model for.</param>
     /// <param name="copy"><see langword="false"/> to bind the <paramref name="vm"/> to the newly created 
-    /// model, <see langword="true"/> to only copy it's parameter.</param>
+    /// model, <see langword="true"/> to only copy its parameters.</param>
     /// <returns></returns>
     public static Cue? CreateCueForViewModel(CueViewModel vm, bool copy = false)
     {
@@ -83,7 +87,7 @@ public static class CueFactory
         if (vmType.GetCustomAttribute<ModelAttribute>() is not ModelAttribute modelAttr)
             return null;
 
-        var cue = Activator.CreateInstance(modelAttr.ModelType) as Cue;
+        var cue = Activator.CreateInstance(modelAttr.ModelType, true) as Cue;
         var oldModel = vm.BoundModel;
         vm.Bind(cue);
         vm.SyncToModel();
@@ -113,7 +117,7 @@ public static class CueFactory
 
             if (vmType.GetCustomAttribute<ModelAttribute>() is not ModelAttribute modelAttr)
             {
-                MainViewModel.Log($"failed to register cue type '{vmType.Name}' as it does not specify an associated model type. " +
+                MainViewModel.Log($"Failed to register cue type '{vmType.Name}' as it does not specify an associated model type. " +
                     $"(See the [Model(...)] attribute for details.)", MainViewModel.LogLevel.Error);
                 continue;
             }
@@ -140,7 +144,14 @@ public static class CueFactory
 
             var icon = vmType.GetCustomAttribute<IconAttribute>();
 
-            RegisteredCueType cueDetails = new(modelType.Name, displayName, modelType, vmType, viewType, assembly.FullName ?? string.Empty, icon?.Name, icon?.ResourceDictionary);
+            var vmCtor = vmType.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, [typeof(MainViewModel)]);
+            if (vmCtor == null)
+            {
+                MainViewModel.Log($"Failed to register cue type '{vmType.Name}' as it does not have a constructor with the expected signature.", MainViewModel.LogLevel.Error);
+                continue;
+            }
+
+            RegisteredCueType cueDetails = new(modelType.Name, displayName, modelType, vmType, vmCtor, viewType, assembly.FullName ?? string.Empty, icon?.Name, icon?.ResourceDictionary);
 
             registeredCueTypes.Add(cueDetails.name, cueDetails);
             viewModelToCueType.Add(cueDetails.viewModelType, cueDetails);
@@ -151,13 +162,15 @@ public static class CueFactory
         return registered.ToArray();
     }
 
-    public readonly struct RegisteredCueType(string name, string displayName, Type modelType, Type viewModelType, 
-        Type viewType, string assembly, string? iconName, Type? iconResourceDict)
+    public readonly struct RegisteredCueType(string name, string displayName, Type modelType, 
+        Type viewModelType, ConstructorInfo viewModelCtor, Type viewType, string assembly, 
+        string? iconName, Type? iconResourceDict)
     {
         public readonly string name = name;
         public readonly string displayName = displayName;
         public readonly Type modelType = modelType;
         public readonly Type viewModelType = viewModelType;
+        public readonly ConstructorInfo viewModelCtor = viewModelCtor;
         public readonly Type viewType = viewType;
         public readonly string assembly = assembly;
         public readonly string? iconName = iconName;

@@ -1,6 +1,8 @@
-﻿using System;
+﻿using QPlayer.ViewModels;
+using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Runtime.CompilerServices;
@@ -163,6 +165,13 @@ public class MultiDict<TKey, TValue> : IDictionary<TKey, MultiDict<TKey, TValue>
         {
             if (values != null)
             {
+                if (values.Contains(item))
+                {
+#if DEBUG
+                    MainViewModel.Log($"Tried adding an item which was already in the multidict! {item}", MainViewModel.LogLevel.Warning);
+#endif
+                    return;
+                }
                 values.Add(item);
                 return;
             }
@@ -172,11 +181,15 @@ public class MultiDict<TKey, TValue> : IDictionary<TKey, MultiDict<TKey, TValue>
                 first = item;
                 return;
             }
-            else
+            else if (first != item)
             {
                 values = [first, item];
                 first = default!;
             }
+#if DEBUG
+            else
+                MainViewModel.Log($"Tried adding an item which was already in the multidict! {item}", MainViewModel.LogLevel.Warning);
+#endif
         }
 
         public void Clear()

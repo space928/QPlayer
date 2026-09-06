@@ -15,6 +15,7 @@
     <util:GreaterThanConverter x:Key="GreaterThanConverter"/>
     <util:TriggerModeConverter x:Key="TriggerModeConverter"/>
     <util:LoopModeConverter x:Key="LoopModeConverter"/>
+    <util:GroupTriggerModeConverter x:Key="GroupTriggerModeConverter"/>
     <DataTemplate x:Key="GroupIconTemplate" DataType="bool">
         <Rectangle/>
     </DataTemplate>

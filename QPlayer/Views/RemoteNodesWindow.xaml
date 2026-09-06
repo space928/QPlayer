@@ -63,7 +63,7 @@
                                         <ItemsControl.ItemTemplate>
                                             <DataTemplate DataType="vm:CueViewModel">
                                                 <StackPanel Orientation="Horizontal">
-                                                    <Label Content="{Binding QID, Mode=OneWay}"/>
+                                                    <Label Content="{Binding FullQID, Mode=OneWay}"/>
                                                     <Label Content="{Binding Name, Mode=OneWay}"/>
                                                 </StackPanel>
                                             </DataTemplate>

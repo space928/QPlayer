@@ -38,10 +38,12 @@ internal class USBDriver : IDisposable
 
     public void USBConnectAsync()
     {
-        DeviceList.Local.Changed += (o, e) =>
-        {
-            USBConnect();
-        };
+        DeviceList.Local.Changed += OnDeviceListChangedHandler;
+    }
+
+    private void OnDeviceListChangedHandler(object? sender, EventArgs e)
+    {
+        USBConnect();
     }
 
     /// <summary>
@@ -201,6 +203,11 @@ internal class USBDriver : IDisposable
             usbDevice?.Dispose();
             usbRXTask?.Wait(200);
             usbRXTask?.Dispose();
+        }
+        catch { }
+        try
+        {
+            DeviceList.Local.Changed -= OnDeviceListChangedHandler;
         }
         catch { }
         usbDevice = null;

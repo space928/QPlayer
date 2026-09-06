@@ -7,6 +7,7 @@ using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Numerics;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace QPlayer.Utilities;
@@ -18,7 +19,7 @@ namespace QPlayer.Utilities;
 #if NET8_0_OR_GREATER
 [CollectionBuilder(typeof(TemporaryListBuilder), nameof(TemporaryListBuilder.Create))]
 #endif
-public struct TemporaryList<T> : IList<T>, IDisposable
+public struct TemporaryList<T> : ITempList<T>
 {
     private ArrayPool<T>? arrayPool;
     private T[]? items;
@@ -38,8 +39,27 @@ public struct TemporaryList<T> : IList<T>, IDisposable
             items![index] = value;
         }
     }
+    readonly object? IList.this[int index]
+    {
+        get
+        {
+            BoundsCheck(index);
+            return items![index];
+        }
+        set
+        {
+            if (value is T item)
+            {
+                BoundsCheck(index);
+                items![index] = item;
+            }
+        }
+    }
     public readonly int Count => count;
-    public readonly bool IsReadOnly => true;
+    public readonly bool IsReadOnly => false;
+    public readonly bool IsFixedSize => false;
+    public readonly bool IsSynchronized => false;
+    public readonly object SyncRoot => throw new NotImplementedException();
 
 #if NETSTANDARD
 #pragma warning disable CS8618 // Non-nulllable field must contain a non-null value when exiting the constructor.
@@ -55,21 +75,23 @@ public struct TemporaryList<T> : IList<T>, IDisposable
     public TemporaryList(ReadOnlySpan<T> items) : this(items.Length, null)
     {
         items.CopyTo(this.items);
+        count = items.Length;
     }
 
-    public TemporaryList(IEnumerable<T> items)
+    public TemporaryList(IEnumerable<T> items, int capacity = 8)
     {
         switch (items)
         {
             case T[] array:
                 {
-                    Initialise(array.Length);
+                    Initialise(Math.Max(capacity, array.Length));
                     Array.Copy(array, this.items!, array.Length);
+                    count = array.Length;
                     break;
                 }
             case ICollection<T> collection:
                 {
-                    Initialise(collection.Count);
+                    Initialise(Math.Max(capacity, collection.Count));
                     foreach (var item in collection)
                         Add(item);
                     break;
@@ -78,10 +100,10 @@ public struct TemporaryList<T> : IList<T>, IDisposable
                 {
 #if NET10_0_OR_GREATER
                     if (items.TryGetNonEnumeratedCount(out var len))
-                        Initialise(len);
+                        Initialise(Math.Max(capacity, len));
                     else
 #endif
-                        Initialise(8);
+                        Initialise(capacity);
                     foreach (var item in items)
                         Add(item);
                     break;
@@ -95,7 +117,7 @@ public struct TemporaryList<T> : IList<T>, IDisposable
     private void Initialise(int capacity = 0, ArrayPool<T>? arrayPool = null)
     {
         this.arrayPool = arrayPool ?? ArrayPool<T>.Shared;
-        items = this.arrayPool.Rent(capacity);
+        items = capacity > 0 ? this.arrayPool.Rent(capacity) : [];
     }
 
 #if !NETSTANDARD
@@ -124,6 +146,18 @@ public struct TemporaryList<T> : IList<T>, IDisposable
 #else
         arrayPool.Return(old, true);
 #endif
+    }
+
+    /// <summary>
+    /// Sets the number of elements in this list. If the count is increased, new elements will be added at the end 
+    /// of the list, these elements may be uninitialised.
+    /// </summary>
+    /// <param name="newCount"></param>
+    public void SetCount(int newCount)
+    {
+        EnsureCapacity(newCount);
+        count = newCount;
+        version++;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -161,11 +195,15 @@ public struct TemporaryList<T> : IList<T>, IDisposable
                 version++;
                 break;
             case ICollection<T> collection:
-                EnsureCapacity(collection.Count);
+                EnsureCapacity(count + collection.Count);
                 foreach (var item in collection)
                     Add(item);
                 break;
             default:
+#if NET5_0_OR_GREATER
+                if (items.TryGetNonEnumeratedCount(out int enumCount))
+                    EnsureCapacity(count + enumCount);
+#endif
                 foreach (var item in items)
                     Add(item);
                 break;
@@ -280,7 +318,128 @@ public struct TemporaryList<T> : IList<T>, IDisposable
         return res;
     }
 
+    /// <summary>
+    /// Replaces the contents of this list using the given filter enumerable. The filtering is done in place, hence the filter function 
+    /// must not reference items which have already been filtered.
+    /// </summary>
+    /// <param name="newValues">An enumerable such as the result of <c>myTempList.Where(x => x == 1)</c></param>
+    public void Replace(IEnumerable<T> newValues)
+    {
+        int i = 0;
+        foreach (var srcPos in newValues)
+            this[i++] = srcPos;
+        count = i;
+        version++;
+    }
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
     readonly IEnumerator IEnumerable.GetEnumerator() => GetEnumerator();
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
+    public int Add(object? value)
+    {
+        if (value is T item)
+        {
+            Add(item);
+            return count - 1;
+        }
+
+        return -1;
+    }
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
+    public readonly bool Contains(object? value) => value is T item && Contains(item);
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
+    public readonly int IndexOf(object? value) => value is T item ? IndexOf(item) : -1;
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
+    public void Insert(int index, object? value)
+    {
+        if (value is T item)
+            Insert(index, item);
+    }
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
+    public void Remove(object? value)
+    {
+        if (value is T item)
+            Remove(item);
+    }
+
+    //[Obsolete("Prefer using the typed variant of this method instead.")]
+    public readonly void CopyTo(Array array, int index)
+    {
+        if (items != null)
+            Array.Copy(items, 0, array, index, count);
+    }
+
+    public readonly ref struct TempListZipEnumerable<TOther>(ref readonly TemporaryList<T> first, ref readonly TemporaryList<TOther> second)
+    {
+        private readonly FastZipIterator iterator = new(in first, in second);
+        public FastZipIterator GetEnumerator() => iterator;
+
+        public ref struct FastZipIterator : IEnumerator<(T first, TOther second)>
+        {
+#if NET10_0_OR_GREATER
+            private readonly ref T aRef;
+            private readonly ref TOther bRef;
+#else
+            private readonly T[]? aArr;
+            private readonly TOther[]? bArr;
+#endif
+            private readonly int count;
+            private nint pos;
+
+            public FastZipIterator(ref readonly TemporaryList<T> first, ref readonly TemporaryList<TOther> second)
+            {
+                count = Math.Min(first.count, second.count);
+                pos = -1;
+#if NET10_0_OR_GREATER
+                if (count > 0)
+                {
+                    aRef = ref MemoryMarshal.GetArrayDataReference(first.items!);
+                    bRef = ref MemoryMarshal.GetArrayDataReference(second.items!);
+                }
+                else
+                {
+                    aRef = ref Unsafe.NullRef<T>();
+                    bRef = ref Unsafe.NullRef<TOther>();
+                }
+#else
+                aArr = first.items;
+                bArr = second.items;
+#endif
+            }
+
+            public readonly (T first, TOther second) Current
+            {
+                [MethodImpl(MethodImplOptions.AggressiveInlining)]
+#if NET10_0_OR_GREATER
+                get => (Unsafe.Add(ref aRef, pos), Unsafe.Add(ref bRef, pos));
+#else
+                get => (aArr![pos], bArr![pos]);
+#endif
+            }
+
+            readonly object IEnumerator.Current => Current;
+
+            public readonly void Dispose() { }
+
+            public bool MoveNext()
+            {
+                if (pos >= count)
+                    return false;
+                pos++;
+                return true;
+            }
+
+            public void Reset()
+            {
+                pos = -1;
+            }
+        }
+    }
 }
 
 /// <summary>
@@ -293,4 +452,58 @@ public static class TemporaryListBuilder
     /// Factory method used by the collection builder to correctly initialise a <see cref="TemporaryList{T}"/>.
     /// </summary>
     public static TemporaryList<T> Create<T>(ReadOnlySpan<T> values) => new(values);
+}
+
+/// <summary>
+/// A common interface for temporary lists
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public interface ITempList<T> : IList<T>, IReadOnlyList<T>, IList, IDisposable
+{
+
+}
+
+/// <summary>
+/// An interface that wraps the common list interfaces: <see cref="IList"/>, <see cref="IList{T}"/>, <see cref="IReadOnlyList{T}"/>
+/// </summary>
+/// <typeparam name="T"></typeparam>
+public interface IGeneralList<T> : IList<T>, IReadOnlyList<T>, IList
+{
+
+}
+
+/// <summary>
+/// A struct that wraps a list as a <see cref="ITempList{T}"/>.
+/// </summary>
+/// <typeparam name="T"></typeparam>
+/// <param name="src"></param>
+public readonly struct TempListWrapper<T>(IGeneralList<T> src) : ITempList<T>, IGeneralList<T>
+{
+    private readonly IGeneralList<T> src = src;
+
+    public void Dispose() { }
+
+    public readonly T this[int index] { get => ((IList<T>)src)[index]; set => ((IList<T>)src)[index] = value; }
+    readonly object? IList.this[int index] { get => ((IList)src)[index]; set => ((IList)src)[index] = value; }
+    public readonly int Count => ((ICollection<T>)src).Count;
+    public readonly bool IsReadOnly => ((ICollection<T>)src).IsReadOnly;
+    public readonly  bool IsFixedSize => src.IsFixedSize;
+    public readonly  bool IsSynchronized => src.IsSynchronized;
+    public readonly object SyncRoot => src.SyncRoot;
+    public readonly void Add(T item) => src.Add(item);
+    public readonly int Add(object? value) => src.Add(value);
+    public readonly void Clear() => ((ICollection<T>)src).Clear();
+    public readonly bool Contains(T item) => src.Contains(item);
+    public readonly bool Contains(object? value) => src.Contains(value);
+    public readonly void CopyTo(T[] array, int arrayIndex) => src.CopyTo(array, arrayIndex);
+    public readonly void CopyTo(Array array, int index) => src.CopyTo(array, index);
+    public readonly IEnumerator<T> GetEnumerator() => src.GetEnumerator();
+    public readonly int IndexOf(T item) => src.IndexOf(item);
+    public readonly int IndexOf(object? value) => src.IndexOf(value);
+    public readonly void Insert(int index, T item) => src.Insert(index, item);
+    public readonly void Insert(int index, object? value) => src.Insert(index, value);
+    public readonly bool Remove(T item) => src.Remove(item);
+    public readonly void Remove(object? value) => src.Remove(value);
+    public readonly void RemoveAt(int index) => ((IList<T>)src).RemoveAt(index);
+    readonly IEnumerator IEnumerable.GetEnumerator() => ((IEnumerable)src).GetEnumerator();
 }

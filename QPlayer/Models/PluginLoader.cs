@@ -1,4 +1,5 @@
-﻿using QPlayer.Utilities;
+﻿using CommunityToolkit.Mvvm.Input;
+using QPlayer.Utilities;
 using QPlayer.ViewModels;
 using System;
 using System.Collections.Generic;
@@ -9,6 +10,7 @@ using System.Reflection;
 using System.Runtime.Loader;
 using System.Text;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using static QPlayer.ViewModels.CueFactory;
 
 namespace QPlayer.Models;
@@ -69,7 +71,23 @@ public static class PluginLoader
                     string name = pluginType.GetCustomAttribute<PluginNameAttribute>()?.Name ?? pluginAssembly.FullName ?? fname;
                     string description = pluginType.GetCustomAttribute<PluginDescriptionAttribute>()?.Description ?? "No description provided.";
 
-                    loadedPlugins.Add(pluginAssembly, new(name, author, version, description, pluginAssembly, pluginInst, cueTypes));
+                    using var menuItems = new TemporaryList<PluginMenuItem>();
+                    foreach (var prop in pluginType.GetProperties())
+                    {
+                        if (prop.GetCustomAttribute<MenuItemAttribute>() is MenuItemAttribute menu
+                            && prop.PropertyType.IsAssignableTo(typeof(ICommand)))
+                            menuItems.Add(new(menu.Path, (ICommand)prop.GetValue(pluginInst)!));
+                    }
+                    foreach (var meth in pluginType.GetMethods())
+                    {
+                        if (meth.GetCustomAttribute<MenuItemAttribute>() is MenuItemAttribute menu)
+                        {
+                            var command = new RelayCommand(meth.CreateDelegate<Action>(pluginInst));
+                            menuItems.Add(new(menu.Path, command));
+                        }
+                    }
+
+                    loadedPlugins.Add(pluginAssembly, new(name, author, version, description, pluginAssembly, pluginInst, cueTypes, menuItems.ToArray()));
 
                     pluginInst?.OnLoad(mainViewModel);
                 }
@@ -110,7 +128,8 @@ public static class PluginLoader
     }
 
     public readonly struct LoadedPlugin(string name, string author, string version, string description, 
-        Assembly assembly, QPlayerPlugin? pluginInst, RegisteredCueType[] registeredCueTypes)
+        Assembly assembly, QPlayerPlugin? pluginInst, RegisteredCueType[] registeredCueTypes, 
+        PluginMenuItem[] pluginMenuItems)
     {
         public readonly string Name = name;
         public readonly string Author = author;
@@ -119,6 +138,13 @@ public static class PluginLoader
         public readonly Assembly assembly = assembly;
         public readonly QPlayerPlugin? pluginInst = pluginInst;
         public readonly RegisteredCueType[] registeredCueTypes = registeredCueTypes;
+        public readonly PluginMenuItem[] pluginMenuItems = pluginMenuItems;
+    }
+
+    public readonly struct PluginMenuItem(string path, ICommand command)
+    {
+        public readonly string path = path;
+        public readonly ICommand command = command;
     }
 }
 

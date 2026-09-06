@@ -2,14 +2,13 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Drawing;
 using System.Numerics;
 
 namespace QPlayer.Models;
 
 public record ShowFile
 {
-    public const int FILE_FORMAT_VERSION = 7;
+    public const int FILE_FORMAT_VERSION = 8;
 
     public int fileFormatVersion = FILE_FORMAT_VERSION;
     public ShowSettings showSettings = new();
@@ -91,11 +90,18 @@ public enum TriggerMode
     AfterLast
 }
 
+public enum GroupTriggerMode
+{
+    Next,
+    All,
+    Shuffle
+}
+
 public record Cue
 {
     //public CueType type;
     public decimal qid;
-    public decimal? parent;
+    public string? parent;
     public SerializedColour colour = SerializedColour.Black;
     public string name = string.Empty;
     public string description = string.Empty;
@@ -106,11 +112,17 @@ public record Cue
     public LoopMode loopMode;
     public int loopCount = 1;
     public string remoteNode = string.Empty;
+
+    public Cue() : base() { }
 }
 
 public record GroupCue : Cue
 {
     public GroupCue() : base() { }
+
+    public List<Cue> cues = [];
+    public GroupTriggerMode groupTrigger;
+    public bool isCollapsed;
 }
 
 public record DummyCue : Cue
@@ -143,7 +155,7 @@ public record TimeCodeCue : Cue
 
 public record StopCue : Cue
 {
-    public decimal stopQid;
+    public string stopQid = string.Empty;
     public StopMode stopMode;
     public float fadeOutTime;
     public FadeType fadeType = FadeType.SCurve;
@@ -153,7 +165,7 @@ public record StopCue : Cue
 
 public record VolumeCue : Cue
 {
-    public decimal soundQid;
+    public string soundQid = string.Empty;
     public float fadeTime;
     public float volume;
     public FadeType fadeType = FadeType.SCurve;

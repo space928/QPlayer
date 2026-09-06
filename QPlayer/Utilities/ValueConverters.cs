@@ -7,6 +7,7 @@ using System.Threading.Tasks;
 using System.Windows.Data;
 using System.Windows;
 using QPlayer.Models;
+using QPlayer.ViewModels;
 
 namespace QPlayer.Utilities;
 
@@ -129,6 +130,22 @@ public class MultiplyByConverter : IValueConverter
     }
 }
 
+[ValueConversion(typeof(float), typeof(double))]
+public class MultiplyByFConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        var fmtNum = CultureInfo.InvariantCulture.NumberFormat;
+
+        return (float)value * double.Parse((string)parameter, fmtNum);
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+    {
+        return DependencyProperty.UnsetValue;
+    }
+}
+
 [ValueConversion(typeof(TriggerMode), typeof(int))]
 public class TriggerModeConverter : IValueConverter
 {
@@ -154,6 +171,20 @@ public class LoopModeConverter : IValueConverter
     public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
     {
         return (LoopMode)(int)value;
+    }
+}
+
+[ValueConversion(typeof(GroupTriggerMode), typeof(int))]
+public class GroupTriggerModeConverter : IValueConverter
+{
+    public object Convert(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (int)(GroupTriggerMode)value;
+    }
+
+    public object ConvertBack(object value, Type targetType, object parameter, CultureInfo culture)
+    {
+        return (GroupTriggerMode)(int)value;
     }
 }
 

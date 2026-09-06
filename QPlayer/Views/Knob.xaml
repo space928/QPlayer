@@ -7,9 +7,13 @@
              x:Name="KnobInst"
              mc:Ignorable="d" 
              d:DesignHeight="250" d:DesignWidth="200">
-    <Grid Margin="2" SizeChanged="Grid_SizeChanged" Loaded="Grid_Loaded">
-        <StackPanel DataContext="{Binding RelativeSource={RelativeSource AncestorType=local:Knob}}">
-            <Grid Height="{Binding ActualWidth, RelativeSource={RelativeSource Self}}">
+    <Grid x:Name="KnobOuterGrid" Margin="2" SizeChanged="Grid_SizeChanged" Loaded="Grid_Loaded" DataContext="{Binding ElementName=KnobInst}">
+        <Grid.RowDefinitions>
+            <RowDefinition/>
+            <RowDefinition x:Name="TextRow" MaxHeight="22"/>
+        </Grid.RowDefinitions>
+        <!--<StackPanel DataContext="{Binding RelativeSource={RelativeSource AncestorType=local:Knob}}">-->
+            <Grid x:Name="KnobGrid" Height="{Binding ActualWidth, RelativeSource={RelativeSource Self}}">
                 <Ellipse x:Name="KnobEllipse" 
                          MouseDown="KnobEllipse_MouseDown" MouseUp="KnobEllipse_MouseUp" MouseMove="KnobEllipse_MouseMove" MouseLeave="KnobEllipse_MouseLeave"
                          StrokeThickness="1" ToolTip="{Binding ValueText}">
@@ -39,7 +43,7 @@
                 <TextBlock x:Name="ValueLabel" Text="{Binding ValueText}" Opacity="0.85" Visibility="Hidden" HorizontalAlignment="Center" VerticalAlignment="Center" TextAlignment="Center" FontSize="10" IsHitTestVisible="False"/>
                 <local:TextField x:Name="ValueTextField" Text="{Binding Value}" ReturnValidates="True" Visibility="Collapsed" HorizontalAlignment="Center" VerticalAlignment="Center" LostKeyboardFocus="ValueTextField_LostKeyboardFocus"/>
             </Grid>
-            <TextBlock Margin="2" Text="{Binding Label}" TextAlignment="Center"/>
-        </StackPanel>
+            <TextBlock Grid.Row="1" Margin="2" Text="{Binding Label}" TextAlignment="Center"/>
+        <!--</StackPanel>-->
     </Grid>
 </UserControl>

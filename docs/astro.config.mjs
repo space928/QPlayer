@@ -7,12 +7,12 @@ import starlightKbd from 'starlight-kbd'
 
 // https://astro.build/config
 export default defineConfig({
-	//site: 'https://space928.github.io',
-	//base: '/QPlayer',
-	site: 'https://qplayer.eu',
-	base: '/',
-	image: {
-		service: passthroughImageService()/* {
+    //site: 'https://space928.github.io',
+    //base: '/QPlayer',
+    site: 'https://qplayer.eu',
+    base: '/',
+    image: {
+        service: passthroughImageService()/* {
 			entrypoint: 'astro/assets/services/sharp',
 			config: {
 				limitInputPixels: false,
@@ -20,61 +20,61 @@ export default defineConfig({
 				quality: 'max'
 			},
 		},*/
-	},
-	integrations: [
-		starlight({
-			title: 'QPlayer Documentation',
-			plugins: [
-				starlightAutoSidebar(),
-				starlightGiscus({
-					repo: 'space928/QPlayer',
-					repoId: 'R_kgDOLSwoIA',
-					category: 'Comments',
-					categoryId: 'DIC_kwDOLSwoIM4CobZs',
-					mapping: '<title>',
-					reactions: true,
-					lazy: true
-				}),
-				starlightKbd({
-					types: [
-						{ id: 'mac', label: 'macOS' },
-						{ id: 'windows', label: 'Windows', default: true },
-					],
-				}),
-			],
-			logo: {
-				src: './src/assets/Splash.png',
-				replacesTitle: true,
-			},
-			social: [
-				{ icon: 'github', label: 'GitHub', href: 'https://github.com/space928/QPlayer' }
-			],
-			sidebar: [
-				{
-					label: 'Guides',
-					items: [
-						// Each item here is one entry in the navigation menu.
-						{ label: 'Getting Started', slug: 'guides/getting-started' },
-					],
-				},
-				{
-					label: 'Reference',
-					autogenerate: { directory: 'reference' },
-				},
-				{
-					label: 'API',
-					autogenerate: { directory: 'api' },
-					collapsed: true,
-					badge: {
-						class: 'warning',
-						text: 'For Developers'
-					},
-				}
-			],
-			customCss: [
-				// Relative path to your custom CSS file
-				'./src/styles/custom.css',
-			],
-		}),
-	],
+    },
+    integrations: [
+        starlight({
+            title: 'QPlayer Documentation',
+            plugins: [
+                starlightAutoSidebar(),
+                starlightGiscus({
+                    repo: 'space928/QPlayer',
+                    repoId: 'R_kgDOLSwoIA',
+                    category: 'Comments',
+                    categoryId: 'DIC_kwDOLSwoIM4CobZs',
+                    mapping: '<title>',
+                    reactions: true,
+                    lazy: true
+                }),
+                starlightKbd({
+                    types: [
+                        { id: 'mac', label: 'macOS' },
+                        { id: 'windows', label: 'Windows', default: true },
+                    ],
+                }),
+            ],
+            logo: {
+                src: './src/assets/Splash.png',
+                replacesTitle: true,
+            },
+            social: [
+                { icon: 'github', label: 'GitHub', href: 'https://github.com/space928/QPlayer' }
+            ],
+            sidebar: [
+                {
+                    label: 'Guides',
+                    items: [
+                        // Each item here is one entry in the navigation menu.
+                        { label: 'Getting Started', slug: 'guides/getting-started' },
+                    ],
+                },
+                {
+                    label: 'Reference',
+                    items: [{ autogenerate: { directory: 'reference' } }],
+                },
+                {
+                    label: 'API',
+                    items: [{ autogenerate: { directory: 'api', collapsed: true } }],
+                    collapsed: true,
+                    badge: {
+                        class: 'warning',
+                        text: 'For Developers'
+                    },
+                }
+            ],
+            customCss: [
+                // Relative path to your custom CSS file
+                './src/styles/custom.css',
+            ],
+        }),
+    ],
 });

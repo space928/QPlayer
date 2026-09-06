@@ -17,10 +17,12 @@ public partial class OSCCueViewModel : CueViewModel
 {
     [Reactive/*, ChangesProp(nameof(OSCMessageValid))*/]
     [Tooltip("The address and parameters of the OSC command to send when this cue is triggered. " +
-        "Addresses must start with a slash (/), OSC parameters are specified directly after the address, " +
-        "separated by commas. (Eg: '/qplayer/go,5' sends a message to '/qplayer/go' with the integer " +
-        "parameter '5')")]
+        "Addresses may start with a slash (/), OSC parameters are specified directly after the address, " +
+        "separated by commas or spaces. (Eg: '/qplayer/go,5' sends a message to '/qplayer/go' with the " +
+        "integer parameter '5'). Supported data types: [Numbers: 1, 0.1, -1e4], [Strings: examples, " +
+        "''example with spaces''], [Booleans: true, false], [Binary blobs: `01abcd8f`]")]
     private string command = "/";
+
 
     /*[Reactive("OSCMessageValid"), ModelSkip]
     private bool OSCMessageValid_Template
@@ -41,8 +43,21 @@ public partial class OSCCueViewModel : CueViewModel
         }
     }*/
 
+    [SkipView]
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"OSC: {command}" : Name;
+
     public OSCCueViewModel(MainViewModel mainViewModel) : base(mainViewModel)
-    { }
+    {
+        PropertyChanged += (o, e) =>
+        {
+            switch (e.PropertyName)
+            {
+                case nameof(Command):
+                    OnPropertyChanged(nameof(NamePreview));
+                    break;
+            }
+        };
+    }
 
     public override void Go()
     {

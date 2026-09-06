@@ -67,7 +67,11 @@ public class AudioBufferingDispatcher
             if (audioFiles.TryGetValue(audioFile, out var refs))
             {
                 if (refs == 0)
+                {
                     audioFiles.Remove(audioFile);
+                    queuedWork.TryAdd(audioFile, 0);
+                    lowPriorityWork.Enqueue(new() { reader = audioFile, workType = WorkType.ReleaseResources });
+                }
                 else
                     audioFiles[audioFile]--;
             }
@@ -93,14 +97,14 @@ public class AudioBufferingDispatcher
                             {
                                 queuedWork.TryAdd(audioFile, 0);
                                 if (audioFile.SamplesRemaining < 10000)
-                                    highPriorityWork.Enqueue(new() { reader = audioFile });
+                                    highPriorityWork.Enqueue(new() { reader = audioFile, workType = WorkType.FillBuffer });
                                 else
-                                    lowPriorityWork.Enqueue(new() { reader = audioFile });
+                                    lowPriorityWork.Enqueue(new() { reader = audioFile, workType = WorkType.FillBuffer });
                             }
                             else if (audioFile.NeedsStartFilling)
                             {
                                 queuedWork.TryAdd(audioFile, 0);
-                                lowPriorityWork.Enqueue(new() { reader = audioFile, fillStart = true });
+                                lowPriorityWork.Enqueue(new() { reader = audioFile, workType = WorkType.FillStart });
                             }
                         }
                     }
@@ -169,10 +173,18 @@ public class AudioBufferingDispatcher
 
         try
         {
-            if (work.fillStart)
-                audio.FillStartBuffer();
-            else
-                audio.FillBuffer();
+            switch (work.workType)
+            {
+                case WorkType.FillBuffer:
+                    audio.FillBuffer();
+                    break;
+                case WorkType.FillStart:
+                    audio.FillStartBuffer(); 
+                    break;
+                case WorkType.ReleaseResources:
+                    audio.Dispose();
+                    break;
+            }
         }
         finally
         {
@@ -184,6 +196,13 @@ public class AudioBufferingDispatcher
     private struct WorkItem
     {
         public QAudioFileReader reader;
-        public bool fillStart;
+        public WorkType workType;
+    }
+
+    private enum WorkType
+    {
+        FillBuffer,
+        FillStart,
+        ReleaseResources
     }
 }

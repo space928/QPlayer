@@ -1,4 +1,5 @@
-﻿using QPlayer.Audio;
+﻿using CommunityToolkit.Mvvm.Input;
+using QPlayer.Audio;
 using QPlayer.Models;
 using QPlayer.SourceGenerator;
 using System;
@@ -22,6 +23,9 @@ public partial class EQViewModel : BindableViewModel<EQSettings>
     [Reactive, ModelBindsTo($"{nameof(EQSettings.band4)}.{nameof(EQBand.freq)}")] private float highFreq = 8000;
     [Reactive, ModelBindsTo($"{nameof(EQSettings.band4)}.{nameof(EQBand.gain)}")] private float highGain;
 
+    [Reactive] private readonly RelayCommand copyCommand;
+    [Reactive] private readonly RelayCommand pasteCommand;
+
     public ISamplePositionProvider? InputSampleProvider
     {
         get => inputSampleProvider;
@@ -41,11 +45,55 @@ public partial class EQViewModel : BindableViewModel<EQSettings>
     }
     public EQSampleProvider? EQSampleProvider => eqSampleProvider;
 
+    private readonly CueViewModel owner;
     private EQSampleProvider? eqSampleProvider;
     private ISamplePositionProvider? inputSampleProvider;
 
-    public EQViewModel()
+    private static EQSettings? clipboard;
+
+    public EQViewModel(CueViewModel owner)
     {
+        this.owner = owner;
+        copyCommand = new(Copy);
+        pasteCommand = new(PasteSelected);
+    }
+
+    private void Copy()
+    {
+        var bound = BoundModel;
+        if (clipboard == null)
+            clipboard = new();
+        Bind(clipboard);
+        SyncToModel();
+        Bind(bound);
+        SyncToModel();
+    }
+
+    private void PasteSelected()
+    {
+        int count = owner.MainViewModel.MultiSelection.Count;
+        if (count > 1)
+            UndoManager.BeginGroupRecording();
+        foreach (var cue in owner.MainViewModel.MultiSelection)
+        {
+            if (cue is SoundCueViewModel sound)
+                sound.EQ.Paste();
+        }
+        if (count > 1)
+            UndoManager.EndGroupRecording($"Pasted EQ settings to {count} cues");
+    }
+
+    private void Paste()
+    {
+        if (clipboard == null)
+            return;
+
+        using var _ = UndoManager.ScopedGroup($"Pasted EQ settings to {owner.FullQID}");
+        var bound = BoundModel;
+        Bind(clipboard);
+        SyncFromModel();
+        Bind(bound);
+        SyncToModel();
     }
 
     private void ConfigureEQ()

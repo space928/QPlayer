@@ -1,0 +1,104 @@
+﻿<UserControl x:Class="QPlayer.PyPlayPlugin.FramingCueView"
+                      xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+         xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+         xmlns:util="clr-namespace:QPlayer.Utilities;assembly=QPlayer"
+         xmlns:vm="clr-namespace:QPlayer.ViewModels;assembly=QPlayer"
+         xmlns:v="clr-namespace:QPlayer.Views;assembly=QPlayer"
+         xmlns:local="clr-namespace:QPlayer.PyPlayPlugin"
+         mc:Ignorable="d"
+         d:DataContext="{d:DesignInstance Type=local:FramingCueViewModel}">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="/QPlayer;component/Views/SharedResources.xaml"/>
+            </ResourceDictionary.MergedDictionaries>
+            <util:TimeSpanStringConverter x:Key="TimeSpanStringConverter"/>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <StackPanel>
+        <StackPanel Margin="2" ToolTip="The pixel coordinates of the four corners of the image, used for perspective correction.">
+            <TextBlock Text="Corner Pinning" FontStyle="Italic" Margin="4"/>
+            <Border Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+                    BorderBrush="{DynamicResource Button.Static.Border}" BorderThickness="1">
+                <Grid>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition/>
+                        <ColumnDefinition Width="16"/>
+                        <ColumnDefinition/>
+                    </Grid.ColumnDefinitions>
+                    <Grid.RowDefinitions>
+                        <RowDefinition/>
+                        <RowDefinition Height="16"/>
+                        <RowDefinition/>
+                    </Grid.RowDefinitions>
+                    <v:Vec2Field SpinRate="0.001" MinValue="0" MaxValue="1" ClampValue="True" Value="{Binding Corners[0]}" Grid.Column="0" Grid.Row="0"/>
+                    <v:Vec2Field SpinRate="0.001" MinValue="0" MaxValue="1" ClampValue="True" Value="{Binding Corners[1]}" Grid.Column="2" Grid.Row="0"/>
+                    <v:Vec2Field SpinRate="0.001" MinValue="0" MaxValue="1" ClampValue="True" Value="{Binding Corners[2]}" Grid.Column="0" Grid.Row="2"/>
+                    <v:Vec2Field SpinRate="0.001" MinValue="0" MaxValue="1" ClampValue="True" Value="{Binding Corners[3]}" Grid.Column="2" Grid.Row="2"/>
+                </Grid>
+            </Border>
+        </StackPanel>
+        <StackPanel Margin="2" ToolTip="A set of framing shutters which can be used to mask the overal image.">
+            <TextBlock Text="Framing Shutters" FontStyle="Italic" Margin="4"/>
+            <Border Background="{DynamicResource AREghZyBrush.Primary.2.Background.Static}" 
+        BorderBrush="{DynamicResource Button.Static.Border}" BorderThickness="1">
+                <StackPanel>
+                    <Grid>
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                            <ColumnDefinition/>
+                        </Grid.ColumnDefinitions>
+                        <Label Content="Rotation"/>
+                        <Label Grid.Column="1" Content="Mask Start"/>
+                        <Label Grid.Column="2" Content="Softness"/>
+                    </Grid>
+                    <ItemsControl ItemsSource="{Binding Framing}" HorizontalContentAlignment="Stretch">
+                        <ItemsControl.ItemTemplate>
+                            <ItemContainerTemplate>
+                                <Grid>
+                                    <Grid.ColumnDefinitions>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                        <ColumnDefinition/>
+                                    </Grid.ColumnDefinitions>
+                                    <v:TextField Text="{Binding Rotation}" ShowSpinner="True" SpinnerType="Double" SpinRate="0.2" ClampValue="True" MinValue="-360" MaxValue="360"/>
+                                    <v:TextField Text="{Binding MaskStart}" ShowSpinner="True" SpinnerType="Double" SpinRate="0.01" ClampValue="True" MinValue="0" MaxValue="1" Grid.Column="1"/>
+                                    <v:TextField Text="{Binding Softness}" ShowSpinner="True" SpinnerType="Double" SpinRate="0.01" ClampValue="True" MinValue="0" MaxValue="1" Grid.Column="2"/>
+                                </Grid>
+                            </ItemContainerTemplate>
+                        </ItemsControl.ItemTemplate>
+                    </ItemsControl>
+                </StackPanel>
+            </Border>
+        </StackPanel>
+        <Grid Height="200">
+            <local:FramingShutterControl DataContext="{Binding Framing[0]}"/>
+            <local:FramingShutterControl DataContext="{Binding Framing[1]}">
+                <local:FramingShutterControl.LayoutTransform>
+                    <RotateTransform Angle="-90"/>
+                </local:FramingShutterControl.LayoutTransform>
+            </local:FramingShutterControl>
+            <local:FramingShutterControl DataContext="{Binding Framing[2]}">
+                <local:FramingShutterControl.LayoutTransform>
+                    <RotateTransform Angle="-180"/>
+                </local:FramingShutterControl.LayoutTransform>
+            </local:FramingShutterControl>
+            <local:FramingShutterControl DataContext="{Binding Framing[3]}">
+                <local:FramingShutterControl.LayoutTransform>
+                    <RotateTransform Angle="-270"/>
+                </local:FramingShutterControl.LayoutTransform>
+            </local:FramingShutterControl>
+        </Grid>
+        <DockPanel ToolTip="Fade in time in seconds.">
+            <Label Content="Fade Time"/>
+            <v:TextField ShowSpinner="True" SpinnerType="Double" SpinRate="0.1" ClampValue="True" MinValue="0" MaxValue="9999" Text="{Binding FadeTime, UpdateSourceTrigger=Default}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+        <DockPanel ToolTip="The type of curve to use when fading the volume.">
+            <Label Content="Fade Type"/>
+            <ComboBox SelectedItem="{Binding FadeType, UpdateSourceTrigger=Default}" ItemsSource="{Binding FadeTypeVals}" DockPanel.Dock="Right" Margin="8,2,2,2"/>
+        </DockPanel>
+    </StackPanel>
+</UserControl>

@@ -1,0 +1,24 @@
+<ResourceDictionary x:Class="QPlayer.PyPlayPlugin.Icons" x:ClassModifier="public"
+	                xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" 
+                    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml">
+    <!-- Generated using the svg to xaml script (Update.ps1) in the QPlayer resources folder and then manually copied into here. -->
+    <Geometry x:Key="Icon_film_solidGeometry">F1 M512,512z M0,0z M0,96C0,60.7,28.7,32,64,32L448,32C483.3,32,512,60.7,512,96L512,416C512,451.3,483.3,480,448,480L64,480C28.7,480,0,451.3,0,416L0,96z M48,368L48,400C48,408.8,55.2,416,64,416L96,416C104.8,416,112,408.8,112,400L112,368C112,359.2,104.8,352,96,352L64,352C55.2,352,48,359.2,48,368z M416,352C407.2,352,400,359.2,400,368L400,400C400,408.8,407.2,416,416,416L448,416C456.8,416,464,408.8,464,400L464,368C464,359.2,456.8,352,448,352L416,352z M48,240L48,272C48,280.8,55.2,288,64,288L96,288C104.8,288,112,280.8,112,272L112,240C112,231.2,104.8,224,96,224L64,224C55.2,224,48,231.2,48,240z M416,224C407.2,224,400,231.2,400,240L400,272C400,280.8,407.2,288,416,288L448,288C456.8,288,464,280.8,464,272L464,240C464,231.2,456.8,224,448,224L416,224z M48,112L48,144C48,152.8,55.2,160,64,160L96,160C104.8,160,112,152.8,112,144L112,112C112,103.2,104.8,96,96,96L64,96C55.2,96,48,103.2,48,112z M416,96C407.2,96,400,103.2,400,112L400,144C400,152.8,407.2,160,416,160L448,160C456.8,160,464,152.8,464,144L464,112C464,103.2,456.8,96,448,96L416,96z M160,128L160,192C160,209.7,174.3,224,192,224L320,224C337.7,224,352,209.7,352,192L352,128C352,110.3,337.7,96,320,96L192,96C174.3,96,160,110.3,160,128z M192,288C174.3,288,160,302.3,160,320L160,384C160,401.7,174.3,416,192,416L320,416C337.7,416,352,401.7,352,384L352,320C352,302.3,337.7,288,320,288L192,288z</Geometry>
+    <DrawingGroup x:Key="Icon_film_solidDrawingGroup" ClipGeometry="M0,0 V512 H512 V0 H0 Z">
+        <GeometryDrawing Brush="{StaticResource IconColor}" Geometry="{StaticResource Icon_film_solidGeometry}" />
+    </DrawingGroup>
+    <DrawingImage x:Key="Icon_film_solidDrawingImage" Drawing="{StaticResource Icon_film_solidDrawingGroup}" />
+    <Geometry x:Key="Icon_sliders_solidGeometry">F1 M512,512z M0,0z M0,416C0,433.7,14.3,448,32,448L86.7,448C99,476.3 127.2,496 160,496 192.8,496 221,476.3 233.3,448L480,448C497.7,448 512,433.7 512,416 512,398.3 497.7,384 480,384L233.3,384C221,355.7 192.8,336 160,336 127.2,336 99,355.7 86.7,384L32,384C14.3,384,0,398.3,0,416z M128,416A32,32,0,1,1,192,416A32,32,0,1,1,128,416z M320,256A32,32,0,1,1,384,256A32,32,0,1,1,320,256z M352,176C319.2,176,291,195.7,278.7,224L32,224C14.3,224 0,238.3 0,256 0,273.7 14.3,288 32,288L278.7,288C291,316.3 319.2,336 352,336 384.8,336 413,316.3 425.3,288L480,288C497.7,288 512,273.7 512,256 512,238.3 497.7,224 480,224L425.3,224C413,195.7,384.8,176,352,176z M192,128A32,32,0,1,1,192,64A32,32,0,1,1,192,128z M265.3,64C253,35.7 224.8,16 192,16 159.2,16 131,35.7 118.7,64L32,64C14.3,64 0,78.3 0,96 0,113.7 14.3,128 32,128L118.7,128C131,156.3 159.2,176 192,176 224.8,176 253,156.3 265.3,128L480,128C497.7,128 512,113.7 512,96 512,78.3 497.7,64 480,64L265.3,64z</Geometry>
+    <DrawingGroup x:Key="Icon_sliders_solidDrawingGroup" ClipGeometry="M0,0 V512 H512 V0 H0 Z">
+        <GeometryDrawing Brush="{StaticResource IconColor}" Geometry="{StaticResource Icon_sliders_solidGeometry}" />
+    </DrawingGroup>
+    <DrawingImage x:Key="Icon_sliders_solidDrawingImage" Drawing="{StaticResource Icon_sliders_solidDrawingGroup}" />
+    <Geometry x:Key="Icon_crop_simple_solidGeometry">F1 M512,512z M0,0z M128,32C128,14.3 113.7,0 96,0 78.3,0 64,14.3 64,32L64,64 32,64C14.3,64 0,78.3 0,96 0,113.7 14.3,128 32,128L64,128 64,384C64,419.3,92.7,448,128,448L352,448 352,384 128,384 128,32z M384,480C384,497.7 398.3,512 416,512 433.7,512 448,497.7 448,480L448,448 480,448C497.7,448 512,433.7 512,416 512,398.3 497.7,384 480,384L448,384 448,128C448,92.7,419.3,64,384,64L160,64 160,128 384,128 384,480z</Geometry>
+    <DrawingGroup x:Key="Icon_crop_simple_solidDrawingGroup" ClipGeometry="M0,0 V512 H512 V0 H0 Z">
+        <GeometryDrawing Brush="{StaticResource IconColor}" Geometry="{StaticResource Icon_crop_simple_solidGeometry}" />
+    </DrawingGroup>
+    <DrawingImage x:Key="Icon_crop_simple_solidDrawingImage" Drawing="{StaticResource Icon_crop_simple_solidDrawingGroup}" />
+
+    <DrawingImage x:Key="IconPyVideoCue" Drawing="{StaticResource Icon_film_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconPyFramingCue" Drawing="{StaticResource Icon_crop_simple_solidDrawingGroup}"/>
+    <DrawingImage x:Key="IconPyShaderCue" Drawing="{StaticResource Icon_sliders_solidDrawingGroup}"/>
+</ResourceDictionary>

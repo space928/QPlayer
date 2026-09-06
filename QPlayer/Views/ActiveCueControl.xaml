@@ -9,29 +9,28 @@
              d:DataContext="{d:DesignInstance Type=vm:DummyCueViewModel}"
              mc:Ignorable="d" 
              d:DesignHeight="50" d:DesignWidth="800">
-    <Grid>
+    <Grid MouseEnter="Grid_MouseEnter" MouseLeave="Grid_MouseLeave">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="2*" MinWidth="20"/>
-            <ColumnDefinition Width="3*"/>
-            <ColumnDefinition Width="4*"/>
-            <ColumnDefinition Width="*" MinWidth="20" MaxWidth="30"/>
-            <ColumnDefinition Width="*" MinWidth="20" MaxWidth="30"/>
-            <ColumnDefinition Width="*" MinWidth="20" MaxWidth="30"/>
+            <ColumnDefinition Width="*" MinWidth="30"/>
+            <ColumnDefinition Width="1.5*" MinWidth="44"/>
+            <ColumnDefinition Width="5*"/>
         </Grid.ColumnDefinitions>
         <Grid.Resources>
             <util:ElapsedTimeConverter x:Key="ElapsedTimeConverter"/>
         </Grid.Resources>
-        <Label Content="{Binding QID}" MinWidth="30" Grid.Column="0" VerticalContentAlignment="Center"/>
+        <Label Content="{Binding FullQID}" ToolTip="{Binding FullQID}" MinWidth="30" Grid.Column="0" VerticalContentAlignment="Center"/>
         <local:PlaybackProgressBar MinWidth="20" Grid.Column="1" Focusable="False"/>
-        <Label Content="{Binding Name}" MinWidth="50" Grid.Column="2" VerticalContentAlignment="Center"/>
-        <Button Command="{Binding StopCommand}" Grid.Column="3" ToolTip="Stops this cue" Focusable="False" Style="{StaticResource ButtonRoundLeft}">
-            <Image Source="{StaticResource IconStop}" Margin="2"/>
-        </Button>
-        <Button Command="{Binding GoCommand}" Grid.Column="4" ToolTip="Restarts this cue" Focusable="False" Style="{StaticResource ButtonRoundNone}">
-            <Image Source="{StaticResource IconPlay}" Margin="2"/>
-        </Button>
-        <Button Command="{Binding PauseCommand}" Grid.Column="5" ToolTip="Pauses this cue" Focusable="False" Style="{StaticResource ButtonRoundRight}">
-            <Image Source="{StaticResource IconPause}" Margin="2"/>
-        </Button>
+        <Label Content="{Binding NamePreview}" ToolTip="{Binding NamePreview}" MinWidth="50" Grid.Column="2" VerticalContentAlignment="Center"/>
+        <StackPanel x:Name="TransportButtons" Grid.Column="2" Orientation="Horizontal" HorizontalAlignment="Right" Visibility="Collapsed" Height="25">
+            <Button Command="{Binding StopCommand}" ToolTip="Stops this cue" Focusable="False" Style="{StaticResource ButtonRoundLeft}" MinWidth="20" MaxWidth="30">
+                <Image Source="{StaticResource IconStop}" Margin="2"/>
+            </Button>
+            <Button Command="{Binding GoCommand}" ToolTip="Restarts this cue" Focusable="False" Style="{StaticResource ButtonRoundNone}" MinWidth="20" MaxWidth="30">
+                <Image Source="{StaticResource IconPlay}" Margin="2"/>
+            </Button>
+            <Button Command="{Binding PauseCommand}" ToolTip="Pauses this cue" Focusable="False" Style="{StaticResource ButtonRoundRight}" MinWidth="20" MaxWidth="30">
+                <Image Source="{StaticResource IconPause}" Margin="2"/>
+            </Button>
+        </StackPanel>
     </Grid>
 </UserControl>

@@ -1,0 +1,20 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<ImplicitUsings>enable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<OutputType>Exe</OutputType>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
+	</PropertyGroup>
+
+	<ItemGroup>
+		<PackageReference Include="TUnit" Version="1.5*" />
+		<PackageReference Include="TUnit.Assertions.Should" Version="1.62.0-beta" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\QPlayer\QPlayer.csproj" />
+	</ItemGroup>
+
+</Project>

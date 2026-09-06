@@ -36,7 +36,7 @@ public partial class PlaybackProgressBar : UserControl, INotifyPropertyChanged, 
             var pt = cueVM.PlaybackTime;
             if (pt == TimeSpan.Zero)
                 return 0;
-            return pt.Ticks / (double)cueVM.Duration.Ticks * 100;
+            return Math.Min(pt.Ticks / (double)cueVM.Duration.Ticks * 100, 101);
         }
     }
 
@@ -51,21 +51,30 @@ public partial class PlaybackProgressBar : UserControl, INotifyPropertyChanged, 
         InitializeComponent();
 
         BindVM();
-        DataContextChanged += (o, e) => { UnBindVM(); BindVM(); };
         ProgressBarGrid.SizeChanged += ProgressBarGrid_SizeChanged;
+    }
+
+    private void UserControl_DataContextChanged(object sender, DependencyPropertyChangedEventArgs e)
+    {
+        UnBindVM(); 
+        BindVM();
+    }
+
+    private void UserControl_Unloaded(object sender, RoutedEventArgs e)
+    {
+        UnBindVM();
     }
 
     private void UnBindVM()
     {
-        if (cueVM != null)
-            cueVM.PropertyChanged -= CueVM_PropertyChanged;
+        cueVM?.PropertyChanged -= CueVM_PropertyChanged;
+        cueVM = null;
     }
 
     private void BindVM()
     {
         cueVM = (CueViewModel)DataContext;
-        if (cueVM != null)
-            cueVM.PropertyChanged += CueVM_PropertyChanged;
+        cueVM?.PropertyChanged += CueVM_PropertyChanged;
     }
 
     private void CueVM_PropertyChanged(object? sender, System.ComponentModel.PropertyChangedEventArgs e)

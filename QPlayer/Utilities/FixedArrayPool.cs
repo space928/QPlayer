@@ -18,6 +18,15 @@ public class FixedArrayPool<T> : ArrayPool<T>
     private readonly int arraySize;
     private readonly int maxCount;
 
+    /// <summary>
+    /// Gets the size of array that this pool stores.
+    /// </summary>
+    public int ArraySize => arraySize;
+    /// <summary>
+    /// Gets the maximum number of arrays that this pool stores.
+    /// </summary>
+    public int MaxCount => maxCount;
+
     public FixedArrayPool(int arraySize, int initialNumber, int maxCount)
     {
         this.arraySize = arraySize;
@@ -27,6 +36,14 @@ public class FixedArrayPool<T> : ArrayPool<T>
             arrays[i] = new T[arraySize];
     }
 
+    /// <summary>
+    /// Rents an array from the pool with a size of <see cref="ArraySize"/>. Throws an 
+    /// <see cref="ArgumentOutOfRangeException"/> if the requested size is bigger than 
+    /// the <see cref="ArraySize"/>. The returned array must be returned to the pool using
+    /// <see cref="Return(T[]?, bool)"/>.
+    /// </summary>
+    /// <param name="minimumLength"></param>
+    /// <returns></returns>
     public override T[] Rent(int minimumLength)
     {
         ArgumentOutOfRangeException.ThrowIfGreaterThan(minimumLength, arraySize);

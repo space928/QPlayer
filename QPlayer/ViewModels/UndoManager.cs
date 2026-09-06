@@ -1,5 +1,7 @@
 ﻿using QPlayer.Utilities;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Linq.Expressions;
@@ -24,6 +26,9 @@ public static class UndoManager
     private static MainViewModel? mainViewModel;
     private static int suppressRecordingCounter = 0;
     private static int groupRecordingCounter = 0;
+    private static int monotonicActionNumber = 0;
+    private static int currentActionNumber = 0;
+    private static int lastSavedAction = 0;
 
     private delegate void SetPropDelegate(object target, object? value);
 
@@ -57,9 +62,30 @@ public static class UndoManager
     public static bool IsRecordingSuppressed => suppressRecordingCounter > 0;
     public static bool IsInGroupedRecording => groupRecordingCounter > 0;
 
+    public static bool UnsavedChanges => lastSavedAction != currentActionNumber;
+    public static bool LogUndoActions { get; set; }
+
     internal static void RegisterMainVM(MainViewModel vm)
     {
         mainViewModel = vm;
+    }
+
+    internal static void OnSave()
+    {
+        lastSavedAction = currentActionNumber;
+        //Debug.WriteLine($"Saved till action {lastSavedAction}");
+    }
+
+    public static IEnumerable<string> GetUndoLog()
+    {
+        foreach (var action in undoStack.FastReverse())
+            yield return action.ToString();
+    }
+
+    public static IEnumerable<string> GetRedoLog()
+    {
+        foreach (var action in redoStack.FastReverse())
+            yield return action.ToString();
     }
 
     /*
@@ -94,18 +120,27 @@ public static class UndoManager
             if (top.target == target && top.path == path)
             {
                 top.newValue = newValue;
+                top.actionNumber = GetNextActionNumber();
+                if (LogUndoActions)
+                    MainViewModel.Log($"[Action] {top} (act {top.actionNumber})");
                 return;
             }
         }
 
         if (IsInGroupedRecording)
         {
-            groupedUndoStack.PushEnd(new(path, target, oldValue, newValue));
+            UndoAction item = new(path, target, oldValue, newValue, GetNextActionNumber());
+            groupedUndoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] [G] {item} (act {item.actionNumber})");
         }
         else
         {
             redoStack.Clear();
-            undoStack.PushEnd(new(path, target, oldValue, newValue));
+            UndoAction item = new(path, target, oldValue, newValue, GetNextActionNumber());
+            undoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] {item} (act {item.actionNumber})");
             if (undoStack.Count > MAX_HISTORY)
                 undoStack.PopStart();
 
@@ -128,12 +163,18 @@ public static class UndoManager
 
         if (IsInGroupedRecording)
         {
-            groupedUndoStack.PushEnd((new(actionDesc, undoFunc, redoFunc)));
+            UndoAction item = new(actionDesc, undoFunc, redoFunc, GetNextActionNumber());
+            groupedUndoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] [G] {item} (act {item.actionNumber})");
         }
         else
         {
             redoStack.Clear();
-            undoStack.PushEnd((new(actionDesc, undoFunc, redoFunc)));
+            UndoAction item = new(actionDesc, undoFunc, redoFunc, GetNextActionNumber());
+            undoStack.PushEnd(item);
+            if (LogUndoActions)
+                MainViewModel.Log($"[Action] {item} (act {item.actionNumber})");
             if (undoStack.Count > MAX_HISTORY)
                 undoStack.PopStart();
 
@@ -183,7 +224,10 @@ public static class UndoManager
         }
 
         redoStack.Clear();
-        undoStack.PushEnd((new(actionDesc, actions)));
+        UndoAction item = new(actionDesc, actions, GetNextActionNumber());
+        undoStack.PushEnd(item);
+        if (LogUndoActions)
+            MainViewModel.Log($"[Action] {item} (act {item.actionNumber})");
         if (undoStack.Count > MAX_HISTORY)
             undoStack.PopStart();
 
@@ -230,10 +274,20 @@ public static class UndoManager
         if (!undoStack.TryPopEnd(out var action))
             return;
 
+        ref var nextUndo = ref undoStack.MutablePeekEnd();
+        if (Unsafe.IsNullRef(ref nextUndo))
+            currentActionNumber = lastSavedAction;
+        else
+            currentActionNumber = nextUndo.actionNumber;
+        //Debug.WriteLine($"Action = {currentActionNumber}");
+
         redoStack.PushEnd(action);
         if (redoStack.Count > MAX_HISTORY)
             redoStack.PopStart();
         UndoStackChanged?.Invoke();
+
+        if (LogUndoActions)   //[Action]
+            MainViewModel.Log($"[Undo  ] {action} (act {action.actionNumber})");
 
         Undo(action);
     }
@@ -309,17 +363,22 @@ public static class UndoManager
             undoStack.PopStart();
         UndoStackChanged?.Invoke();
 
+        if (LogUndoActions)   //[Action]
+            MainViewModel.Log($"[Redo  ] {action} (act {action.actionNumber})");
         Redo(action);
     }
 
     private static void Redo(UndoAction[] actions)
     {
-        for (int i = actions.Length - 1; i >= 0; i--)
+        for (int i = 0; i < actions.Length; i++)
             Redo(actions[i]);
     }
 
     private static void Redo(UndoAction action)
     {
+        currentActionNumber = action.actionNumber;
+        //Debug.WriteLine($"Action = {currentActionNumber}");
+
         // If the undo action was captured in a closure, use that
         if (action.redoAction != null)
         {
@@ -380,7 +439,10 @@ public static class UndoManager
         redoStack.Clear();
         groupedUndoStack.Clear();
         groupRecordingCounter = 0;
+        GetNextActionNumber();
         UndoStackChanged?.Invoke();
+        if (LogUndoActions)   //[Action]
+            MainViewModel.Log($"[Undo  ] Cleared undo stack (act {currentActionNumber})");
     }
 
     /// <summary>
@@ -470,6 +532,14 @@ public static class UndoManager
         return Expression.Lambda<SetPropDelegate>(Expression.Block(setter), target, value).Compile();
     }
 
+    private static int GetNextActionNumber()
+    {
+        var val = ++monotonicActionNumber;
+        currentActionNumber = val;
+        //Debug.WriteLine($"Action = {currentActionNumber}");
+        return val;
+    }
+
     public readonly struct ScopedSuppressRecording : IDisposable
     {
         public ScopedSuppressRecording()
@@ -512,32 +582,37 @@ public static class UndoManager
 
         public UndoAction[]? groupedActions;
 
-        public UndoAction(string path, object target, object? oldValue, object? newValue)
+        public int actionNumber;
+
+        public UndoAction(string path, object target, object? oldValue, object? newValue, int actionNumber)
         {
             this.path = path;
             this.target = target;
             this.oldValue = oldValue;
             this.newValue = newValue;
+            this.actionNumber = actionNumber;
         }
 
-        public UndoAction(string path, Action? undoAction, Action? redoAction)
+        public UndoAction(string path, Action? undoAction, Action? redoAction, int actionNumber)
         {
             this.path = path;
             this.undoAction = undoAction;
             this.redoAction = redoAction;
+            this.actionNumber = actionNumber;
         }
 
-        public UndoAction(string path, UndoAction[]? groupedActions)
+        public UndoAction(string path, UndoAction[]? groupedActions, int actionNumber)
         {
             this.path = path;
             this.groupedActions = groupedActions;
+            this.actionNumber = actionNumber;
         }
 
         public override readonly string ToString()
         {
             return target switch
             {
-                CueViewModel cue => $"Changed Q{cue.QID} / {path}",
+                CueViewModel cue => $"Changed Q{cue.FullQID} / {path}",
                 EQViewModel => $"Changed EQ / {path}",
                 AudioLimiterViewModel => $"Changed Limiter / {path}",
                 ProjectSettingsViewModel => $"Changed Project Settings / {path}",

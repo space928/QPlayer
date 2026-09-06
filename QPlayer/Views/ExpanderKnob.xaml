@@ -1,0 +1,18 @@
+﻿<UserControl x:Class="QPlayer.Views.ExpanderKnob"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:QPlayer.Views"
+             x:Name="ExpanderKnobInst"
+             mc:Ignorable="d" 
+             Focusable="False" IsTabStop="False"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <Grid MouseDown="Grid_MouseDown" Loaded="Grid_Loaded">
+        <Image Source="{StaticResource Icon_angle_down_solid_fullDrawingImage}" Width="16" Height="16">
+            <Image.RenderTransform>
+                <RotateTransform CenterX="8" CenterY="8" Angle="0" x:Name="ArrowRotateTransform"/>
+            </Image.RenderTransform>
+        </Image>
+    </Grid>
+</UserControl>

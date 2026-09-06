@@ -9,7 +9,9 @@ using System.Drawing;
 using System.Linq;
 using System.Net;
 using System.Numerics;
+using System.Reflection;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading.Tasks;
 using System.Windows;
@@ -74,6 +76,26 @@ public static partial class ExtensionMethods
             list.Add(default!);
 
         list[index] = value;
+    }
+
+    /// <summary>
+    /// Adds a key value pair to a dictionary or replaces an existing one if the key already exists.
+    /// </summary>
+    /// <typeparam name="TKey"></typeparam>
+    /// <typeparam name="TValue"></typeparam>
+    /// <param name="dict"></param>
+    /// <param name="key"></param>
+    /// <param name="value"></param>
+    /// <returns>The old value at the given key or <see langword="default"/>.</returns>
+    public static TValue? AddOrUpdate<TKey, TValue>(this IDictionary<TKey, TValue> dict, TKey key, TValue value)
+    {
+        if (dict.TryAdd(key, value))
+            return default;
+
+        var old = dict[key];
+        dict[key] = value;
+
+        return old;
     }
 
     public static int IndexOf<TList, TItem>(this IList<TList> list, Func<TList, TItem> selector, TItem value)
@@ -226,6 +248,8 @@ public static partial class ExtensionMethods
     /// <param name="values"></param>
     /// <returns></returns>
     public static TemporaryList<T> ToTempList<T>(this IEnumerable<T> values) => new(values);
+    /// <inheritdoc cref="ToTempList{T}(IEnumerable{T})"/>
+    public static TemporaryList<T> ToTempList<T>(this IEnumerable<T> values, int capacity) => new(values, capacity);
 
     /// <summary>
     /// Reverses the given enumerable efficiently. This may require enumerating the entire collection.
@@ -233,5 +257,82 @@ public static partial class ExtensionMethods
     /// <typeparam name="T"></typeparam>
     /// <param name="source"></param>
     /// <returns></returns>
-    public static IEnumerable<T> FastReverse<T>(this IEnumerable<T> source) => new FastReverseEnumerable<T>(source);
+    public static IEnumerable<T> FastReverse<T>(this IEnumerable<T> source)
+    {
+        if (source is IList<T> list)
+            return new FastReverseList<T>(list);
+        return new FastReverseEnumerable<T>(source);
+    }
+
+    /// <inheritdoc cref="FastReverse{T}(IEnumerable{T})"/>
+    public static FastReverseList<T> FastReverse<T>(this IList<T> source) => new(source);
+
+    public static Span<T> AsSpan<T>(this List<T> source, int start = 0, int count = -1)
+    {
+        var span = CollectionsMarshal.AsSpan(source);
+        if (start > 0)
+            span = span[start..];
+        if (count > -1)
+            span = span[..count];
+        return span;
+    }
+
+    /*/// <summary>
+    /// Returns the first element in a collection or the default value if it's empty.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    public static T? FirstOrDefault<T>(this IList<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+
+        return source[0];
+    }
+
+    /// <inheritdoc cref="FirstOrDefault{T}(IList{T})"/>
+    public static T? FirstOrDefault<T>(this ICollection<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+       
+        using var iter = source.GetEnumerator();
+        if (iter.MoveNext())
+            return iter.Current;
+        return default;
+    }*/
+
+    /// <summary>
+    /// Returns the first element in a collection or the default value if it's empty.
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    /// <param name="source"></param>
+    /// <returns></returns>
+    public static T? FirstOrDefault<T>(this IReadOnlyList<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+
+        return source[0];
+    }
+
+    /// <inheritdoc cref="FirstOrDefault{T}(IReadOnlyList{T})"/>
+    public static T? FirstOrDefault<T>(this IReadOnlyCollection<T> source)
+    {
+        if (source.Count == 0)
+            return default;
+
+        using var iter = source.GetEnumerator();
+        if (iter.MoveNext())
+            return iter.Current;
+
+        return default;
+    }
+
+    /// <inheritdoc cref="FastZipEnumerable{TA, TB}"/>
+    public static IEnumerable<(TA first, TB second)> FastZip<TA, TB>(this IEnumerable<TA> first, IEnumerable<TB> second) => new FastZipEnumerable<TA, TB>(first, second);
+    public static IReadOnlyList<(TA first, TB second)> FastZip<TA, TB>(this IReadOnlyList<TA> first, IReadOnlyList<TB> second) => new FastZipList<TA, TB>(first, second);
+    /// <inheritdoc cref="FastZipEnumerable{TA, TB}"/>
+    public static TemporaryList<TA>.TempListZipEnumerable<TB> FastZip<TA, TB>(this in TemporaryList<TA> first, in TemporaryList<TB> second) => new(in first, in second);
 }

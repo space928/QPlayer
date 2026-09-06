@@ -15,10 +15,11 @@ namespace QPlayer.ViewModels;
 public partial class VolumeCueViewModel : CueViewModel
 {
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeTime);
-    [Reactive, ModelBindsTo(nameof(VolumeCue.soundQid))] private decimal target;
+    [Reactive, ModelBindsTo(nameof(VolumeCue.soundQid))] private string target = string.Empty;
     [Reactive] private float volume;
     [Reactive, ChangesProp(nameof(Duration))] private float fadeTime;
     [Reactive] private FadeType fadeType;
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Change Volume of Q{target}" : Name;
 
     private DateTime startTime;
 
@@ -31,13 +32,16 @@ public partial class VolumeCueViewModel : CueViewModel
                 case nameof(FadeTime):
                     OnPropertyChanged(nameof(Duration));
                     break;
+                case nameof(Target):
+                    OnPropertyChanged(nameof(NamePreview));
+                    break;
             }
         };
     }
 
     protected internal override void UpdateUIStatus()
     {
-        PlaybackTime = DateTime.Now.Subtract(startTime);
+        PlaybackTime = DateTime.UtcNow.Subtract(startTime);
         if (PlaybackTime >= Duration)
             Stop();
     }
@@ -47,8 +51,8 @@ public partial class VolumeCueViewModel : CueViewModel
         base.Go();
         // Volume cues don't support preloading
         PlaybackTime = TimeSpan.Zero;
-        startTime = DateTime.Now;
-        if (mainViewModel != null && mainViewModel.FindCue(Target, out var cue))
+        startTime = DateTime.UtcNow;
+        if (mainViewModel.FindCue(Target, out var cue))
         {
             if (cue is SoundCueViewModel soundCue)
                 soundCue.Fade(MathF.Pow(10, Volume / 20f), FadeTime, FadeType);
@@ -57,6 +61,7 @@ public partial class VolumeCueViewModel : CueViewModel
         }
         else
         {
+            MainViewModel.Log($"Volume cue (Q{FullQID}) couldn't find a cue with QID: {target} to adjust!", MainViewModel.LogLevel.Warning);
             Stop();
         }
     }

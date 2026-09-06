@@ -10,7 +10,7 @@
         mc:Ignorable="d"
         x:Name="QPlayerMainWindow"
         Title="{Binding WindowTitle}" Height="900" Width="1400" MinWidth="400" MinHeight="300" Style="{DynamicResource CustomWindowStyle}" Icon="{StaticResource IconImage}"
-        Closing="Window_Closing" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
+        Closing="Window_Closing" Loaded="Window_Loaded" DragOver="QPlayerMainWindow_DragOver" DragEnter="QPlayerMainWindow_DragOver" MouseMove="QPlayerMainWindow_MouseMove">
     <Window.DataContext>
         <vm:MainViewModel></vm:MainViewModel>
     </Window.DataContext>
@@ -27,6 +27,8 @@
         <KeyBinding Key="OemCloseBrackets" Command="{Binding UnpauseCommand}"/>
         <KeyBinding Key="Up" Command="{Binding UpCommand}"/>
         <KeyBinding Key="Down" Command="{Binding DownCommand}"/>
+        <KeyBinding Key="Left" Command="{Binding LeftCommand}"/>
+        <KeyBinding Key="Right" Command="{Binding RightCommand}"/>
         <KeyBinding Gesture="Shift+Up" Command="{Binding SelUpCommand}"/>
         <KeyBinding Gesture="Shift+Down" Command="{Binding SelDownCommand}"/>
         <KeyBinding Key="Delete" Command="{Binding DeleteCueCommand}"/>
@@ -36,31 +38,38 @@
         <KeyBinding Gesture="CTRL+Shift+S" Command="{Binding SaveProjectAsCommand}"/>
         <KeyBinding Gesture="CTRL+E" Command="{Binding PackProjectCommand}"/>
         <KeyBinding Gesture="CTRL+Up" Command="{Binding MoveCueUpCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+Up" Command="{Binding MoveCueIntoUpCommand}"/>
         <KeyBinding Gesture="CTRL+Down" Command="{Binding MoveCueDownCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+Down" Command="{Binding MoveCueIntoDownCommand}"/>
         <KeyBinding Gesture="CTRL+D" Command="{Binding DuplicateCueCommand}"/>
         <KeyBinding Gesture="CTRL+T" Command="{Binding CreateCueMenuCommand}"/>
+        <KeyBinding Gesture="CTRL+G" Command="{Binding GroupCuesCommand}"/>
+        <KeyBinding Gesture="CTRL+Shift+G" Command="{Binding UngroupCuesCommand}"/>
         <KeyBinding Gesture="CTRL+Z" Command="{Binding UndoCommand}"/>
         <KeyBinding Gesture="CTRL+Shift+Z" Command="{Binding RedoCommand}"/>
+        <KeyBinding Gesture="CTRL+A" Command="{Binding SelectAllCommand}"/>
     </Window.InputBindings>
-    <Grid>
+    <Grid x:Name="MainGrid">
         <Grid.RowDefinitions>
             <RowDefinition Height="30"/>
             <RowDefinition Height="*"/>
             <RowDefinition Height="22"/>
         </Grid.RowDefinitions>
-        <ItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
+        <local:CueListItemsControl x:Name="DraggingItemsPanel" ItemsSource="{Binding DraggingCues}" 
                       Background="{DynamicResource AREghZyBrush.Deep.1.Background.Static}" BorderBrush="{DynamicResource AREghZyBrush.Deep.1.Border.Static}" BorderThickness="1"
                       Panel.ZIndex="999" Width="400" MaxHeight="250" Grid.ColumnSpan="99" Grid.RowSpan="99" HorizontalAlignment="Left" VerticalAlignment="Top" 
-                      Visibility="Visible" IsTabStop="False" Focusable="False" IsHitTestVisible="False">
-            <ItemsControl.ItemTemplate>
+                      Visibility="Visible" IsTabStop="False" Focusable="False" IsHitTestVisible="False"
+                      VirtualizingPanel.IsVirtualizing="True" VirtualizingPanel.VirtualizationMode="Recycling" VirtualizingPanel.CacheLength="16" 
+                      VirtualizingPanel.CacheLengthUnit="Item">
+            <local:CueListItemsControl.ItemTemplate>
                 <DataTemplate>
                     <local:CueDataControl/>
                 </DataTemplate>
-            </ItemsControl.ItemTemplate>
-            <ItemsControl.Effect>
+            </local:CueListItemsControl.ItemTemplate>
+            <local:CueListItemsControl.Effect>
                 <DropShadowEffect BlurRadius="20" Color="{DynamicResource AREghZyColour.Primary.4.Border.Static}"/>
-            </ItemsControl.Effect>
-        </ItemsControl>
+            </local:CueListItemsControl.Effect>
+        </local:CueListItemsControl>
         <!--#region Title Bar-->
         <Grid x:Name="TitleBar" Grid.Row="0" Background="{DynamicResource AREghZyBrush.Deep.2.Background.Static}">
             <Grid.ColumnDefinitions>
@@ -71,10 +80,17 @@
             <Menu IsMainMenu="True" Grid.Column="1" VerticalAlignment="Center" x:Name="MainMenu">
                 <MenuItem Header="File" Height="30">
                     <MenuItem.Resources>
-                        <Style x:Key="RecentItemStyle" TargetType="MenuItem">
+                        <Style x:Key="RecentItemStyle" BasedOn="{StaticResource MenuItem}" TargetType="MenuItem">
                             <Setter Property="Header" Value="{Binding Name}"/>
                             <Setter Property="CommandParameter" Value="{Binding Path}"/>
                             <Setter Property="Command" Value="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
+                            <Style.Triggers>
+                                <DataTrigger Binding="{Binding Name}" Value="Recovered Files">
+                                    <DataTrigger.Setters>
+                                        <Setter Property="ItemsSource" Value="{Binding SubList}"/>
+                                    </DataTrigger.Setters>
+                                </DataTrigger>
+                            </Style.Triggers>
                         </Style>
                     </MenuItem.Resources>
                     <MenuItem Header="New" InputGestureText="Ctrl+N"  Command="{Binding NewProjectCommand}"/>
@@ -84,11 +100,6 @@
                     <MenuItem Header="Autosave" IsCheckable="True" IsChecked="{Binding EnableAutosave}"/>
                     <MenuItem Header="Pack" InputGestureText="Ctrl+E" Command="{Binding PackProjectCommand}"/>
                     <MenuItem Header="Recent" ItemsSource="{Binding RecentFiles}" ItemContainerStyle="{StaticResource RecentItemStyle}">
-                        <!--<MenuItem.ItemTemplate>
-                            <DataTemplate>
-                                <MenuItem Header="{Binding Name}" CommandParameter="{Binding Path}" Command="{Binding DataContext.OpenSpecificProjectCommand, RelativeSource={RelativeSource AncestorType=Menu}}"/>
-                            </DataTemplate>
-                        </MenuItem.ItemTemplate>-->
                     </MenuItem>
                     <MenuItem Header="Exit" InputGestureText="Alt+F4" Click="ExitMenuItem_Click"/>
                 </MenuItem>
@@ -234,13 +245,13 @@
                         </ContextMenu>
                     </ScrollViewer.ContextMenu>
                     <StackPanel>
-                        <ItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}" d:Height="1000" KeyboardNavigation.TabNavigation="Cycle">
-                            <ItemsControl.ItemTemplate>
+                        <local:CueListItemsControl x:Name="CueListControl" ItemsSource="{Binding Cues}" d:Height="1000" KeyboardNavigation.TabNavigation="Cycle">
+                            <local:CueListItemsControl.ItemTemplate>
                                 <DataTemplate>
                                     <local:CueDataControl/>
                                 </DataTemplate>
-                            </ItemsControl.ItemTemplate>
-                        </ItemsControl>
+                            </local:CueListItemsControl.ItemTemplate>
+                        </local:CueListItemsControl>
                         <Grid MaxWidth="200" Margin="80" Height="{Binding 
                             RelativeSource={RelativeSource AncestorType=ScrollViewer}, 
                             Path=ActualHeight,
@@ -311,5 +322,6 @@
                 </StackPanel>
             </Grid>
         </Grid>
+        <Button Content="Automation Add Sound Cue" Command="{Binding CreateCueCommand}" CommandParameter="SoundCue" Visibility="Collapsed"/>
     </Grid>
 </Window>

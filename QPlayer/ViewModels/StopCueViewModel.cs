@@ -16,10 +16,12 @@ namespace QPlayer.ViewModels;
 public partial class StopCueViewModel : CueViewModel
 {
     public override TimeSpan Duration => TimeSpan.FromSeconds(FadeOutTime);
-    [Reactive, ModelBindsTo(nameof(StopCue.stopQid))] private decimal stopTarget;
+    [Reactive, ModelBindsTo(nameof(StopCue.stopQid))] private string stopTarget = string.Empty;
     [Reactive] private StopMode stopMode;
     [Reactive, ChangesProp(nameof(Duration))] private float fadeOutTime;
     [Reactive] private FadeType fadeType;
+
+    public override string NamePreview => string.IsNullOrEmpty(Name) ? $"Stop Q{stopTarget}" : Name;
 
     private DateTime startTime;
 
@@ -31,6 +33,9 @@ public partial class StopCueViewModel : CueViewModel
             {
                 case nameof(FadeOutTime):
                     OnPropertyChanged(nameof(Duration));
+                    break;
+                case nameof(StopTarget):
+                    OnPropertyChanged(nameof(NamePreview));
                     break;
             }
         };
@@ -49,7 +54,7 @@ public partial class StopCueViewModel : CueViewModel
         // Stop cues don't support preloading
         PlaybackTime = TimeSpan.Zero;
         startTime = DateTime.UtcNow;
-        if (mainViewModel != null && mainViewModel.FindCue(StopTarget, out var cue))
+        if (mainViewModel.FindCue(StopTarget, out var cue))
         {
             if (stopMode == StopMode.LoopEnd)
             {
@@ -76,6 +81,7 @@ public partial class StopCueViewModel : CueViewModel
         }
         else
         {
+            MainViewModel.Log($"Stop cue (Q{FullQID}) couldn't find a cue with QID: {stopTarget} to stop!", MainViewModel.LogLevel.Warning);
             Stop();
         }
     }

@@ -7,13 +7,7 @@
     <Application.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="ThemesV2/SoftDark.xaml"/>
-                <ResourceDictionary Source="ThemesV2/ControlColours.xaml"/>
-                <ResourceDictionary Source="ThemesV2/Controls.xaml"/>
-                <ResourceDictionary Source="ThemesV2/CustomControls.xaml"/>
-                <ResourceDictionary Source="Views/CueDataTemplates.xaml"/>
-                <ResourceDictionary Source="pack://application:,,,/ColorPicker;component/Styles/DefaultColorPickerStyle.xaml" />
-                <ResourceDictionary Source="ThemesV2/Icons.xaml"/>
+                <ResourceDictionary Source="/Views/SharedResources.xaml"/>
             </ResourceDictionary.MergedDictionaries>
             <FontFamily x:Key="CascadiaMono">pack://application:,,,/Resources/#Cascadia Mono</FontFamily>
             <!--<FontFamily x:Key="Inter">pack://application:,,,/Resources/#Inter</FontFamily>-->
