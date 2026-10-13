@@ -9,3 +9,4 @@ SigningCertificate_Encoded.txt
 *.zip
 /QPlayerOld
 /api
+/.idea

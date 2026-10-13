@@ -1,9 +1,6 @@
-﻿using QPlayer.Models;
-using QPlayer.SourceGenerator;
+﻿using QPlayer.SourceGenerator;
 using QPlayer.ViewModels;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace QPlayer.OSCCuePlugin;
 
@@ -21,6 +18,15 @@ public partial class OSCCueViewModel : CueViewModel
         "separated by commas. (Eg: '/qplayer/go,5' sends a message to '/qplayer/go' with the integer " +
         "parameter '5')")]
     private string command = "/";
+
+
+    [Reactive/*, ChangesProp(nameof(OSCMessageValid))*/]
+    [Tooltip("(OPTIONAL) The IP Address of the target in the form '192.168.0.123'")]
+    private string ip = "";
+
+    [Reactive/*, ChangesProp(nameof(OSCMessageValid))*/]
+    [Tooltip("(OPTIONAL) The IP Port of the target in the form '10023'")]
+    private string port = "";
 
     /*[Reactive("OSCMessageValid"), ModelSkip]
     private bool OSCMessageValid_Template
@@ -49,7 +55,9 @@ public partial class OSCCueViewModel : CueViewModel
         base.Go();
         try
         {
-            mainViewModel?.OSCManager.SendMessage(command);
+            var ipAndPort = ip;
+            if (!string.IsNullOrEmpty(port) && int.TryParse(port, out var portnumber)) ipAndPort = $"{ip}:{portnumber}";
+            mainViewModel?.OSCManager.SendMessage(command, ipAndPort);
         }
         catch (Exception ex)
         {

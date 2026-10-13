@@ -1,0 +1,35 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+	<PropertyGroup>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<ImplicitUsings>disable</ImplicitUsings>
+		<Nullable>enable</Nullable>
+		<EnableDynamicLoading>true</EnableDynamicLoading>
+		<UseWPF>true</UseWPF>
+	</PropertyGroup>
+
+	<PropertyGroup>
+		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<!--<OutDir>..\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\</OutDir>-->
+	</PropertyGroup>
+
+	<ItemGroup>
+		<ProjectReference Include="..\QPlayer\QPlayer.csproj">
+			<Private>false</Private>
+			<ExcludeAssets>runtime</ExcludeAssets>
+		</ProjectReference>
+		<ProjectReference Include="..\QPlayer.SourceGenerator\QPlayer.SourceGenerator.csproj">
+			<ReferenceOutputAssembly>false</ReferenceOutputAssembly>
+			<OutputItemType>Analyzer</OutputItemType>
+		</ProjectReference>
+	</ItemGroup>
+	
+	<ItemGroup>
+		<OutputFiles Include="$(OutDir)\**\*.*" />
+	</ItemGroup>
+
+	<Target Name="CopyDir" AfterTargets="Build">
+		<Copy SourceFiles="@(OutputFiles)" DestinationFolder="$(SolutionDir)\QPlayer\bin\$(Configuration)\$(TargetFramework)\plugins\$(ProjectName)\" />
+	</Target>
+
+</Project>

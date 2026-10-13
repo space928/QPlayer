@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Diagnostics.CodeAnalysis;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
@@ -92,6 +93,19 @@ public class OSCManager
     {
         var (addr, args) = OSCMessageParser.ParseOSCMessage(msg);
         oscDriver.SendMessage(new(addr, args));
+    }
+
+    public void SendMessage(string msg, string? ipAndPort)
+    {
+        var (addr, args) = OSCMessageParser.ParseOSCMessage(msg);
+        if (!string.IsNullOrEmpty(ipAndPort) && IPEndPoint.TryParse(ipAndPort, out var ipAddress))
+        {
+            oscDriver.SendMessage(new(addr, args), ipAddress);
+        }
+        else
+        {
+            oscDriver.SendMessage(new(addr, args));
+        }
     }
 
     public void SendRemoteGo(string target, decimal qid)

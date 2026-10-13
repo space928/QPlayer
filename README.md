@@ -1,3 +1,10 @@
+**Added in this Fork**
+- TCP Plugin
+- HTTP Plugin
+- Launcher Plugin
+- Extended OSC Plugin
+
+
 <p align="center">
     <img src="https://github.com/space928/QPlayer/blob/main/QPlayer/Resources/Splash.png?raw=true" alt="QPlayer Logo" height="220">
 </p>

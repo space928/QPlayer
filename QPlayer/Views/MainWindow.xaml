@@ -21,12 +21,15 @@
     </Window.Resources>
     <Window.InputBindings>
         <KeyBinding Key="Space" Command="{Binding GoCommand}"/>
+        <KeyBinding Key="F22" Command="{Binding GoCommand}" HotkeyManager.RegisterGlobalHotkey="True"/>
         <KeyBinding Key="Esc" Command="{Binding StopCommand}"/>
         <KeyBinding Key="Backspace" Command="{Binding PauseCommand}"/>
         <KeyBinding Key="OemOpenBrackets" Command="{Binding PauseCommand}"/>
         <KeyBinding Key="OemCloseBrackets" Command="{Binding UnpauseCommand}"/>
         <KeyBinding Key="Up" Command="{Binding UpCommand}"/>
         <KeyBinding Key="Down" Command="{Binding DownCommand}"/>
+        <KeyBinding Key="F20" Command="{Binding UpCommand}" HotkeyManager.RegisterGlobalHotkey="True"/>
+        <KeyBinding Key="F21" Command="{Binding DownCommand}" HotkeyManager.RegisterGlobalHotkey="True"/>
         <KeyBinding Gesture="Shift+Up" Command="{Binding SelUpCommand}"/>
         <KeyBinding Gesture="Shift+Down" Command="{Binding SelDownCommand}"/>
         <KeyBinding Key="Delete" Command="{Binding DeleteCueCommand}"/>
